@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@android:color/white">
+
+    <TextView
+        android:id="@+id/current_mode_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="当前模式: 双人对战"
+        android:textSize="18sp"
+        android:layout_marginBottom="20dp"
+        android:layout_gravity="center"/>
+
+    <Button
+        android:id="@+id/mode_0_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="双人对战"
+        android:layout_marginBottom="10dp"
+        android:background="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"/>
+
+    <Button
+        android:id="@+id/mode_1_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="人机对战（玩家红）"
+        android:layout_marginBottom="10dp"
+        android:background="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"/>
+
+    <Button
+        android:id="@+id/mode_2_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="人机对战（玩家黑）"
+        android:layout_marginBottom="10dp"
+        android:background="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"/>
+
+    <Button
+        android:id="@+id/mode_3_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="双机对战"
+        android:layout_marginBottom="20dp"
+        android:background="@android:color/holo_blue_light"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"/>
+
+    <Button
+        android:id="@+id/cancel_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="取消"
+        android:background="@android:color/darker_gray"
+        android:textColor="@android:color/white"
+        android:textSize="16sp"/>
+
+</LinearLayout>

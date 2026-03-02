@@ -1,0 +1,57 @@
+# Ignore Gradle project-specific cache directory
+.gradle
+
+# Ignore Gradle build output directory
+build
+
+# Ignore Kotlin plugin data
+.kotlin
+
+# Android Studio
+.idea
+.gradle
+local.properties
+*.iml
+*.hprof
+
+# Build outputs
+app/build/
+build/
+
+# Local configuration
+*.local
+
+# Logs
+logs
+*.log
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing
+coverage/
+.coverage
+.coverage.*
+
+# Temporary files
+*.swp
+*.swo
+*~
+
+# IDE
+.vscode/
+
+# Android
+app/release/
+app/debug/
+app/outputs/
+app/intermediates/
+
+# Rust
+check_nnue_version/target/

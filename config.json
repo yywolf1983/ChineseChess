@@ -1,0 +1,9 @@
+{
+  "ai_depth": 5,
+  "ai_thinking_time": 5000,
+  "enable_learning": true,
+  "learning_rate": 0.1,
+  "data_dir": "./data",
+  "ai_only": false,
+  "ai_games": 1
+}
