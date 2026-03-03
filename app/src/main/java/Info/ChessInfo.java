@@ -106,6 +106,7 @@ public class ChessInfo implements Cloneable, Serializable {
         this.isMachine = info.isMachine;
         this.status = info.status;
         this.peaceRound = info.peaceRound;
+        this.totalMoves = info.totalMoves;
         this.attackNum_B = info.attackNum_B;
         this.attackNum_R = info.attackNum_R;
         this.ZobristKeyCheck = info.ZobristKeyCheck;

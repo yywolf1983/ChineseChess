@@ -7,6 +7,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
+import android.os.ParcelFileDescriptor;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
@@ -20,11 +21,14 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.widget.EditText;
+import android.widget.RadioButton;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.DialogInterface;
 import androidx.annotation.RequiresApi;
 import androidx.documentfile.provider.DocumentFile;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -1484,6 +1488,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 } else {
                     // 开启摆棋模式
                     chessInfo.IsSetupMode = true;
+                    // 清空原来的缓存
+                    if (infoSet != null) {
+                        infoSet.newInfo();
+                    }
                     // 重新绘制界面
                     if (chessView != null) {
                         chessView.onSetupModeChanged();
@@ -3150,86 +3158,58 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
     }
 
-    private void handleSaveButton() {
-        // 创建一个布局用于输入文件名和对局信息
+
+    
+    private void showSaveNotationDialog() {
+        // 先弹出对话框获取棋谱信息
         LayoutInflater inflater = LayoutInflater.from(this);
         View dialogView = inflater.inflate(R.layout.dialog_save_notation, null);
         
-        final EditText fileNameEditText = dialogView.findViewById(R.id.file_name_edit);
         final EditText redPlayerEditText = dialogView.findViewById(R.id.red_player_edit);
         final EditText blackPlayerEditText = dialogView.findViewById(R.id.black_player_edit);
         final EditText dateEditText = dialogView.findViewById(R.id.date_edit);
         final EditText locationEditText = dialogView.findViewById(R.id.location_edit);
+        final EditText eventEditText = dialogView.findViewById(R.id.event_edit);
+        final EditText roundEditText = dialogView.findViewById(R.id.round_edit);
+        final RadioButton resultRedWin = dialogView.findViewById(R.id.result_red_win);
+        final RadioButton resultBlackWin = dialogView.findViewById(R.id.result_black_win);
+        final RadioButton resultDraw = dialogView.findViewById(R.id.result_draw);
         
         // 设置默认值
-        fileNameEditText.setText("对局_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()));
         dateEditText.setText(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
+        
+        // 根据当前游戏状态设置默认结果
+        if (chessInfo != null && chessInfo.status == 2) {
+            if (Rule.isDead(chessInfo.piece, true)) {
+                resultBlackWin.setChecked(true);
+            } else if (Rule.isDead(chessInfo.piece, false)) {
+                resultRedWin.setChecked(true);
+            } else {
+                resultDraw.setChecked(true);
+            }
+        }
         
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("保存棋谱");
         builder.setView(dialogView);
         builder.setPositiveButton("保存", (dialog, which) -> {
-            try {
-                String fileName = fileNameEditText.getText().toString().trim();
-                if (fileName.isEmpty()) {
-                    Toast.makeText(this, "请输入文件名", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                
-                // 确保文件名包含后缀名
-                if (!fileName.endsWith(".pgn") && !fileName.endsWith(".txt")) {
-                    fileName += ".pgn";
-                }
-                
-                String redPlayer = redPlayerEditText.getText().toString().trim();
-                String blackPlayer = blackPlayerEditText.getText().toString().trim();
-                String date = dateEditText.getText().toString().trim();
-                String location = locationEditText.getText().toString().trim();
-                
-                saveChessNotation(fileName, redPlayer, blackPlayer, date, location);
-            } catch (Exception e) {
-                e.printStackTrace();
-                Toast.makeText(this, "保存棋谱失败", Toast.LENGTH_SHORT).show();
-            }
-        });
-        builder.setNegativeButton("取消", null);
-        builder.show();
-    }
-    
-    private void showSaveNotationDialog() {
-        // 先弹出对话框获取文件名
-        LayoutInflater inflater = LayoutInflater.from(this);
-        View dialogView = inflater.inflate(R.layout.dialog_save_notation, null);
-        
-        final EditText fileNameEditText = dialogView.findViewById(R.id.file_name_edit);
-        final EditText redPlayerEditText = dialogView.findViewById(R.id.red_player_edit);
-        final EditText blackPlayerEditText = dialogView.findViewById(R.id.black_player_edit);
-        final EditText dateEditText = dialogView.findViewById(R.id.date_edit);
-        final EditText locationEditText = dialogView.findViewById(R.id.location_edit);
-        
-        // 设置默认值
-        fileNameEditText.setText("对局_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()));
-        dateEditText.setText(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-        
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("保存棋谱");
-        builder.setView(dialogView);
-        builder.setPositiveButton("选择保存位置", (dialog, which) -> {
-            String fileName = fileNameEditText.getText().toString().trim();
-            if (fileName.isEmpty()) {
-                Toast.makeText(this, "请输入文件名", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            
-            // 确保文件名包含后缀名
-            if (!fileName.endsWith(".pgn") && !fileName.endsWith(".txt")) {
-                fileName += ".pgn";
-            }
+            // 生成默认文件名
+            String fileName = "对局_" + new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date()) + ".pgn";
             
             String redPlayer = redPlayerEditText.getText().toString().trim();
             String blackPlayer = blackPlayerEditText.getText().toString().trim();
             String date = dateEditText.getText().toString().trim();
             String location = locationEditText.getText().toString().trim();
+            String event = eventEditText.getText().toString().trim();
+            String round = roundEditText.getText().toString().trim();
+            String result = "";
+            if (resultRedWin.isChecked()) {
+                result = "红胜";
+            } else if (resultBlackWin.isChecked()) {
+                result = "黑胜";
+            } else if (resultDraw.isChecked()) {
+                result = "和棋";
+            }
             
             // 保存信息到成员变量
             pendingSaveFileName = fileName;
@@ -3237,6 +3217,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             pendingSaveBlackPlayer = blackPlayer;
             pendingSaveDate = date;
             pendingSaveLocation = location;
+            pendingSaveEvent = event;
+            pendingSaveRound = round;
+            pendingSaveResult = result;
             
             // 使用SAF打开文件保存选择器
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -3255,6 +3238,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private String pendingSaveBlackPlayer;
     private String pendingSaveDate;
     private String pendingSaveLocation;
+    private String pendingSaveEvent;
+    private String pendingSaveRound;
+    private String pendingSaveResult;
     
     private void saveChessNotationToUri(Uri uri, String originalFileName) {
         try {
@@ -3264,6 +3250,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             String blackPlayer = pendingSaveBlackPlayer != null ? pendingSaveBlackPlayer : "";
             String date = pendingSaveDate != null ? pendingSaveDate : "";
             String location = pendingSaveLocation != null ? pendingSaveLocation : "";
+            String event = pendingSaveEvent != null ? pendingSaveEvent : "";
+            String round = pendingSaveRound != null ? pendingSaveRound : "";
+            String result = pendingSaveResult != null ? pendingSaveResult : "";
             
             // 创建棋谱对象
             ChessNotation notation = new ChessNotation();
@@ -3273,6 +3262,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             notation.setPlayerBlack(blackPlayer);
             notation.setMatchDate(date);
             notation.setLocation(location);
+            notation.setEvent(event);
+            notation.setRound(round);
             
             // 添加FEN信息
             if (chessInfo != null) {
@@ -3281,7 +3272,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             }
             
             // 添加结果信息
-            if (chessInfo != null && chessInfo.status == 2) {
+            if (!result.isEmpty()) {
+                notation.setResult(result);
+            } else if (chessInfo != null && chessInfo.status == 2) {
                 if (Rule.isDead(chessInfo.piece, true)) {
                     notation.setResult("黑胜");
                 } else if (Rule.isDead(chessInfo.piece, false)) {
@@ -3299,16 +3292,28 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             // 生成棋谱内容
             String content = notation.toSaveContent();
             
-            // 写入到选择的URI
-            OutputStream outputStream = getContentResolver().openOutputStream(uri);
-            if (outputStream != null) {
-                OutputStreamWriter writer = new OutputStreamWriter(outputStream, "UTF-8");
-                writer.write(content);
-                writer.close();
-                outputStream.close();
-                Toast.makeText(this, "棋谱保存成功: " + fileName, Toast.LENGTH_SHORT).show();
+            // 写入到选择的URI，确保完全覆盖文件内容
+            // 先获取文件描述符，然后使用 FileOutputStream 来确保覆盖模式
+            ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "w");
+            if (pfd != null) {
+                try (FileOutputStream fos = new FileOutputStream(pfd.getFileDescriptor());
+                     OutputStreamWriter writer = new OutputStreamWriter(fos, "UTF-8")) {
+                    // 写入新内容
+                    writer.write(content);
+                    writer.flush();
+                    Toast.makeText(this, "棋谱保存成功: " + fileName, Toast.LENGTH_SHORT).show();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    Toast.makeText(this, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                } finally {
+                    try {
+                        pfd.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
             } else {
-                Toast.makeText(this, "无法创建输出流", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, "无法创建文件描述符", Toast.LENGTH_SHORT).show();
             }
             
             // 清空临时变量
@@ -3317,6 +3322,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             pendingSaveBlackPlayer = null;
             pendingSaveDate = null;
             pendingSaveLocation = null;
+            pendingSaveEvent = null;
+            pendingSaveRound = null;
+            pendingSaveResult = null;
             
         } catch (Exception e) {
             e.printStackTrace();
@@ -3409,47 +3417,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
     }
 
-    private void saveChessNotation(String fileName, String redPlayer, String blackPlayer, String date, String location) throws Exception {
-        // 实现棋谱保存逻辑
-        ChessNotation notation = new ChessNotation();
-        notation.setFileName(fileName);
-        notation.setDate(new Date());
-        notation.setPlayerRed(redPlayer);
-        notation.setPlayerBlack(blackPlayer);
-        notation.setMatchDate(date);
-        notation.setLocation(location);
-        
-        // 添加FEN信息
-        if (chessInfo != null) {
-            String fen = generateFENForSave();
-            notation.setFen(fen);
-        }
-        
-        // 添加结果信息
-        if (chessInfo != null && chessInfo.status == 2) {
-            // 游戏已结束，确定结果
-            if (Rule.isDead(chessInfo.piece, true)) {
-                notation.setResult("黑胜");
-            } else if (Rule.isDead(chessInfo.piece, false)) {
-                notation.setResult("红胜");
-            } else {
-                notation.setResult("和棋");
-            }
-        }
-        
-        // 提取走法记录
-        if (chessInfo != null && infoSet != null && infoSet.preInfo != null) {
-            extractMoveRecords(notation);
-        }
-        
-        // 保存棋谱到文件
-        boolean saved = notation.saveToFile(this, fileName);
-        if (saved) {
-            Toast.makeText(this, "棋谱保存成功", Toast.LENGTH_SHORT).show();
-        } else {
-            Toast.makeText(this, "棋谱保存失败", Toast.LENGTH_SHORT).show();
-        }
-    }
+
     
     // 摆棋结束时的FEN信息
     private String setupFEN;
@@ -3488,6 +3456,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (chessInfo.IsSetupMode) {
             return;
         }
+        
+        // 清空现有的走法记录，确保不会添加到原有记录后面
+        notation.getMoveRecords().clear();
         
         // 创建一个临时列表来存储所有ChessInfo对象，而不修改原栈
         java.util.List<ChessInfo> tempList = new java.util.ArrayList<>();

@@ -42,7 +42,35 @@
 
 ## 构建与运行
 
-### 构建步骤
+### 使用 build.sh 脚本构建
+项目提供了 `build.sh` 脚本，方便进行各种构建操作：
+
+**脚本功能：**
+- `./build.sh` - 默认构建Debug版本
+- `./build.sh build` - 构建Debug版本
+- `./build.sh build-release` - 构建Release版本
+- `./build.sh install` - 构建并安装Debug版本到设备
+- `./build.sh install-release` - 构建并安装Release版本到设备
+- `./build.sh clean` - 清理构建缓存
+- `./build.sh test` - 运行测试
+- `./build.sh apk` - 生成Debug APK文件
+- `./build.sh bundle` - 生成Android App Bundle
+- `./build.sh info` - 显示项目信息
+- `./build.sh help` - 显示帮助信息
+
+**使用示例：**
+```bash
+# 构建Debug版本
+./build.sh
+
+# 构建并安装到设备
+./build.sh install
+
+# 清理构建缓存
+./build.sh clean
+```
+
+### 传统构建方式
 1. 克隆项目到本地
    ```bash
    git clone git@github.com:yywolf1983/ChineseChess.git
@@ -60,6 +88,7 @@
 ### 运行方式
 - **直接运行**：在Android Studio中点击运行按钮
 - **安装APK**：将构建生成的APK文件安装到Android设备
+- **使用脚本安装**：`./build.sh install`
 
 ## 游戏操作
 
@@ -126,3 +155,13 @@
 简单来说，您可以完全自由地使用、修改和分发本软件，没有任何限制。
 
 详见LICENSE文件。
+
+## 项目声明
+
+### AI完成声明
+本项目是由**人工智能**（AI）完成的，包括但不限于：
+- 代码编写与优化
+- 功能设计与实现
+- 错误修复与调试
+- 文档编写与更新
+- 构建脚本与配置

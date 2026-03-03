@@ -205,9 +205,13 @@ public class ChessNotation implements Serializable {
             }
             // 使用.pgn扩展名
             java.io.File file = new java.io.File(externalDir, cleanFileName + ".pgn");
-            java.io.FileWriter writer = new java.io.FileWriter(file);
+            // 使用FileOutputStream确保完全覆盖文件内容
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+            java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(fos, "UTF-8");
             writer.write(content);
+            writer.flush();
             writer.close();
+            fos.close();
             return true;
         } catch (Exception e) {
             e.printStackTrace();
