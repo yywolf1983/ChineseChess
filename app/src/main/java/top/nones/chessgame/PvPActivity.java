@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.ParcelFileDescriptor;
+import android.provider.DocumentsContract;
 import androidx.appcompat.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -185,7 +186,6 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
     private String pendingSaveLocation;
     private String pendingSaveEvent;
     private String pendingSaveRound;
-    private String pendingSaveResult;
 
     @Override
     public boolean onTouch(View view, MotionEvent event) {
@@ -1358,23 +1358,9 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
         final EditText locationEditText = dialogView.findViewById(R.id.location_edit);
         final EditText eventEditText = dialogView.findViewById(R.id.event_edit);
         final EditText roundEditText = dialogView.findViewById(R.id.round_edit);
-        final RadioButton resultRedWin = dialogView.findViewById(R.id.result_red_win);
-        final RadioButton resultBlackWin = dialogView.findViewById(R.id.result_black_win);
-        final RadioButton resultDraw = dialogView.findViewById(R.id.result_draw);
         
         // 设置默认值
         dateEditText.setText(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-        
-        // 根据当前游戏状态设置默认结果
-        if (chessInfo != null && chessInfo.status == 2) {
-            if (Rule.isDead(chessInfo.piece, true)) {
-                resultBlackWin.setChecked(true);
-            } else if (Rule.isDead(chessInfo.piece, false)) {
-                resultRedWin.setChecked(true);
-            } else {
-                resultDraw.setChecked(true);
-            }
-        }
         
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("保存棋谱");
@@ -1389,14 +1375,6 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             String location = locationEditText.getText().toString().trim();
             String event = eventEditText.getText().toString().trim();
             String round = roundEditText.getText().toString().trim();
-            String result = "";
-            if (resultRedWin.isChecked()) {
-                result = "红胜";
-            } else if (resultBlackWin.isChecked()) {
-                result = "黑胜";
-            } else if (resultDraw.isChecked()) {
-                result = "和棋";
-            }
             
             // 保存信息到成员变量
             pendingSaveFileName = fileName;
@@ -1406,7 +1384,6 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             pendingSaveLocation = location;
             pendingSaveEvent = event;
             pendingSaveRound = round;
-            pendingSaveResult = result;
             
             // 使用SAF打开文件保存选择器
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -1430,7 +1407,6 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             String location = pendingSaveLocation != null ? pendingSaveLocation : "";
             String event = pendingSaveEvent != null ? pendingSaveEvent : "";
             String round = pendingSaveRound != null ? pendingSaveRound : "";
-            String result = pendingSaveResult != null ? pendingSaveResult : "";
             
             // 创建棋谱对象
             ChessNotation notation = new ChessNotation();
@@ -1478,19 +1454,6 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
                     fen = generateFEN(chessInfo);
                 }
                 notation.setFen(fen);
-            }
-            
-            // 添加结果信息
-            if (!result.isEmpty()) {
-                notation.setResult(result);
-            } else if (chessInfo != null && chessInfo.status == 2) {
-                if (Rule.isDead(chessInfo.piece, true)) {
-                    notation.setResult("黑胜");
-                } else if (Rule.isDead(chessInfo.piece, false)) {
-                    notation.setResult("红胜");
-                } else {
-                    notation.setResult("和棋");
-                }
             }
             
             // 只有在非摆棋模式下才提取走法记录
@@ -1586,15 +1549,21 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             // 生成棋谱内容
             String content = notation.toSaveContent();
             
-            // 写入到选择的URI，确保完全覆盖文件内容
-            // 先获取文件描述符，然后使用 FileOutputStream 来确保覆盖模式
+            // 写入到选择的URI，使用"w"模式确保从文件开头写入
             ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "w");
             if (pfd != null) {
                 try (FileOutputStream fos = new FileOutputStream(pfd.getFileDescriptor());
                      OutputStreamWriter writer = new OutputStreamWriter(fos, "UTF-8")) {
+                    // 先将文件截断为0，确保完全清空
+                    fos.getChannel().truncate(0);
                     // 写入新内容
                     writer.write(content);
                     writer.flush();
+                    // 再次截断文件，确保没有残留信息
+                    // 使用文件通道的当前位置作为截断点，确保正确处理UTF-8编码的字符
+                    fos.getChannel().truncate(fos.getChannel().position());
+                    // 强制刷新文件系统缓存
+                    fos.getFD().sync();
                     Toast.makeText(this, "棋谱保存成功: " + fileName, Toast.LENGTH_SHORT).show();
                 } catch (Exception e) {
                     e.printStackTrace();
@@ -1618,7 +1587,6 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             pendingSaveLocation = null;
             pendingSaveEvent = null;
             pendingSaveRound = null;
-            pendingSaveResult = null;
             
         } catch (Exception e) {
             e.printStackTrace();

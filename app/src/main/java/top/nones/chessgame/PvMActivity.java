@@ -3171,23 +3171,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         final EditText locationEditText = dialogView.findViewById(R.id.location_edit);
         final EditText eventEditText = dialogView.findViewById(R.id.event_edit);
         final EditText roundEditText = dialogView.findViewById(R.id.round_edit);
-        final RadioButton resultRedWin = dialogView.findViewById(R.id.result_red_win);
-        final RadioButton resultBlackWin = dialogView.findViewById(R.id.result_black_win);
-        final RadioButton resultDraw = dialogView.findViewById(R.id.result_draw);
         
         // 设置默认值
         dateEditText.setText(new SimpleDateFormat("yyyy-MM-dd").format(new Date()));
-        
-        // 根据当前游戏状态设置默认结果
-        if (chessInfo != null && chessInfo.status == 2) {
-            if (Rule.isDead(chessInfo.piece, true)) {
-                resultBlackWin.setChecked(true);
-            } else if (Rule.isDead(chessInfo.piece, false)) {
-                resultRedWin.setChecked(true);
-            } else {
-                resultDraw.setChecked(true);
-            }
-        }
         
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("保存棋谱");
@@ -3202,14 +3188,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             String location = locationEditText.getText().toString().trim();
             String event = eventEditText.getText().toString().trim();
             String round = roundEditText.getText().toString().trim();
-            String result = "";
-            if (resultRedWin.isChecked()) {
-                result = "红胜";
-            } else if (resultBlackWin.isChecked()) {
-                result = "黑胜";
-            } else if (resultDraw.isChecked()) {
-                result = "和棋";
-            }
             
             // 保存信息到成员变量
             pendingSaveFileName = fileName;
@@ -3219,7 +3197,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             pendingSaveLocation = location;
             pendingSaveEvent = event;
             pendingSaveRound = round;
-            pendingSaveResult = result;
             
             // 使用SAF打开文件保存选择器
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
@@ -3240,7 +3217,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private String pendingSaveLocation;
     private String pendingSaveEvent;
     private String pendingSaveRound;
-    private String pendingSaveResult;
     
     private void saveChessNotationToUri(Uri uri, String originalFileName) {
         try {
@@ -3252,7 +3228,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             String location = pendingSaveLocation != null ? pendingSaveLocation : "";
             String event = pendingSaveEvent != null ? pendingSaveEvent : "";
             String round = pendingSaveRound != null ? pendingSaveRound : "";
-            String result = pendingSaveResult != null ? pendingSaveResult : "";
             
             // 创建棋谱对象
             ChessNotation notation = new ChessNotation();
@@ -3269,19 +3244,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             if (chessInfo != null) {
                 String fen = generateFENForSave();
                 notation.setFen(fen);
-            }
-            
-            // 添加结果信息
-            if (!result.isEmpty()) {
-                notation.setResult(result);
-            } else if (chessInfo != null && chessInfo.status == 2) {
-                if (Rule.isDead(chessInfo.piece, true)) {
-                    notation.setResult("黑胜");
-                } else if (Rule.isDead(chessInfo.piece, false)) {
-                    notation.setResult("红胜");
-                } else {
-                    notation.setResult("和棋");
-                }
             }
             
             // 提取走法记录
@@ -3324,7 +3286,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             pendingSaveLocation = null;
             pendingSaveEvent = null;
             pendingSaveRound = null;
-            pendingSaveResult = null;
             
         } catch (Exception e) {
             e.printStackTrace();
