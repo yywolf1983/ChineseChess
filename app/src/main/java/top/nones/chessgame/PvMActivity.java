@@ -606,6 +606,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 计算AI最佳移动
     private Move calculateAIMove() {
+        return calculateAIMoveWithDepthUpdate();
+    }
+
+    // 计算AI最佳移动，带有深度更新
+    private Move calculateAIMoveWithDepthUpdate() {
         // 显示AI开始搜索的信息，包含深度
         startAISearch();
         
@@ -836,6 +841,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 双机对战模式下，自动触发下一次AI移动
         if (gameMode == 3 && chessInfo.status == 1) {
             checkAIMove();
+        } else {
+            // 停止深度更新
+            stopAISearch();
         }
         
         return true;
@@ -854,6 +862,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 if (move != null) {
                     executeAIMove(move);
                 } else {
+                    // 停止深度更新
+                    stopAISearch();
+                    
                     // AI无法找到有效移动，检查是否被将死
                     boolean isRed = chessInfo.IsRedGo;
                     if (Rule.isDead(chessInfo.piece, isRed)) {
@@ -899,7 +910,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         
         // 创建TextView
         aiInfoTextView = new android.widget.TextView(this);
-        aiInfoTextView.setText("AI支招：点击右上角按钮获取AI建议");
+        aiInfoTextView.setText("点击支招-AI建议");
         aiInfoTextView.setTextSize(16);
         aiInfoTextView.setTextColor(android.graphics.Color.BLACK);
         aiInfoTextView.setPadding(20, 10, 20, 10);
@@ -3699,8 +3710,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             // 检查是否已经包含深度信息
             if (!currentText.contains("搜索深度:")) {
                 // 如果是初始文本，替换整个文本
-                if (currentText.equals("AI支招：点击右上角按钮获取AI建议")) {
-                    aiInfoTextView.setText("AI支招：点击右上角按钮获取AI建议 | 搜索深度: " + setting.depth);
+                if (currentText.equals("支招-获取AI建议")) {
+                    aiInfoTextView.setText("支招-获取AI建议 | 搜索深度: " + setting.depth);
                 } else {
                     // 否则在末尾添加深度信息
                     aiInfoTextView.setText(currentText + " | 搜索深度: " + setting.depth);
@@ -3713,10 +3724,51 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
     }
     
+    // 用于定时更新搜索深度的线程
+    private Thread depthUpdateThread;
+    private volatile boolean depthUpdateRunning = false;
+    private int dotCount = 0;
+
     // 开始AI搜索时更新深度显示
     private void startAISearch() {
         if (setting != null) {
-            updateAIInfoText("AI正在思考... | 搜索深度: " + setting.depth);
+            updateAIInfoText("AI正在思考. | 搜索深度: 0");
+        }
+        
+        // 启动深度更新线程
+        depthUpdateRunning = true;
+        depthUpdateThread = new Thread(() -> {
+            while (depthUpdateRunning) {
+                if (pikafishAI != null) {
+                    final int currentDepth = pikafishAI.getCurrentDepth();
+                    // 更新点的数量
+                    dotCount = (dotCount + 1) % 4;
+                    // 生成点字符串
+                    StringBuilder dots = new StringBuilder();
+                    for (int i = 0; i < dotCount; i++) {
+                        dots.append(".");
+                    }
+                    final String dotString = dots.toString();
+                    runOnUiThread(() -> {
+                        updateAIInfoText("AI正在思考" + dotString + " | 搜索深度: " + currentDepth);
+                    });
+                }
+                // 每隔1秒更新一次
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        depthUpdateThread.start();
+    }
+
+    // 停止AI搜索时停止深度更新
+    private void stopAISearch() {
+        depthUpdateRunning = false;
+        if (depthUpdateThread != null) {
+            depthUpdateThread.interrupt();
         }
     }
 
@@ -3835,5 +3887,4 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 saveChessNotationToUri(uri, fileName);
             }
         }
-    }
-}
+    }}

@@ -340,6 +340,14 @@ public class PikafishAI {
         return getBestMoveWithScore(chessInfo).move;
     }
 
+    // 用于存储当前搜索深度
+    private int currentDepth = 0;
+
+    // 获取当前搜索深度
+    public int getCurrentDepth() {
+        return currentDepth;
+    }
+
     public MoveWithScore getBestMoveWithScore(ChessInfo chessInfo) {
         // 检查是否在模拟器中运行
         if (isRunningInEmulator()) {
@@ -352,6 +360,9 @@ public class PikafishAI {
                 Log.e("PikafishAI", "AI未初始化，尝试使用默认走法");
                 return new MoveWithScore(getDefaultMove(chessInfo), 0);
             }
+            
+            // 重置当前深度
+            currentDepth = 0;
             
             // 生成FEN字符串
             String fen = boardToFEN(chessInfo);
@@ -374,7 +385,7 @@ public class PikafishAI {
             String line;
             while ((line = reader.readLine()) != null) {
                 LogUtils.d("PikafishAI", "响应: " + line);
-                if (line.startsWith("info") && line.contains("score")) {
+                if (line.startsWith("info")) {
                     // 解析评分信息
                     String[] parts = line.split(" ");
                     for (int i = 0; i < parts.length; i++) {
@@ -385,6 +396,18 @@ public class PikafishAI {
                                 } catch (NumberFormatException e) {
                                     // 忽略解析错误
                                 }
+                            }
+                            break;
+                        }
+                    }
+                    // 解析深度信息
+                    for (int i = 0; i < parts.length; i++) {
+                        if (parts[i].equals("depth") && i + 1 < parts.length) {
+                            try {
+                                currentDepth = Integer.parseInt(parts[i + 1]);
+                                LogUtils.i("PikafishAI", "当前搜索深度: " + currentDepth);
+                            } catch (NumberFormatException e) {
+                                // 忽略解析错误
                             }
                             break;
                         }
@@ -491,6 +514,11 @@ public class PikafishAI {
     }
     
     private Move uciToMove(String uci) {
+        if (uci == null) {
+            LogUtils.e("PikafishAI", "UCI坐标为null");
+            return null;
+        }
+        
         if (uci.length() != 4) {
             LogUtils.e("PikafishAI", "无效的UCI坐标长度: " + uci.length() + "，坐标: " + uci);
             return null;
