@@ -544,15 +544,19 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                                 }
                                             }
 
-                                            // 获取当前局面的评分
+                                            // 获取当前局面的评分（在后台线程中执行）
                                             if (pikafishAI != null && pikafishAI.isInitialized()) {
-                                                PikafishAI.MoveWithScore moveWithScore = pikafishAI.getBestMoveWithScore(chessInfo);
-                                                int score = moveWithScore.score;
-                                                
-                                                // 更新评分显示
-                                                if (roundView != null) {
-                                                    roundView.setMoveScore(score);
-                                                }
+                                                new Thread(() -> {
+                                                    PikafishAI.MoveWithScore moveWithScore = pikafishAI.getBestMoveWithScore(chessInfo);
+                                                    final int score = moveWithScore.score;
+                                                    
+                                                    // 更新评分显示
+                                                    runOnUiThread(() -> {
+                                                        if (roundView != null) {
+                                                            roundView.setMoveScore(score);
+                                                        }
+                                                    });
+                                                }).start();
                                             }
                                             
                                             // 重新绘制界面
