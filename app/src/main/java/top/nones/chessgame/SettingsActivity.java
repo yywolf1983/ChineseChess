@@ -51,10 +51,12 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         
         // 设置深度滑块
         if (sbDepth != null) {
-            sbDepth.setMax(60);
+            sbDepth.setMax(45);
             int depth = setting.depth;
-            if (depth < 1) {
-                depth = 1;
+            if (depth < 5) {
+                depth = 5;
+            } else if (depth > 45) {
+                depth = 45;
             }
             sbDepth.setProgress(depth);
             sbDepth.setOnSeekBarChangeListener(this);
@@ -63,8 +65,10 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
         // 设置深度文本
         if (tvDepth != null) {
             int depth = setting.depth;
-            if (depth < 1) {
-                depth = 1;
+            if (depth < 5) {
+                depth = 5;
+            } else if (depth > 45) {
+                depth = 45;
             }
             tvDepth.setText("棋局深度: " + depth);
         }
@@ -92,7 +96,13 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
                 setting.isEffectPlay = cbEffect.isChecked();
             }
             if (sbDepth != null) {
-                setting.depth = sbDepth.getProgress();
+                int depth = sbDepth.getProgress();
+                if (depth < 5) {
+                    depth = 5;
+                } else if (depth > 45) {
+                    depth = 45;
+                }
+                setting.depth = depth;
             }
             setting.saveSetting(sharedPreferences);
             Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show();
@@ -106,7 +116,15 @@ public class SettingsActivity extends AppCompatActivity implements View.OnClickL
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (tvDepth != null) {
-            tvDepth.setText("棋局深度: " + progress);
+            int depth = progress;
+            if (depth < 5) {
+                depth = 5;
+                seekBar.setProgress(5);
+            } else if (depth > 45) {
+                depth = 45;
+                seekBar.setProgress(45);
+            }
+            tvDepth.setText("棋局深度: " + depth);
         }
     }
 
