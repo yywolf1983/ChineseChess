@@ -1842,18 +1842,28 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         System.out.println("PvMActivity: 点击下一步按钮");
         if (currentNotation != null) {
             List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
-            int moveRecordsSize = moveRecords != null ? moveRecords.size() : 0;
-            int totalMoves = moveRecordsSize * 2;
-            System.out.println("PvMActivity: 当前步数: " + currentMoveIndex + ", 总步数: " + totalMoves);
-            if (moveRecords != null && !moveRecords.isEmpty() && currentMoveIndex < totalMoves) {
-                currentMoveIndex++;
-                System.out.println("PvMActivity: 执行下一步，新步数: " + currentMoveIndex);
-                // 重新生成棋盘状态
-                generateBoardStateFromNotation();
-                // 显示当前步数信息
-                updateMoveInfoDisplay();
+            if (moveRecords != null && !moveRecords.isEmpty()) {
+                // 计算实际可执行的步数
+                int actualTotalMoves = 0;
+                for (ChessNotation.MoveRecord record : moveRecords) {
+                    if (!record.redMove.isEmpty()) actualTotalMoves++;
+                    if (!record.blackMove.isEmpty()) actualTotalMoves++;
+                }
+                System.out.println("PvMActivity: 当前步数: " + currentMoveIndex + ", 总步数: " + actualTotalMoves);
+                if (currentMoveIndex < actualTotalMoves) {
+                    currentMoveIndex++;
+                    System.out.println("PvMActivity: 执行下一步，新步数: " + currentMoveIndex);
+                    // 重新生成棋盘状态
+                    generateBoardStateFromNotation();
+                    // 显示当前步数信息
+                    updateMoveInfoDisplay();
+                } else {
+                    System.out.println("PvMActivity: 已经是最后一步");
+                    // 显示棋局结束提示
+                    Toast.makeText(this, "棋局结束", Toast.LENGTH_SHORT).show();
+                }
             } else {
-                System.out.println("PvMActivity: 已经是最后一步");
+                System.out.println("PvMActivity: 没有走法记录");
             }
         } else {
             System.out.println("PvMActivity: 没有加载棋谱");
@@ -1957,12 +1967,28 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 initialInfo = fenToChessInfo(fen);
             }
             
+            // 清空 infoSet 的 preInfo 栈，准备重新填充
+            if (infoSet != null && infoSet.preInfo != null) {
+                infoSet.preInfo.clear();
+            }
+            
             // 根据当前步数生成棋盘状态
             List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
             if (moveRecords != null && !moveRecords.isEmpty()) {
                 System.out.println("PvMActivity: 走法记录数量: " + moveRecords.size());
                 ChessInfo currentInfo = initialInfo;
                 int moveCount = 0;
+                
+                // 先将初始状态添加到 preInfo 栈
+                try {
+                    if (infoSet != null && infoSet.preInfo != null) {
+                        ChessInfo initialInfoCopy = new ChessInfo();
+                        initialInfoCopy.setInfo(initialInfo);
+                        infoSet.preInfo.push(initialInfoCopy);
+                    }
+                } catch (CloneNotSupportedException e) {
+                    e.printStackTrace();
+                }
                 
                 // 遍历走法记录，生成到当前步数的棋盘状态
                 for (int i = 0; i < moveRecords.size(); i++) {
@@ -1980,6 +2006,17 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         currentInfo = simulateMove(currentInfo, record.redMove, true);
                         moveCount++;
                         System.out.println("PvMActivity: 红方走法执行完成，当前步数: " + moveCount);
+                        
+                        // 将当前状态添加到 preInfo 栈
+                        try {
+                            if (infoSet != null && infoSet.preInfo != null) {
+                                ChessInfo currentInfoCopy = new ChessInfo();
+                                currentInfoCopy.setInfo(currentInfo);
+                                infoSet.preInfo.push(currentInfoCopy);
+                            }
+                        } catch (CloneNotSupportedException e) {
+                            e.printStackTrace();
+                        }
                     }
                     
                     // 处理黑方走法
@@ -1988,6 +2025,17 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         currentInfo = simulateMove(currentInfo, record.blackMove, false);
                         moveCount++;
                         System.out.println("PvMActivity: 黑方走法执行完成，当前步数: " + moveCount);
+                        
+                        // 将当前状态添加到 preInfo 栈
+                        try {
+                            if (infoSet != null && infoSet.preInfo != null) {
+                                ChessInfo currentInfoCopy = new ChessInfo();
+                                currentInfoCopy.setInfo(currentInfo);
+                                infoSet.preInfo.push(currentInfoCopy);
+                            }
+                        } catch (CloneNotSupportedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
                 
@@ -2042,6 +2090,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     // 更新 ChessView 中的 chessInfo 对象
                     if (chessView != null) {
                         chessView.setChessInfo(chessInfo);
+                    }
+                    // 将初始状态添加到 preInfo 栈
+                    if (infoSet != null && infoSet.preInfo != null) {
+                        try {
+                            ChessInfo initialInfoCopy = new ChessInfo();
+                            initialInfoCopy.setInfo(initialInfo);
+                            infoSet.preInfo.push(initialInfoCopy);
+                        } catch (CloneNotSupportedException e) {
+                            e.printStackTrace();
+                        }
                     }
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
@@ -2201,18 +2259,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         
                         // 根据特殊标记选择棋子
                         if (!piecePositions.isEmpty()) {
-                            // 提取基础走法部分（去掉特殊标记）
-                            String baseMoveString = normalizedMoveString.substring(specialCharIndex + 1);
+                            // 保留完整的走法字符串，包括特殊标记
+                            String baseMoveString = normalizedMoveString;
                             
                             // 处理横向移动和纵向移动的目标位置
                             Integer targetX = null;
                             Integer startX = null;
-                            if (baseMoveString.contains("平")) {
+                            String moveType = null;
+                            if (rest.contains("平")) {
                                 // 提取目标列（4字棋谱，如"后炮平五"）
-                                int pingIndex = baseMoveString.indexOf("平");
+                                int pingIndex = rest.indexOf("平");
                                 if (pingIndex != -1) {
+                                    moveType = "平";
                                     // 提取目标列
-                                    String targetColStr = baseMoveString.substring(pingIndex + 1);
+                                    String targetColStr = rest.substring(pingIndex + 1);
                                     
                                     // 处理目标列
                                     int targetCol = 0;
@@ -2236,6 +2296,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                     // 转换为棋盘坐标（0-8）
                                     targetX = isRed ? 9 - targetCol : targetCol - 1;
                                 }
+                            } else if (rest.contains("进")) {
+                                moveType = "进";
+                            } else if (rest.contains("退")) {
+                                moveType = "退";
                             }
                             
                             // 先选择特殊标记对应的棋子（前、后、中、数字）
@@ -2250,11 +2314,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                 columnPieces.get(pos.x).add(pos);
                             }
                             
-                            // 对于横向移动，检查能到达目标列的列
+                            // 检查能到达目标位置的列
                             Integer selectedColumn = null;
-                            if (targetX != null) {
-                                System.out.println("PvMActivity: 目标列棋盘坐标: " + targetX);
-                                // 检查能到达目标列的列
+                            if (targetX != null || moveType != null) {
+                                System.out.println("PvMActivity: 目标列棋盘坐标: " + targetX + "，移动类型: " + moveType);
+                                // 检查能到达目标位置的列
                                 for (Map.Entry<Integer, List<Pos>> entry : columnPieces.entrySet()) {
                                     int col = entry.getKey();
                                     List<Pos> colPieces = entry.getValue();
@@ -2266,10 +2330,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                             System.out.println("PvMActivity: 棋子位置 " + pos.x + "," + pos.y + " 的可能走法数量: " + possibleMoves.size());
                                             for (Pos move : possibleMoves) {
                                                 System.out.println("PvMActivity: 可能的移动位置: " + move.x + "," + move.y);
-                                                if (move.x == targetX) {
-                                                    selectedColumn = col;
-                                                    System.out.println("PvMActivity: 找到能到达目标列的棋子，列: " + col + "，位置: " + pos.x + "," + pos.y);
-                                                    break;
+                                                if (targetX != null) {
+                                                    // 横向移动：检查目标列
+                                                    if (move.x == targetX) {
+                                                        selectedColumn = col;
+                                                        System.out.println("PvMActivity: 找到能到达目标列的棋子，列: " + col + "，位置: " + pos.x + "," + pos.y);
+                                                        break;
+                                                    }
+                                                } else if (moveType != null) {
+                                                    // 纵向移动：检查是否是同一列
+                                                    if (move.x == pos.x) {
+                                                        selectedColumn = col;
+                                                        System.out.println("PvMActivity: 找到能进行纵向移动的棋子，列: " + col + "，位置: " + pos.x + "," + pos.y);
+                                                        break;
+                                                    }
                                                 }
                                             }
                                         }
@@ -2340,11 +2414,15 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                                 
                                                 if (specialMark.equals("前")) {
                                                     // 前：相对己方，离对方底线近的棋子
-                                                    targetPiecePos = colPieces.get(0);
+                                                    // 对于红方，离黑方底线近的棋子是y值较大的，所以选择排序后的最后一个元素
+                                                    // 对于黑方，离红方底线近的棋子是y值较小的，所以选择排序后的第一个元素
+                                                    targetPiecePos = isRed ? colPieces.get(colPieces.size() - 1) : colPieces.get(0);
                                                     System.out.println("PvMActivity: 选择前棋子: " + targetPiecePos.x + "," + targetPiecePos.y);
                                                 } else if (specialMark.equals("后")) {
                                                     // 后：相对己方，离己方底线近的棋子
-                                                    targetPiecePos = colPieces.get(colPieces.size() - 1);
+                                                    // 对于红方，离红方底线近的棋子是y值较小的，所以选择排序后的第一个元素
+                                                    // 对于黑方，离黑方底线近的棋子是y值较大的，所以选择排序后的最后一个元素
+                                                    targetPiecePos = isRed ? colPieces.get(0) : colPieces.get(colPieces.size() - 1);
                                                     System.out.println("PvMActivity: 选择后棋子: " + targetPiecePos.x + "," + targetPiecePos.y);
                                                 } else if (specialMark.equals("中")) {
                                                     // 中：中间位置的棋子
@@ -2353,17 +2431,27 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                                 }
                                                 
                                                 // 检查选择的棋子是否能移动到目标位置
-                                                if (targetPiecePos != null && targetX != null) {
+                                                if (targetPiecePos != null) {
                                                     int piece = newInfo.piece[targetPiecePos.y][targetPiecePos.x];
                                                     List<Pos> possibleMoves = Rule.PossibleMoves(newInfo.piece, targetPiecePos.x, targetPiecePos.y, piece);
                                                     if (possibleMoves != null) {
                                                         System.out.println("PvMActivity: 选择的棋子可能走法数量: " + possibleMoves.size());
                                                         for (Pos move : possibleMoves) {
                                                             System.out.println("PvMActivity: 可能的移动位置: " + move.x + "," + move.y);
-                                                            if (move.x == targetX) {
-                                                                System.out.println("PvMActivity: 找到能移动到目标列的棋子");
-                                                                // 找到能移动到目标位置的棋子，停止搜索
-                                                                break;
+                                                            if (targetX != null) {
+                                                                // 横向移动：检查目标列
+                                                                if (move.x == targetX) {
+                                                                    System.out.println("PvMActivity: 找到能移动到目标列的棋子");
+                                                                    // 找到能移动到目标位置的棋子，停止搜索
+                                                                    break;
+                                                                }
+                                                            } else if (moveType != null) {
+                                                                // 纵向移动：检查是否是同一列
+                                                                if (move.x == targetPiecePos.x) {
+                                                                    System.out.println("PvMActivity: 找到能进行纵向移动的棋子");
+                                                                    // 找到能移动到目标位置的棋子，停止搜索
+                                                                    break;
+                                                                }
                                                             }
                                                         }
                                                     }
@@ -2378,17 +2466,27 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                     }
                                     
                                     // 如果没有找到合适的棋子，尝试找到能移动到目标位置的棋子
-                                    if (targetPiecePos == null && targetX != null) {
+                                    if (targetPiecePos == null && (targetX != null || moveType != null)) {
                                         System.out.println("PvMActivity: 没有找到合适的棋子，尝试找到能移动到目标位置的棋子");
                                         for (Pos pos : piecePositions) {
                                             int piece = newInfo.piece[pos.y][pos.x];
                                             List<Pos> possibleMoves = Rule.PossibleMoves(newInfo.piece, pos.x, pos.y, piece);
                                             if (possibleMoves != null) {
                                                 for (Pos move : possibleMoves) {
-                                                    if (move.x == targetX) {
-                                                        targetPiecePos = pos;
-                                                        System.out.println("PvMActivity: 找到能移动到目标位置的棋子: " + pos.x + "," + pos.y);
-                                                        break;
+                                                    if (targetX != null) {
+                                                        // 横向移动：检查目标列
+                                                        if (move.x == targetX) {
+                                                            targetPiecePos = pos;
+                                                            System.out.println("PvMActivity: 找到能移动到目标位置的棋子: " + pos.x + "," + pos.y);
+                                                            break;
+                                                        }
+                                                    } else if (moveType != null) {
+                                                        // 纵向移动：检查是否是同一列
+                                                        if (move.x == pos.x) {
+                                                            targetPiecePos = pos;
+                                                            System.out.println("PvMActivity: 找到能进行纵向移动的棋子: " + pos.x + "," + pos.y);
+                                                            break;
+                                                        }
                                                     }
                                                 }
                                             }
@@ -2802,9 +2900,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 return newInfo;
             }
             
-            // 检查是否是特殊走法，如果是且没有找到匹配的棋子，直接返回
+            // 检查是否是特殊走法，如果是且没有找到匹配的棋子，继续处理常规走法
             if (isSpecialMove) {
-                return newInfo;
+                // 继续处理常规走法
             }
             
             // 提取棋子名称（跳过特殊前缀）
@@ -3208,16 +3306,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 if (samePieces.size() == 2) {
                     // 两个棋子：前、后
                     // samePieces 按 y 从小到大排序
-                    // 对于红方，前是离黑方底线近的棋子（y 较小），后是离红方底线近的棋子（y 较大）
-                    // 对于黑方，前是离红方底线近的棋子（y 较大），后是离黑方底线近的棋子（y 较小）
-                    Pos frontPiece = isRed ? samePieces.get(0) : samePieces.get(1);
+                    // 对于红方，前是离黑方底线近的棋子（y 较大），后是离红方底线近的棋子（y 较小）
+                    // 对于黑方，前是离红方底线近的棋子（y 较小），后是离黑方底线近的棋子（y 较大）
+                    Pos frontPiece = isRed ? samePieces.get(1) : samePieces.get(0);
                     prefix = (fromPos.y == frontPiece.y) ? "前" : "后";
                 } else if (samePieces.size() == 3) {
                     // 三个棋子：前、中、后
                     // samePieces 按 y 从小到大排序
-                    // 对于红方，前是离黑方底线近的棋子（y 最小），后是离红方底线近的棋子（y 最大）
-                    // 对于黑方，前是离红方底线近的棋子（y 最大），后是离黑方底线近的棋子（y 最小）
-                    Pos frontPiece = isRed ? samePieces.get(0) : samePieces.get(2);
+                    // 对于红方，前是离黑方底线近的棋子（y 最大），后是离红方底线近的棋子（y 最小）
+                    // 对于黑方，前是离红方底线近的棋子（y 最小），后是离黑方底线近的棋子（y 最大）
+                    Pos frontPiece = isRed ? samePieces.get(2) : samePieces.get(0);
                     Pos middlePiece = samePieces.get(1);
                     if (fromPos.y == frontPiece.y) {
                         prefix = "前";
@@ -3229,15 +3327,15 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 } else if (samePieces.size() > 3) {
                     // 四个或五个棋子：前、二、三、四、五
                     // samePieces 按 y 从小到大排序
-                    // 对于红方，前是离黑方底线近的棋子（y 最小）
-                    // 对于黑方，前是离红方底线近的棋子（y 最大）
+                    // 对于红方，前是离黑方底线近的棋子（y 最大）
+                    // 对于黑方，前是离红方底线近的棋子（y 最小）
                     int index = samePieces.indexOf(new Pos(fromPos.x, fromPos.y)) + 1;
                     if (isRed) {
-                        // 红方：y 最小的是前
-                        prefix = (index == 1) ? "前" : ChessNotationTranslator.getColChar(index);
-                    } else {
-                        // 黑方：y 最大的是前
+                        // 红方：y 最大的是前
                         prefix = (index == samePieces.size()) ? "前" : ChessNotationTranslator.getColChar(index);
+                    } else {
+                        // 黑方：y 最小的是前
+                        prefix = (index == 1) ? "前" : ChessNotationTranslator.getColChar(index);
                     }
                 }
             }

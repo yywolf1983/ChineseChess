@@ -1131,10 +1131,12 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
                 } else if (samePieces.size() > 3) {
                     // 四个或五个棋子：前、二、三、四、五
                     int index = samePieces.indexOf(new Info.Pos(fromPos.x, fromPos.y)) + 1;
-                    if (index == 1) {
-                        prefix = "前";
+                    if (isRed) {
+                        // 红方：y 最大的是前
+                        prefix = (index == samePieces.size()) ? "前" : getColChar(index);
                     } else {
-                        prefix = getColChar(index);
+                        // 黑方：y 最小的是前
+                        prefix = (index == 1) ? "前" : getColChar(index);
                     }
                 }
             }
