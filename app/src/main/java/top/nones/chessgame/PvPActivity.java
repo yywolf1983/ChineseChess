@@ -114,7 +114,7 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
         // 初始化音乐
         initMusic();
 
-        roundView = new RoundView(this, chessInfo);
+        roundView = new RoundView(this, chessInfo, 0);
         relativeLayout.addView(roundView);
 
         RelativeLayout.LayoutParams paramsRound = (RelativeLayout.LayoutParams) roundView.getLayoutParams();
@@ -164,6 +164,10 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
 
         RelativeLayout.LayoutParams paramsV = (RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
         paramsV.addRule(RelativeLayout.BELOW, R.id.chessView);
+        paramsV.addRule(RelativeLayout.CENTER_HORIZONTAL);
+        paramsV.width = RelativeLayout.LayoutParams.MATCH_PARENT;
+        paramsV.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
+        paramsV.setMargins(30, 120, 30, 10); // 增加顶部边距，确保不覆盖回合信息
         buttonGroup.setLayoutParams(paramsV);
 
         for (int i = 0; i < buttonGroup.getChildCount(); i++) {

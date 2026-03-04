@@ -17,56 +17,57 @@
             android:id="@+id/btn_retry"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="新局" />
 
         <Button
             android:id="@+id/btn_load"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="加载" />
 
         <Button
             android:id="@+id/btn_prev"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="18dp"
+            android:textSize="14dp"
             android:text="上一步" />
 
         <Button
             android:id="@+id/btn_next"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="18dp"
+            android:textSize="14dp"
             android:text="下一步" />
 
         <Button
             android:id="@+id/btn_recall"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="悔棋" />
+
     </LinearLayout>
 
     <!-- 第二行按钮 -->
@@ -81,55 +82,55 @@
             android:id="@+id/btn_mode"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="模式" />
 
         <Button
             android:id="@+id/btn_save"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="保存" />
 
         <Button
             android:id="@+id/btn_settings"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="设置" />
 
         <Button
             android:id="@+id/btn_statistics"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="支招" />
 
         <Button
             android:id="@+id/btn_setup"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="50dp"
             android:layout_weight="1"
-            android:layout_margin="5dp"
+            android:layout_margin="3dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="24dp"
+            android:textSize="16dp"
             android:text="摆棋" />
 
 

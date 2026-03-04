@@ -267,7 +267,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         paramsV.addRule(RelativeLayout.CENTER_HORIZONTAL);
         paramsV.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         paramsV.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
-        paramsV.setMargins(30, 80, 30, 10); // 增加顶部边距，给横幅留出空间
+        paramsV.setMargins(30, 120, 30, 10); // 增加顶部边距，确保不覆盖回合信息
         buttonGroup.setLayoutParams(paramsV);
 
         // 处理嵌套的LinearLayout布局
@@ -3724,9 +3724,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     }
     
     // 用于定时更新搜索深度的线程
-    private Thread depthUpdateThread;
-    private volatile boolean depthUpdateRunning = false;
+    private Thread updateThread;
+    private volatile boolean updateRunning = false;
     private int dotCount = 0;
+    private long lastDotUpdateTime = 0;
 
     // 开始AI搜索时更新深度显示
     private void startAISearch() {
@@ -3734,14 +3735,19 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             updateAIInfoText("AI正在思考. | 搜索深度: 0");
         }
         
-        // 启动深度更新线程
-        depthUpdateRunning = true;
-        depthUpdateThread = new Thread(() -> {
-            while (depthUpdateRunning) {
+        // 启动更新线程
+        updateRunning = true;
+        lastDotUpdateTime = System.currentTimeMillis();
+        updateThread = new Thread(() -> {
+            while (updateRunning) {
                 if (pikafishAI != null) {
                     final int currentDepth = pikafishAI.getCurrentDepth();
-                    // 更新点的数量
-                    dotCount = (dotCount + 1) % 4;
+                    // 每2秒更新一次点
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - lastDotUpdateTime >= 800) {
+                        dotCount = (dotCount + 1) % 4;
+                        lastDotUpdateTime = currentTime;
+                    }
                     // 生成点字符串
                     StringBuilder dots = new StringBuilder();
                     for (int i = 0; i < dotCount; i++) {
@@ -3752,22 +3758,22 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         updateAIInfoText("AI正在思考" + dotString + " | 搜索深度: " + currentDepth);
                     });
                 }
-                // 每隔1秒更新一次
+                // 每隔100毫秒更新一次
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(100);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
             }
         });
-        depthUpdateThread.start();
+        updateThread.start();
     }
 
     // 停止AI搜索时停止深度更新
     private void stopAISearch() {
-        depthUpdateRunning = false;
-        if (depthUpdateThread != null) {
-            depthUpdateThread.interrupt();
+        updateRunning = false;
+        if (updateThread != null) {
+            updateThread.interrupt();
         }
     }
 

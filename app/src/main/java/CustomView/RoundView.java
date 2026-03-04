@@ -19,7 +19,8 @@ public class RoundView extends View {
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
-    private Paint whiteTextPaint;
+    private Paint blackTextPaint; // 黑方回合画笔
+    private Paint infoTextPaint; // 模式和评分画笔
     private int viewWidth = 0;
     private int viewHeight = 0;
 
@@ -62,17 +63,27 @@ public class RoundView extends View {
 
         // 红色文本画笔（红方回合）
         redTextPaint = new Paint();
-        redTextPaint.setTextSize(48); // 增大字体大小
+        redTextPaint.setTextSize(42); // 红方回合字体大小
         redTextPaint.setStrokeWidth(2);
         redTextPaint.setAntiAlias(true);
         redTextPaint.setColor(Color.RED);
+        redTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
 
-        // 白色文本画笔（黑方回合和步数）
-        whiteTextPaint = new Paint();
-        whiteTextPaint.setTextSize(38); // 增大字体大小
-        whiteTextPaint.setStrokeWidth(2);
-        whiteTextPaint.setAntiAlias(true);
-        whiteTextPaint.setColor(Color.WHITE);
+        // 黑色文本画笔（黑方回合）
+        blackTextPaint = new Paint();
+        blackTextPaint.setTextSize(42); // 黑方回合字体大小，与红方一致
+        blackTextPaint.setStrokeWidth(2);
+        blackTextPaint.setAntiAlias(true);
+        blackTextPaint.setColor(Color.BLACK); // 黑方使用黑色
+        blackTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+
+        // 信息文本画笔（模式和评分）
+        infoTextPaint = new Paint();
+        infoTextPaint.setTextSize(32); // 减小模式和评分的字体大小
+        infoTextPaint.setStrokeWidth(2);
+        infoTextPaint.setAntiAlias(true);
+        infoTextPaint.setColor(Color.BLACK); // 信息文本使用黑色
+        infoTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
     }
 
     @Override
@@ -96,18 +107,36 @@ public class RoundView extends View {
         float modeX = width / 2;
         float modeY = height / 4; // 上半部分
         float scoreY = height / 2; // 中间部分
-        whiteTextPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(modeText, modeX, modeY, whiteTextPaint);
-        canvas.drawText(scoreText, modeX, scoreY, whiteTextPaint);
-        whiteTextPaint.setTextAlign(Paint.Align.LEFT); // 重置文本对齐
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(modeText, modeX, modeY, infoTextPaint);
+        canvas.drawText(scoreText, modeX, scoreY, infoTextPaint);
+        infoTextPaint.setTextAlign(Paint.Align.LEFT); // 重置文本对齐
         
         // 绘制回合信息
         String turnText = chessInfo.IsRedGo ? "红方回合" : "黑方回合";
-        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : whiteTextPaint;
+        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
         
-        // 计算文本位置
-        float turnX = width / 4;
+        // 计算文本位置 - 向两边移动，增加间距
+        float turnX = width / 6; // 进一步向左移动
         float textY = height * 2 / 3; // 下半部分
+        
+        // 绘制简单的图标提示
+        float iconSize = 30;
+        float iconX = turnX - iconSize - 10;
+        float iconY = textY - 15;
+        if (chessInfo.IsRedGo) {
+            // 绘制红色圆形作为红方图标
+            Paint redIconPaint = new Paint();
+            redIconPaint.setColor(Color.RED);
+            redIconPaint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(iconX, iconY, iconSize/2, redIconPaint);
+        } else {
+            // 绘制黑色圆形作为黑方图标
+            Paint blackIconPaint = new Paint();
+            blackIconPaint.setColor(Color.BLACK);
+            blackIconPaint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(iconX, iconY, iconSize/2, blackIconPaint);
+        }
         
         canvas.drawText(turnText, turnX, textY, turnPaint);
         
@@ -117,11 +146,11 @@ public class RoundView extends View {
         // 回合数 = (总走步数 + 1) / 2，因为每回合有2步
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "回合: " + roundCount;
-        float stepX = width * 3 / 4;
+        float stepX = width * 5 / 6; // 进一步向右移动
         // 确保步数文本右对齐
-        whiteTextPaint.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText(stepText, stepX, textY, whiteTextPaint);
-        whiteTextPaint.setTextAlign(Paint.Align.LEFT); // 重置文本对齐
+        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText(stepText, stepX, textY, infoTextPaint);
+        infoTextPaint.setTextAlign(Paint.Align.LEFT); // 重置文本对齐
     }
     
     // 获取对战模式名称
@@ -133,6 +162,8 @@ public class RoundView extends View {
                 return "人机对战（玩家红）";
             case 2:
                 return "人机对战（玩家黑）";
+            case 3:
+                return "双机对战";
             default:
                 return "未知模式";
         }

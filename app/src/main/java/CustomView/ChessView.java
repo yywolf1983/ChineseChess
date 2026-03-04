@@ -218,14 +218,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             paint.setStrokeWidth(16);
             paint.setAlpha(150); // 半透明效果
             
-            // 绘制提示线
-            canvas.drawLine(fromCenterX, fromCenterY, toCenterX, toCenterY, paint);
-            
-            // 绘制起点和终点的圆圈
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(10);
-            canvas.drawCircle(fromCenterX, fromCenterY, Scale(20), paint);
-            canvas.drawCircle(toCenterX, toCenterY, Scale(20), paint);
+            // 绘制带箭头的提示线
+            drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, paint);
             
             // 重置画笔样式
             paint.setStyle(Paint.Style.FILL);
@@ -708,6 +702,29 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     }
     
     // 处理触摸事件，实现摆棋窗口的拖动功能
+    // 绘制带箭头的线段
+    private void drawArrow(Canvas canvas, float fromX, float fromY, float toX, float toY, Paint paint) {
+        // 绘制直线
+        canvas.drawLine(fromX, fromY, toX, toY, paint);
+        
+        // 计算箭头角度
+        double angle = Math.atan2(toY - fromY, toX - fromX);
+        
+        // 箭头长度和角度
+        float arrowLength = 40;
+        float arrowAngle = (float) Math.PI / 6; // 30度
+        
+        // 计算箭头两个点的坐标
+        float arrowX1 = (float) (toX - arrowLength * Math.cos(angle - arrowAngle));
+        float arrowY1 = (float) (toY - arrowLength * Math.sin(angle - arrowAngle));
+        float arrowX2 = (float) (toX - arrowLength * Math.cos(angle + arrowAngle));
+        float arrowY2 = (float) (toY - arrowLength * Math.sin(angle + arrowAngle));
+        
+        // 绘制箭头
+        canvas.drawLine(toX, toY, arrowX1, arrowY1, paint);
+        canvas.drawLine(toX, toY, arrowX2, arrowY2, paint);
+    }
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         if (chessInfo != null && chessInfo.IsSetupMode) {
