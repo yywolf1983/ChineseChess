@@ -1071,7 +1071,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     // 生成提示信息
                     String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
                     updateAIInfoText(hintText);
-                    Toast.makeText(this, hintText, Toast.LENGTH_LONG).show();
                     
                     // 选中需要移动的棋子
                     if (chessInfo != null && chessView != null) {
