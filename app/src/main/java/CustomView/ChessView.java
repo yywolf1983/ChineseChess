@@ -198,6 +198,41 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             drawSetupModePieces(canvas);
         }
 
+        // 绘制支招提示线
+        if (chessInfo.suggestFromPos != null && chessInfo.suggestToPos != null) {
+            // 反转y坐标，确保提示线显示在正确的位置
+            int fromX = chessInfo.suggestFromPos.x;
+            int fromY = 9 - chessInfo.suggestFromPos.y;
+            int toX = chessInfo.suggestToPos.x;
+            int toY = 9 - chessInfo.suggestToPos.y;
+            
+            // 计算棋子中心点坐标
+            int fromCenterX = Scale(fromX * 85 + 43); // 3 + 80/2
+            int fromCenterY = Scale(fromY * 85 + 81); // 41 + 80/2
+            int toCenterX = Scale(toX * 85 + 43);
+            int toCenterY = Scale(toY * 85 + 81);
+            
+            // 设置画笔样式
+            paint.setColor(Color.RED);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(16);
+            paint.setAlpha(150); // 半透明效果
+            
+            // 绘制提示线
+            canvas.drawLine(fromCenterX, fromCenterY, toCenterX, toCenterY, paint);
+            
+            // 绘制起点和终点的圆圈
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(10);
+            canvas.drawCircle(fromCenterX, fromCenterY, Scale(20), paint);
+            canvas.drawCircle(toCenterX, toCenterY, Scale(20), paint);
+            
+            // 重置画笔样式
+            paint.setStyle(Paint.Style.FILL);
+            paint.setStrokeWidth(1);
+            paint.setAlpha(255);
+        }
+
         if (chessInfo.status == 1) {
             if (chessInfo.isMachine == true) {
                 if (thinkFlag == 0) {

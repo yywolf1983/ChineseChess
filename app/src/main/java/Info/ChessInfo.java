@@ -24,6 +24,10 @@ public class ChessInfo implements Cloneable, Serializable {
 
     public boolean IsSetupMode;
     public Setting setting;
+    
+    // 支招相关字段
+    public Pos suggestFromPos;
+    public Pos suggestToPos;
 
     public ChessInfo() {
         init();
@@ -83,6 +87,10 @@ public class ChessInfo implements Cloneable, Serializable {
 
         IsSetupMode = false;
         
+        // 初始化支招相关字段
+        suggestFromPos = null;
+        suggestToPos = null;
+        
         // 计算初始攻击棋子数量
         calculateAttackPieces();
     }
@@ -113,12 +121,18 @@ public class ChessInfo implements Cloneable, Serializable {
 
         this.IsSetupMode = info.IsSetupMode;
         this.setting = info.setting;
+        this.suggestFromPos = info.suggestFromPos != null ? (Pos) info.suggestFromPos.clone() : null;
+        this.suggestToPos = info.suggestToPos != null ? (Pos) info.suggestToPos.clone() : null;
     }
 
     public void updateAllInfo(Pos prePos, Pos curPos, int piece, int capturedPiece) {
         // 更新走棋信息
         this.prePos = prePos;
         this.curPos = curPos;
+        
+        // 清除支招提示线
+        suggestFromPos = null;
+        suggestToPos = null;
         
         // 增加总走步数
         totalMoves++;
@@ -171,6 +185,8 @@ public class ChessInfo implements Cloneable, Serializable {
 
         info.IsSetupMode = this.IsSetupMode;
         info.setting = this.setting;
+        info.suggestFromPos = this.suggestFromPos != null ? (Pos) this.suggestFromPos.clone() : null;
+        info.suggestToPos = this.suggestToPos != null ? (Pos) this.suggestToPos.clone() : null;
         return info;
     }
     

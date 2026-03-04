@@ -1060,6 +1060,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     
                     // 选中需要移动的棋子
                     if (chessInfo != null && chessView != null) {
+                        // 设置支招位置信息
+                        chessInfo.suggestFromPos = move.fromPos;
+                        chessInfo.suggestToPos = move.toPos;
                         // 设置选中位置
                         chessInfo.prePos = move.fromPos;
                         chessInfo.IsChecked = true;
