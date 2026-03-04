@@ -215,7 +215,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             // 设置画笔样式
             paint.setColor(Color.RED);
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(16);
+            paint.setStrokeWidth(8); // 线宽减半
             paint.setAlpha(150); // 半透明效果
             
             // 绘制带箭头的提示线

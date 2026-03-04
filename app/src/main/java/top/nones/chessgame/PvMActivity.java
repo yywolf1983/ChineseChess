@@ -76,6 +76,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private android.widget.TextView aiInfoTextView;
     // 按钮组ID
     private int buttonGroupId;
+    // 防止支招并发执行的标志
+    private boolean isAIAnalyzing = false;
 
     private ChessNotation currentNotation;
     private int currentMoveIndex = 0;
@@ -1031,66 +1033,85 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 显示AI最佳移动
     private void showAIMove(boolean isRed) {
+        // 防止并发执行
+        if (isAIAnalyzing) {
+            return;
+        }
+        
+        isAIAnalyzing = true;
         // 显示AI思考提示
         updateAIInfoText("AI正在分析最佳走法...");
         
         // 启动线程计算AI最佳移动
         new Thread(() -> {
-            // 保存当前回合状态
-            boolean originalIsRedGo = chessInfo.IsRedGo;
+            Move move = null;
+            boolean originalIsRedGo = false;
             
-            // 临时设置为指定颜色的回合
-            chessInfo.IsRedGo = isRed;
-            
-            // 计算AI最佳移动
-            final Move move = calculateAIMove();
-            
-            // 恢复原始回合状态
-            chessInfo.IsRedGo = originalIsRedGo;
-            
-            runOnUiThread(() -> {
-                if (move != null && move.fromPos != null && move.toPos != null) {
-                    // 转换为显示坐标
-                    int displayFromX = move.fromPos.x;
-                    int displayFromY = move.fromPos.y;
-                    int displayToX = move.toPos.x;
-                    int displayToY = move.toPos.y;
-
+            try {
+                if (chessInfo != null) {
+                    // 保存当前回合状态
+                    originalIsRedGo = chessInfo.IsRedGo;
                     
-                    // 获取棋子信息
-                    int piece = chessInfo.piece[move.fromPos.y][move.fromPos.x];
-                    String[] pieceNames = {
-                        "", "将", "士", "象", "马", "车", "炮", "卒",
-                        "帅", "士", "相", "马", "车", "炮", "兵"
-                    };
-                    String pieceName = pieceNames[piece - 1];
+                    // 临时设置为指定颜色的回合
+                    chessInfo.IsRedGo = isRed;
                     
-                    // 转换为传统中国象棋记谱法
-                    String moveInfo = generateMoveString(chessInfo, piece, move.fromPos, move.toPos, isRed);
-                    
-                    // 生成提示信息
-                    String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
-                    updateAIInfoText(hintText);
-                    
-                    // 选中需要移动的棋子
-                    if (chessInfo != null && chessView != null) {
-                        // 设置支招位置信息
-                        chessInfo.suggestFromPos = move.fromPos;
-                        chessInfo.suggestToPos = move.toPos;
-                        // 设置选中位置
-                        chessInfo.prePos = move.fromPos;
-                        chessInfo.IsChecked = true;
-                        // 获取可能的移动位置
-                        List<Pos> possibleMoves = Rule.PossibleMoves(chessInfo.piece, move.fromPos.x, move.fromPos.y, piece);
-                        chessInfo.ret = possibleMoves;
-                        // 重新绘制界面，显示选中效果
-                        chessView.requestDraw();
-                    }
-                } else {
-                    updateAIInfoText("AI无法找到有效移动");
-                    Toast.makeText(this, "AI无法找到有效移动", Toast.LENGTH_SHORT).show();
+                    // 计算AI最佳移动
+                    move = calculateAIMove();
                 }
-            });
+            } finally {
+                // 恢复原始回合状态
+                if (chessInfo != null) {
+                    chessInfo.IsRedGo = originalIsRedGo;
+                }
+                
+                final Move finalMove = move;
+                runOnUiThread(() -> {
+                    if (finalMove != null && finalMove.fromPos != null && finalMove.toPos != null) {
+                        // 转换为显示坐标
+                        int displayFromX = finalMove.fromPos.x;
+                        int displayFromY = finalMove.fromPos.y;
+                        int displayToX = finalMove.toPos.x;
+                        int displayToY = finalMove.toPos.y;
+
+                        
+                        // 获取棋子信息
+                        int piece = chessInfo.piece[finalMove.fromPos.y][finalMove.fromPos.x];
+                        String[] pieceNames = {
+                            "", "将", "士", "象", "马", "车", "炮", "卒",
+                            "帅", "士", "相", "马", "车", "炮", "兵"
+                        };
+                        String pieceName = pieceNames[piece - 1];
+                        
+                        // 转换为传统中国象棋记谱法
+                        String moveInfo = generateMoveString(chessInfo, piece, finalMove.fromPos, finalMove.toPos, isRed);
+                        
+                        // 生成提示信息
+                        String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
+                        updateAIInfoText(hintText);
+                        
+                        // 选中需要移动的棋子
+                        if (chessInfo != null && chessView != null) {
+                            // 设置支招位置信息
+                            chessInfo.suggestFromPos = finalMove.fromPos;
+                            chessInfo.suggestToPos = finalMove.toPos;
+                            // 设置选中位置
+                            chessInfo.prePos = finalMove.fromPos;
+                            chessInfo.IsChecked = true;
+                            // 获取可能的移动位置
+                            List<Pos> possibleMoves = Rule.PossibleMoves(chessInfo.piece, finalMove.fromPos.x, finalMove.fromPos.y, piece);
+                            chessInfo.ret = possibleMoves;
+                            // 重新绘制界面，显示选中效果
+                            chessView.requestDraw();
+                        }
+                    } else {
+                        updateAIInfoText("AI无法找到有效移动");
+                        Toast.makeText(this, "AI无法找到有效移动", Toast.LENGTH_SHORT).show();
+                    }
+                    
+                    // 重置标志
+                    isAIAnalyzing = false;
+                });
+            }
         }).start();
     }
     
