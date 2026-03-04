@@ -76,8 +76,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private android.widget.TextView aiInfoTextView;
     // 按钮组ID
     private int buttonGroupId;
-    // 防止支招并发执行的标志
-    private boolean isAIAnalyzing = false;
+    // 防止支招并发执行的对象
+    private final Object aiAnalysisLock = new Object();
+    // 跟踪AI分析状态
+    private volatile boolean isAIAnalyzing = false;
+    // 记录上次点击支招按钮的时间
+    private long lastSuggestClickTime = 0;
+    // 支招按钮点击间隔限制（毫秒）
+    private static final long SUGGEST_BUTTON_INTERVAL = 1200;
 
     private ChessNotation currentNotation;
     private int currentMoveIndex = 0;
@@ -116,18 +122,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 初始化设置
         setting = new Setting(sharedPreferences);
 
-        // 初始化数据文件（仅在文件不存在时）
-        try {
-            // 只有在文件不存在时才创建新的文件
-            if (!SaveInfo.fileIsExists("ChessInfo_pvm.bin")) {
-                SaveInfo.SerializeChessInfo(new ChessInfo(), "ChessInfo_pvm.bin");
-            }
-            if (!SaveInfo.fileIsExists("InfoSet_pvm.bin")) {
-                SaveInfo.SerializeInfoSet(new InfoSet(), "InfoSet_pvm.bin");
-            }
-        } catch (Exception e) {
-                e.printStackTrace();
-            }
+        // 在后台线程中初始化数据文件（仅在文件不存在时）
+        new Thread(() -> {
+            try {
+                // 只有在文件不存在时才创建新的文件
+                if (!SaveInfo.fileIsExists("ChessInfo_pvm.bin")) {
+                    SaveInfo.SerializeChessInfo(new ChessInfo(), "ChessInfo_pvm.bin");
+                }
+                if (!SaveInfo.fileIsExists("InfoSet_pvm.bin")) {
+                    SaveInfo.SerializeInfoSet(new InfoSet(), "InfoSet_pvm.bin");
+                }
+            } catch (Exception e) {
+                    e.printStackTrace();
+                }
+        }).start();
 
         // 初始化默认值
         chessInfo = new ChessInfo();
@@ -140,49 +148,92 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             e.printStackTrace();
         }
 
-        // 尝试从文件加载数据
-        if (SaveInfo.fileIsExists("ChessInfo_pvm.bin")) {
-            try {
-                chessInfo = SaveInfo.DeserializeChessInfo("ChessInfo_pvm.bin");
-                chessInfo.setting = setting;
-            } catch (Exception e) {
-                e.printStackTrace();
-                // 加载失败，使用默认值
-                chessInfo = new ChessInfo();
-                chessInfo.setting = setting;
+        // 在后台线程中加载数据，避免阻塞主线程
+        new Thread(() -> {
+            // 尝试从文件加载数据
+            if (SaveInfo.fileIsExists("ChessInfo_pvm.bin")) {
+                try {
+                    final ChessInfo loadedChessInfo = SaveInfo.DeserializeChessInfo("ChessInfo_pvm.bin");
+                    runOnUiThread(() -> {
+                        chessInfo = loadedChessInfo;
+                        chessInfo.setting = setting;
+                        // 更新roundView和chessView中的chessInfo引用
+                        if (roundView != null) {
+                            roundView.setChessInfo(chessInfo);
+                        }
+                        if (chessView != null) {
+                            chessView.setChessInfo(chessInfo);
+                        }
+                        // 重新绘制界面
+                        if (roundView != null) {
+                            roundView.requestDraw();
+                        }
+                        if (chessView != null) {
+                            chessView.requestDraw();
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // 加载失败，使用默认值
+                    runOnUiThread(() -> {
+                        chessInfo = new ChessInfo();
+                        chessInfo.setting = setting;
+                        // 更新roundView和chessView中的chessInfo引用
+                        if (roundView != null) {
+                            roundView.setChessInfo(chessInfo);
+                        }
+                        if (chessView != null) {
+                            chessView.setChessInfo(chessInfo);
+                        }
+                        // 重新绘制界面
+                        if (roundView != null) {
+                            roundView.requestDraw();
+                        }
+                        if (chessView != null) {
+                            chessView.requestDraw();
+                        }
+                    });
+                }
             }
-        }
 
-        if (SaveInfo.fileIsExists("InfoSet_pvm.bin")) {
-            try {
-                infoSet = SaveInfo.DeserializeInfoSet("InfoSet_pvm.bin");
-                // 确保preInfo栈不为空，否则第一次悔棋会没反应
-                if (infoSet.preInfo == null || infoSet.preInfo.isEmpty()) {
+            if (SaveInfo.fileIsExists("InfoSet_pvm.bin")) {
+                try {
+                    final InfoSet loadedInfoSet = SaveInfo.DeserializeInfoSet("InfoSet_pvm.bin");
+                    runOnUiThread(() -> {
+                        infoSet = loadedInfoSet;
+                        // 确保preInfo栈不为空，否则第一次悔棋会没反应
+                        if (infoSet.preInfo == null || infoSet.preInfo.isEmpty()) {
+                            try {
+                                infoSet.pushInfo(chessInfo);
+                            } catch (CloneNotSupportedException ce) {
+                                ce.printStackTrace();
+                            }
+                        }
+                    });
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    // 加载失败，使用默认值
+                    runOnUiThread(() -> {
+                        infoSet = new InfoSet();
+                        // 将初始状态保存到preInfo栈中
+                        try {
+                            infoSet.pushInfo(chessInfo);
+                        } catch (CloneNotSupportedException ce) {
+                            ce.printStackTrace();
+                        }
+                    });
+                }
+            } else {
+                // 如果没有InfoSet文件，确保preInfo栈中有初始状态
+                runOnUiThread(() -> {
                     try {
                         infoSet.pushInfo(chessInfo);
-                    } catch (CloneNotSupportedException ce) {
-                        ce.printStackTrace();
+                    } catch (CloneNotSupportedException e) {
+                        e.printStackTrace();
                     }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                // 加载失败，使用默认值
-                infoSet = new InfoSet();
-                // 将初始状态保存到preInfo栈中
-                try {
-                    infoSet.pushInfo(chessInfo);
-                } catch (CloneNotSupportedException ce) {
-                    ce.printStackTrace();
-                }
+                });
             }
-        } else {
-            // 如果没有InfoSet文件，确保preInfo栈中有初始状态
-            try {
-                infoSet.pushInfo(chessInfo);
-            } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
-            }
-        }
+        }).start();
         
 
 
@@ -485,10 +536,19 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                         chessInfo.piece[targetY][targetX] = piece;
                                         chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = 0;
 
+                                        // 检查移动后是否被将军
                                         if (Rule.isKingDanger(chessInfo.piece, isRed)) {
                                             chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = piece;
                                             chessInfo.piece[targetY][targetX] = tmp;
                                             Toast toast = Toast.makeText(PvMActivity.this, isRed ? "帅被将军" : "将被将军", Toast.LENGTH_SHORT);
+                                            toast.setGravity(Gravity.CENTER, 0, 0);
+                                            toast.show();
+                                        } 
+                                        // 检查移动后是否出现双方老将见面的情况
+                                        else if (isKingFaceToFace(chessInfo.piece)) {
+                                            chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = piece;
+                                            chessInfo.piece[targetY][targetX] = tmp;
+                                            Toast toast = Toast.makeText(PvMActivity.this, "双方老将不能见面", Toast.LENGTH_SHORT);
                                             toast.setGravity(Gravity.CENTER, 0, 0);
                                             toast.show();
                                         } else {
@@ -1033,86 +1093,205 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 显示AI最佳移动
     private void showAIMove(boolean isRed) {
-        // 防止并发执行
+        // 首先检查是否已经在分析中
         if (isAIAnalyzing) {
             return;
         }
         
-        isAIAnalyzing = true;
+        // 检查chessInfo和chessView是否初始化
+        if (chessInfo == null || chessView == null) {
+            return;
+        }
+        
+        // 初始化aiInfoTextView（如果未初始化）
+        if (aiInfoTextView == null) {
+            initAIInfoTextView();
+            if (aiInfoTextView == null) {
+                // 如果初始化失败，返回
+                return;
+            }
+        }
+        
         // 显示AI思考提示
-        updateAIInfoText("AI正在分析最佳走法...");
+        updateAIInfoText("AI正在分析最佳走法.");
         
         // 启动线程计算AI最佳移动
         new Thread(() -> {
-            Move move = null;
-            boolean originalIsRedGo = false;
-            
-            try {
-                if (chessInfo != null) {
-                    // 保存当前回合状态
-                    originalIsRedGo = chessInfo.IsRedGo;
-                    
-                    // 临时设置为指定颜色的回合
-                    chessInfo.IsRedGo = isRed;
-                    
-                    // 计算AI最佳移动
-                    move = calculateAIMove();
+            // 使用同步块确保整个分析过程的原子性
+            synchronized (aiAnalysisLock) {
+                if (isAIAnalyzing) {
+                    return;
                 }
-            } finally {
-                // 恢复原始回合状态
-                if (chessInfo != null) {
-                    chessInfo.IsRedGo = originalIsRedGo;
-                }
+                isAIAnalyzing = true;
                 
-                final Move finalMove = move;
-                runOnUiThread(() -> {
-                    if (finalMove != null && finalMove.fromPos != null && finalMove.toPos != null) {
-                        // 转换为显示坐标
-                        int displayFromX = finalMove.fromPos.x;
-                        int displayFromY = finalMove.fromPos.y;
-                        int displayToX = finalMove.toPos.x;
-                        int displayToY = finalMove.toPos.y;
+                // 启动省略号滚动线程
+                final Thread dotThread = new Thread(() -> {
+                    int dotCount = 0;
+                    while (isAIAnalyzing) {
+                        try {
+                            Thread.sleep(500);
+                        } catch (InterruptedException e) {
+                            break;
+                        }
+                        
+                        if (!isAIAnalyzing || aiInfoTextView == null) {
+                            break;
+                        }
+                        
+                        StringBuilder dots = new StringBuilder();
+                        for (int i = 0; i < dotCount % 4; i++) {
+                            dots.append(".");
+                        }
+                        
+                        final String dotString = dots.toString();
+                        runOnUiThread(() -> {
+                            if (aiInfoTextView != null) {
+                                updateAIInfoText("AI正在分析最佳走法" + dotString);
+                            }
+                        });
+                        
+                        dotCount++;
+                    }
+                });
+                dotThread.start();
+                
+                Move move = null;
+                
+                try {
+                    // 直接使用原始chessInfo进行分析，不再使用临时对象
+                    // 这样可以确保AI分析基于最新的棋盘状态
+                    move = calculateAIMove();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    isAIAnalyzing = false;
+                    // 中断省略号线程
+                    dotThread.interrupt();
+                    
+                    final Move finalMove = move;
+                    runOnUiThread(() -> {
+                        if (aiInfoTextView == null || chessInfo == null || chessView == null) {
+                            return;
+                        }
+                        
+                        if (finalMove != null && finalMove.fromPos != null && finalMove.toPos != null) {
+                            // 转换为显示坐标
+                            int displayFromX = finalMove.fromPos.x;
+                            int displayFromY = finalMove.fromPos.y;
+                            int displayToX = finalMove.toPos.x;
+                            int displayToY = finalMove.toPos.y;
 
-                        
-                        // 获取棋子信息
-                        int piece = chessInfo.piece[finalMove.fromPos.y][finalMove.fromPos.x];
-                        String[] pieceNames = {
-                            "", "将", "士", "象", "马", "车", "炮", "卒",
-                            "帅", "士", "相", "马", "车", "炮", "兵"
-                        };
-                        String pieceName = pieceNames[piece - 1];
-                        
-                        // 转换为传统中国象棋记谱法
-                        String moveInfo = generateMoveString(chessInfo, piece, finalMove.fromPos, finalMove.toPos, isRed);
-                        
-                        // 生成提示信息
-                        String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
-                        updateAIInfoText(hintText);
-                        
-                        // 选中需要移动的棋子
-                        if (chessInfo != null && chessView != null) {
+                            
+                            // 获取棋子信息
+                            int piece = chessInfo.piece[finalMove.fromPos.y][finalMove.fromPos.x];
+                            String[] pieceNames = {
+                                "", "将", "士", "象", "马", "车", "炮", "卒",
+                                "帅", "士", "相", "马", "车", "炮", "兵"
+                            };
+                            String pieceName = pieceNames[piece - 1];
+                            
+                            // 转换为传统中国象棋记谱法
+                            String moveInfo = generateMoveString(chessInfo, piece, finalMove.fromPos, finalMove.toPos, isRed);
+                            
+                            // 生成提示信息
+                            String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
+                            updateAIInfoText(hintText);
+                            
+                            // 选中需要移动的棋子
                             // 设置支招位置信息
                             chessInfo.suggestFromPos = finalMove.fromPos;
                             chessInfo.suggestToPos = finalMove.toPos;
-                            // 设置选中位置
-                            chessInfo.prePos = finalMove.fromPos;
-                            chessInfo.IsChecked = true;
+                            // 不要修改prePos和IsChecked，避免影响棋局状态
                             // 获取可能的移动位置
                             List<Pos> possibleMoves = Rule.PossibleMoves(chessInfo.piece, finalMove.fromPos.x, finalMove.fromPos.y, piece);
                             chessInfo.ret = possibleMoves;
                             // 重新绘制界面，显示选中效果
                             chessView.requestDraw();
+                        } else {
+                            updateAIInfoText("AI无法找到有效移动");
+                            Toast.makeText(this, "AI无法找到有效移动", Toast.LENGTH_SHORT).show();
                         }
-                    } else {
-                        updateAIInfoText("AI无法找到有效移动");
-                        Toast.makeText(this, "AI无法找到有效移动", Toast.LENGTH_SHORT).show();
-                    }
-                    
-                    // 重置标志
-                    isAIAnalyzing = false;
-                });
+                    });
+                }
             }
         }).start();
+    }
+    
+    // 为支招计算AI最佳移动（使用临时对象）
+    private Move calculateAIMoveForSuggestion(ChessInfo tempChessInfo) {
+        if (tempChessInfo == null || pikafishAI == null || !pikafishAI.isInitialized() || tempChessInfo.piece == null) {
+            return null;
+        }
+        
+        // 验证棋盘状态的有效性
+        if (tempChessInfo.piece.length != 10) {
+            return null;
+        }
+        
+        for (int i = 0; i < 10; i++) {
+            if (tempChessInfo.piece[i] == null || tempChessInfo.piece[i].length != 9) {
+                return null;
+            }
+        }
+        
+        // 检查将（帅）是否存在
+        boolean redKingExists = false;
+        boolean blackKingExists = false;
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                int piece = tempChessInfo.piece[i][j];
+                if (piece == 8) { // 红帅
+                    redKingExists = true;
+                } else if (piece == 1) { // 黑将
+                    blackKingExists = true;
+                }
+                if (redKingExists && blackKingExists) {
+                    break;
+                }
+            }
+            if (redKingExists && blackKingExists) {
+                break;
+            }
+        }
+        
+        if (!redKingExists || !blackKingExists) {
+            return null;
+        }
+        
+        // 检查是否被将死
+        boolean isRed = tempChessInfo.IsRedGo;
+        if (Rule.isDead(tempChessInfo.piece, isRed)) {
+            return null;
+        }
+        
+        // 检查是否有可移动的棋子
+        boolean hasValidMoves = false;
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                int piece = tempChessInfo.piece[i][j];
+                if (piece != 0) {
+                    boolean isPieceRed = (piece >= 8);
+                    if (isPieceRed == isRed) {
+                        List<Pos> moves = Rule.PossibleMoves(tempChessInfo.piece, j, i, piece);
+                        if (!moves.isEmpty()) {
+                            hasValidMoves = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (hasValidMoves) {
+                break;
+            }
+        }
+        
+        if (!hasValidMoves) {
+            return null;
+        }
+        
+        // 获取最佳移动
+        PikafishAI.MoveWithScore moveWithScore = pikafishAI.getBestMoveWithScore(tempChessInfo);
+        return moveWithScore != null ? moveWithScore.move : null;
     }
     
     // 显示棋子选择对话框
@@ -1511,7 +1690,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             showLoadNotationDialog();
         } else if (viewId == R.id.btn_statistics) {
             // AI支招功能
-            if (chessInfo != null && chessInfo.status == 1 && !chessInfo.IsSetupMode) {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastSuggestClickTime < SUGGEST_BUTTON_INTERVAL) {
+                // 点击间隔小于限制，不处理点击
+                return;
+            }
+            lastSuggestClickTime = currentTime;
+            
+            if (chessInfo != null && !chessInfo.IsSetupMode && !isAIAnalyzing) {
                 // 自动为当前行棋方支招
                 boolean currentPlayerIsRed = chessInfo.IsRedGo;
                 showAIMove(currentPlayerIsRed);
@@ -1573,7 +1759,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (roundView != null) {
             roundView.requestDraw();
         }
-        Toast.makeText(this, "游戏已重置", Toast.LENGTH_SHORT).show();
+        
     }
 
     private void handleRecallButton() {
@@ -1598,11 +1784,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         if (roundView != null) {
                             roundView.requestDraw();
                         }
-                        Toast.makeText(this, "已悔棋", Toast.LENGTH_SHORT).show();
+
                     }
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
-                    Toast.makeText(this, "悔棋失败", Toast.LENGTH_SHORT).show();
+
                 }
             } else {
                 // 当栈为空时，重置为初始状态
@@ -1618,15 +1804,15 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         if (roundView != null) {
                             roundView.requestDraw();
                         }
-                        Toast.makeText(this, "已重置到初始局面", Toast.LENGTH_SHORT).show();
+
                     }
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
-                    Toast.makeText(this, "重置失败", Toast.LENGTH_SHORT).show();
+
                 }
             }
         } else {
-            Toast.makeText(this, "无法悔棋", Toast.LENGTH_SHORT).show();
+
         }
     }
 
@@ -1642,14 +1828,13 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 generateBoardStateFromNotation();
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
-                Toast.makeText(this, "已回到上一步", Toast.LENGTH_SHORT).show();
+
             } else {
                 System.out.println("PvMActivity: 已经是第一步");
-                Toast.makeText(this, "已经是第一步", Toast.LENGTH_SHORT).show();
+
             }
         } else {
             System.out.println("PvMActivity: 没有加载棋谱");
-            Toast.makeText(this, "没有加载棋谱", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1667,14 +1852,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 generateBoardStateFromNotation();
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
-                Toast.makeText(this, "已前进到下一步", Toast.LENGTH_SHORT).show();
             } else {
                 System.out.println("PvMActivity: 已经是最后一步");
-                Toast.makeText(this, "已经是最后一步", Toast.LENGTH_SHORT).show();
             }
         } else {
             System.out.println("PvMActivity: 没有加载棋谱");
-            Toast.makeText(this, "没有加载棋谱", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -1750,14 +1932,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     if (roundView != null) {
                         roundView.requestDraw();
                     }
-                    Toast.makeText(this, "棋谱加载成功: " + fileName, Toast.LENGTH_SHORT).show();
+
                 } else {
-                    Toast.makeText(this, "棋谱格式不正确", Toast.LENGTH_SHORT).show();
+
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "加载棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+
         }
     }
 
@@ -3301,10 +3483,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     // 写入新内容
                     writer.write(content);
                     writer.flush();
-                    Toast.makeText(this, "棋谱保存成功: " + fileName, Toast.LENGTH_SHORT).show();
+
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Toast.makeText(this, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+
                 } finally {
                     try {
                         pfd.close();
@@ -3313,7 +3495,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     }
                 }
             } else {
-                Toast.makeText(this, "无法创建文件描述符", Toast.LENGTH_SHORT).show();
+
             }
             
             // 清空临时变量
@@ -3327,7 +3509,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+
         }
     }
 
@@ -3805,18 +3987,29 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (backMusic != null && backMusic.isPlaying()) {
             backMusic.pause();
         }
-        // 保存游戏状态
-        try {
-            SaveInfo.SerializeChessInfo(chessInfo, "ChessInfo_pvm.bin");
-            SaveInfo.SerializeInfoSet(infoSet, "InfoSet_pvm.bin");
-        } catch (Exception e) {
-                e.printStackTrace();
-            }
+        
+        // 停止所有后台线程，防止Activity状态丢失
+        isAIAnalyzing = false;
+        updateRunning = false;
+        
+        // 在后台线程中保存游戏状态，避免阻塞主线程
+        new Thread(() -> {
+            try {
+                SaveInfo.SerializeChessInfo(chessInfo, "ChessInfo_pvm.bin");
+                SaveInfo.SerializeInfoSet(infoSet, "InfoSet_pvm.bin");
+            } catch (Exception e) {
+                    e.printStackTrace();
+                }
+        }).start();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // 停止所有后台线程
+        isAIAnalyzing = false;
+        updateRunning = false;
+        
         // 释放音乐资源
         if (backMusic != null) {
             backMusic.release();
@@ -3839,7 +4032,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             winMusic = null;
         }
         
-
+        // 停止AI引擎
+        if (pikafishAI != null) {
+            // PikafishAI没有destroy方法，直接设置为null
+            pikafishAI = null;
+        }
+        
+        // 停止更新线程
+        stopAISearch();
     }
 
     @Override
@@ -3913,4 +4113,45 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 saveChessNotationToUri(uri, fileName);
             }
         }
-    }}
+    }
+    
+    // 检查双方老将是否见面
+    private boolean isKingFaceToFace(int[][] piece) {
+        // 查找红帅和黑将的位置
+        Info.Pos redKingPos = null;
+        Info.Pos blackKingPos = null;
+        
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (piece[i][j] == 8) { // 红帅
+                    redKingPos = new Info.Pos(j, i);
+                } else if (piece[i][j] == 1) { // 黑将
+                    blackKingPos = new Info.Pos(j, i);
+                }
+            }
+        }
+        
+        // 如果找不到红帅或黑将，返回false
+        if (redKingPos == null || blackKingPos == null) {
+            return false;
+        }
+        
+        // 检查红帅和黑将是否在同一列
+        if (redKingPos.x != blackKingPos.x) {
+            return false;
+        }
+        
+        // 检查红帅和黑将之间是否有其他棋子
+        int startY = Math.min(redKingPos.y, blackKingPos.y) + 1;
+        int endY = Math.max(redKingPos.y, blackKingPos.y);
+        
+        for (int y = startY; y < endY; y++) {
+            if (piece[y][redKingPos.x] != 0) {
+                return false;
+            }
+        }
+        
+        // 红帅和黑将在同一列且中间没有其他棋子，返回true
+        return true;
+    }
+}
