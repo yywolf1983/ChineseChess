@@ -40,6 +40,10 @@ import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 
 import ChessMove.Rule;
@@ -84,6 +88,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private long lastSuggestClickTime = 0;
     // 支招按钮点击间隔限制（毫秒）
     private static final long SUGGEST_BUTTON_INTERVAL = 1200;
+    // 更新线程
+    private Thread updateThread;
 
     private ChessNotation currentNotation;
     private int currentMoveIndex = 0;
@@ -147,6 +153,18 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
+        
+        // 初始化线程池
+        executorService = Executors.newSingleThreadExecutor(r -> {
+            Thread t = new Thread(r);
+            t.setName("AI-Analysis-Thread");
+            return t;
+        });
+        scheduledExecutorService = Executors.newScheduledThreadPool(1, r -> {
+            Thread t = new Thread(r);
+            t.setName("AI-Update-Thread");
+            return t;
+        });
 
         // 在后台线程中加载数据，避免阻塞主线程
         new Thread(() -> {
@@ -902,7 +920,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         
         // 双机对战模式下，自动触发下一次AI移动
         if (gameMode == 3 && chessInfo.status == 1) {
-            checkAIMove();
+            // 添加300ms行棋间隔
+            scheduledExecutorService.schedule(() -> {
+                runOnUiThread(() -> {
+                    checkAIMove();
+                });
+            }, 300, TimeUnit.MILLISECONDS);
         } else {
             // 停止深度更新
             stopAISearch();
@@ -917,8 +940,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             return;
         }
         
-        // 启动线程计算AI最佳移动
-        new Thread(() -> {
+        // 使用线程池执行AI分析任务
+        executorService.execute(() -> {
             final Move move = calculateAIMove();
             runOnUiThread(() -> {
                 if (move != null) {
@@ -942,7 +965,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     }
                 }
             });
-        }).start();
+        });
     }
     
     // 检查是否需要AI移动
@@ -1115,8 +1138,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 显示AI思考提示
         updateAIInfoText("AI正在分析最佳走法.");
         
-        // 启动线程计算AI最佳移动
-        new Thread(() -> {
+        // 使用线程池执行AI分析任务
+        executorService.execute(() -> {
             // 使用同步块确保整个分析过程的原子性
             synchronized (aiAnalysisLock) {
                 if (isAIAnalyzing) {
@@ -1125,17 +1148,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 isAIAnalyzing = true;
                 
                 // 启动省略号滚动线程
-                final Thread dotThread = new Thread(() -> {
-                    int dotCount = 0;
-                    while (isAIAnalyzing) {
-                        try {
-                            Thread.sleep(500);
-                        } catch (InterruptedException e) {
-                            break;
-                        }
-                        
+                final Runnable dotTask = new Runnable() {
+                    @Override
+                    public void run() {
                         if (!isAIAnalyzing || aiInfoTextView == null) {
-                            break;
+                            return;
                         }
                         
                         StringBuilder dots = new StringBuilder();
@@ -1151,9 +1168,13 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         });
                         
                         dotCount++;
+                        
+                        if (isAIAnalyzing) {
+                            scheduledExecutorService.schedule(this, 500, TimeUnit.MILLISECONDS);
+                        }
                     }
-                });
-                dotThread.start();
+                };
+                scheduledExecutorService.schedule(dotTask, 0, TimeUnit.MILLISECONDS);
                 
                 Move move = null;
                 
@@ -1165,8 +1186,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     e.printStackTrace();
                 } finally {
                     isAIAnalyzing = false;
-                    // 中断省略号线程
-                    dotThread.interrupt();
+                    dotCount = 0;
                     
                     final Move finalMove = move;
                     runOnUiThread(() -> {
@@ -1214,7 +1234,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     });
                 }
             }
-        }).start();
+        });
     }
     
     // 为支招计算AI最佳移动（使用临时对象）
@@ -2199,13 +2219,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
             
             // 检查是否是特殊走法（如"前卒"、"后马"、"中兵"、"一兵"等）
-            boolean isSpecialMove = normalizedMoveString.contains("前") || normalizedMoveString.contains("后") || normalizedMoveString.contains("中") || 
-                                   (normalizedMoveString.length() > 2 && (Character.isDigit(normalizedMoveString.charAt(0)) || 
-                                    (normalizedMoveString.charAt(0) >= '一' && normalizedMoveString.charAt(0) <= '九')));
+            boolean isSpecialMove = false;
+            if (normalizedMoveString != null) {
+                isSpecialMove = normalizedMoveString.contains("前") || normalizedMoveString.contains("后") || normalizedMoveString.contains("中") || 
+                               (normalizedMoveString.length() > 2 && (Character.isDigit(normalizedMoveString.charAt(0)) || 
+                                (normalizedMoveString.charAt(0) >= '一' && normalizedMoveString.charAt(0) <= '九')));
+            }
             
 
             
-            if (isSpecialMove) {
+            if (isSpecialMove && normalizedMoveString != null) {
                 // 处理特殊走法
                 System.out.println("PvMActivity: 开始处理特殊走法: " + normalizedMoveString);
                 String specialMark = "";
@@ -2229,7 +2252,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     specialMark = normalizedMoveString.substring(0, 1);
                 }
                 
-                if (specialCharIndex != -1) {
+                if (specialCharIndex != -1 && normalizedMoveString != null && normalizedMoveString.length() > specialCharIndex + 2) {
                     // 提取基础棋子名称
                     basePieceName = normalizedMoveString.substring(specialCharIndex + 1, specialCharIndex + 2);
                     // 提取剩余部分
@@ -4025,7 +4048,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     }
     
     // 用于定时更新搜索深度的线程
-    private Thread updateThread;
+    private ExecutorService executorService;
+    private ScheduledExecutorService scheduledExecutorService;
     private volatile boolean updateRunning = false;
     private int dotCount = 0;
     private long lastDotUpdateTime = 0;
@@ -4138,6 +4162,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         
         // 停止更新线程
         stopAISearch();
+        
+        // 关闭线程池
+        if (executorService != null) {
+            executorService.shutdown();
+        }
+        if (scheduledExecutorService != null) {
+            scheduledExecutorService.shutdown();
+        }
     }
 
     @Override
