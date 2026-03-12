@@ -10,7 +10,6 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 
 import top.nones.chessgame.PvMActivity;
-import static top.nones.chessgame.PvMActivity.playEffect;
 import static top.nones.chessgame.PvMActivity.selectMusic;
 import top.nones.chessgame.R;
 
@@ -19,6 +18,18 @@ import top.nones.chessgame.R;
  */
 
 public class SettingDialog extends Dialog implements RadioGroup.OnCheckedChangeListener, View.OnClickListener {
+    // 添加playEffect方法
+    private void playEffect(android.media.MediaPlayer mediaPlayer) {
+        if (mediaPlayer != null && PvMActivity.setting != null && PvMActivity.setting.isEffectPlay) {
+            try {
+                mediaPlayer.seekTo(0);
+                mediaPlayer.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+    
     public Button posBtn, negBtn;
     public RadioGroup musicGroup;
     public RadioGroup effectGroup;

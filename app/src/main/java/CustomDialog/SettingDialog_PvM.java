@@ -13,7 +13,6 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import top.nones.chessgame.PvMActivity;
-import static top.nones.chessgame.PvMActivity.playEffect;
 import static top.nones.chessgame.PvMActivity.selectMusic;
 import top.nones.chessgame.R;
 
@@ -22,6 +21,17 @@ import top.nones.chessgame.R;
  */
 
 public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener {
+    // 添加playEffect方法
+    private void playEffect(android.media.MediaPlayer mediaPlayer) {
+        if (mediaPlayer != null && PvMActivity.setting != null && PvMActivity.setting.isEffectPlay) {
+            try {
+                mediaPlayer.seekTo(0);
+                mediaPlayer.start();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
     public Button posBtn, negBtn;
     public RadioGroup musicGroup;
     public RadioGroup effectGroup;
@@ -33,15 +43,29 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
 
     public boolean isMusicPlay, isEffectPlay;
     public int thinkingTime; // 思考时间（秒）
+    public int searchDepth; // 搜索深度
 
     public SettingDialog_PvM(Context context) {
         super(context, R.style.CustomDialog);
 
-        isMusicPlay = PvMActivity.setting.isMusicPlay;
-        isEffectPlay = PvMActivity.setting.isEffectPlay;
-        // 将原来的mLevel转换为思考时间，1-3级对应3-7秒
-        thinkingTime = PvMActivity.setting.mLevel * 2 + 1;
+        // 添加空值检查，防止崩溃
+        if (PvMActivity.setting != null) {
+            isMusicPlay = PvMActivity.setting.isMusicPlay;
+            isEffectPlay = PvMActivity.setting.isEffectPlay;
+            // 将原来的mLevel转换为思考时间，1-3级对应3-7秒
+            thinkingTime = PvMActivity.setting.mLevel * 2 + 1;
+            searchDepth = PvMActivity.setting.depth;
+        } else {
+            // 设置默认值
+            isMusicPlay = true;
+            isEffectPlay = true;
+            thinkingTime = 5; // 默认5秒
+            searchDepth = 10; // 默认搜索深度10
+        }
     }
+
+    public SeekBar depthSeekBar;
+    public TextView depthValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,9 +87,13 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         // 设置思考时间滑块
         timeSeekBar.setProgress(thinkingTime);
         timeValue.setText(thinkingTime + "秒");
+        // 设置搜索深度滑块
+        depthSeekBar.setProgress(searchDepth);
+        depthValue.setText(searchDepth + "层");
         musicGroup.setOnCheckedChangeListener(this);
         effectGroup.setOnCheckedChangeListener(this);
         timeSeekBar.setOnSeekBarChangeListener(this);
+        depthSeekBar.setOnSeekBarChangeListener(this);
     }
 
     private void initView() {
@@ -83,6 +111,10 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         levelGroup = (LinearLayout) findViewById(R.id.levelGroup);
         timeSeekBar = (SeekBar) findViewById(R.id.timeSeekBar);
         timeValue = (TextView) findViewById(R.id.timeValue);
+        
+        // 初始化搜索深度滑块
+        depthSeekBar = (SeekBar) findViewById(R.id.depthSeekBar);
+        depthValue = (TextView) findViewById(R.id.depthValue);
     }
 
 
@@ -97,6 +129,20 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.posBtn) {
+            // 保存设置到PvMActivity.setting
+            if (PvMActivity.setting != null) {
+                PvMActivity.setting.isMusicPlay = isMusicPlay;
+                PvMActivity.setting.isEffectPlay = isEffectPlay;
+                // 将思考时间转换回mLevel（1-3级）
+                PvMActivity.setting.mLevel = (thinkingTime - 1) / 2;
+                PvMActivity.setting.depth = searchDepth;
+                // 立即生效：更新音乐播放状态
+                if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
+                    PvMActivity.backMusic.start();
+                } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
+                    PvMActivity.backMusic.pause();
+                }
+            }
             if (onClickBottomListener != null) {
                 onClickBottomListener.onPositiveClick();
             }
@@ -138,8 +184,14 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
             playEffect(selectMusic);
-            thinkingTime = progress;
-            timeValue.setText(thinkingTime + "秒");
+            if (seekBar == timeSeekBar) {
+                thinkingTime = progress;
+                timeValue.setText(thinkingTime + "秒");
+            } else if (seekBar == depthSeekBar) {
+                // 确保搜索深度不低于5
+                searchDepth = Math.max(5, progress);
+                depthValue.setText(searchDepth + "层");
+            }
         }
     }
 

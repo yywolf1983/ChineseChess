@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.view.View;
 
 import Info.ChessInfo;
+import top.nones.chessgame.PvMActivity;
 
 /**
  * Created by 77304 on 2021/4/8.
@@ -63,7 +64,7 @@ public class RoundView extends View {
 
         // 红色文本画笔（红方回合）
         redTextPaint = new Paint();
-        redTextPaint.setTextSize(42); // 红方回合字体大小
+        redTextPaint.setTextSize(36); // 调整红方回合字体大小，更加协调
         redTextPaint.setStrokeWidth(2);
         redTextPaint.setAntiAlias(true);
         redTextPaint.setColor(Color.RED);
@@ -71,18 +72,26 @@ public class RoundView extends View {
 
         // 黑色文本画笔（黑方回合）
         blackTextPaint = new Paint();
-        blackTextPaint.setTextSize(42); // 黑方回合字体大小，与红方一致
+        blackTextPaint.setTextSize(36); // 调整黑方回合字体大小，与红方一致
         blackTextPaint.setStrokeWidth(2);
         blackTextPaint.setAntiAlias(true);
         blackTextPaint.setColor(Color.BLACK); // 黑方使用黑色
         blackTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
 
-        // 信息文本画笔（模式和评分）
+        // 模式文本画笔（突出显示模式）
+        Paint modeTextPaint = new Paint();
+        modeTextPaint.setTextSize(38); // 模式字体稍大，突出显示
+        modeTextPaint.setStrokeWidth(2);
+        modeTextPaint.setAntiAlias(true);
+        modeTextPaint.setColor(Color.WHITE); // 模式文本使用白色，与背景对比更明显
+        modeTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+
+        // 信息文本画笔（评分和搜索深度）
         infoTextPaint = new Paint();
-        infoTextPaint.setTextSize(32); // 减小模式和评分的字体大小
+        infoTextPaint.setTextSize(28); // 调整信息文本字体大小
         infoTextPaint.setStrokeWidth(2);
         infoTextPaint.setAntiAlias(true);
-        infoTextPaint.setColor(Color.BLACK); // 信息文本使用黑色
+        infoTextPaint.setColor(Color.WHITE); // 信息文本使用白色，与背景对比更明显
         infoTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
     }
 
@@ -101,29 +110,48 @@ public class RoundView extends View {
         // 绘制背景
         canvas.drawRect(0, 0, width, height, backgroundPaint);
         
-        // 绘制对战模式和评分
-        String modeText = getGameModeName(gameMode);
-        String scoreText = "评分: " + moveScore;
-        float modeX = width / 2;
-        float modeY = height / 4; // 上半部分
-        float scoreY = height / 2; // 中间部分
-        infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(modeText, modeX, modeY, infoTextPaint);
-        canvas.drawText(scoreText, modeX, scoreY, infoTextPaint);
-        infoTextPaint.setTextAlign(Paint.Align.LEFT); // 重置文本对齐
+        // 创建模式文本画笔
+        Paint modeTextPaint = new Paint();
+        modeTextPaint.setTextSize(38); // 模式字体稍大，突出显示
+        modeTextPaint.setStrokeWidth(2);
+        modeTextPaint.setAntiAlias(true);
+        modeTextPaint.setColor(Color.WHITE); // 模式文本使用白色，与背景对比更明显
+        modeTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
         
-        // 绘制回合信息
+        // 绘制对战模式（突出显示）
+        String modeText = getGameModeName(gameMode);
+        float modeX = width / 2;
+        float modeY = height / 4; // 上半部分，位置调整
+        modeTextPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(modeText, modeX, modeY, modeTextPaint);
+        
+        // 绘制评分和搜索深度（并排显示）
+        String scoreText = "评分: " + moveScore;
+        // 获取当前搜索深度
+        int searchDepth = 10; // 默认值
+        if (PvMActivity.setting != null) {
+            searchDepth = PvMActivity.setting.depth;
+        }
+        String depthText = "搜索深度: " + searchDepth + "层";
+        
+        float infoY = height / 2; // 中间部分
+        float scoreX = width * 1 / 3; // 左侧
+        float depthX = width * 2 / 3; // 右侧
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(scoreText, scoreX, infoY, infoTextPaint);
+        canvas.drawText(depthText, depthX, infoY, infoTextPaint);
+        
+        // 绘制回合信息和回合数（下半部分）
         String turnText = chessInfo.IsRedGo ? "红方回合" : "黑方回合";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
         
-        // 计算文本位置 - 向两边移动，增加间距
-        float turnX = width / 6; // 进一步向左移动
-        float textY = height * 2 / 3; // 下半部分
+        float turnX = width * 1 / 3; // 左侧
+        float textY = height * 3 / 4; // 下半部分
         
         // 绘制简单的图标提示
-        float iconSize = 30;
+        float iconSize = 25;
         float iconX = turnX - iconSize - 10;
-        float iconY = textY - 15;
+        float iconY = textY - 12;
         if (chessInfo.IsRedGo) {
             // 绘制红色圆形作为红方图标
             Paint redIconPaint = new Paint();
@@ -138,19 +166,20 @@ public class RoundView extends View {
             canvas.drawCircle(iconX, iconY, iconSize/2, blackIconPaint);
         }
         
+        turnPaint.setTextAlign(Paint.Align.LEFT);
         canvas.drawText(turnText, turnX, textY, turnPaint);
         
-        // 绘制回合数 - 使用totalMoves作为总走步数
-        // 每走一步棋，totalMoves就会增加1，所以总走步数就是totalMoves
+        // 绘制回合数
         int totalMoves = chessInfo.totalMoves;
-        // 回合数 = (总走步数 + 1) / 2，因为每回合有2步
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "回合: " + roundCount;
-        float stepX = width * 5 / 6; // 进一步向右移动
-        // 确保步数文本右对齐
+        float stepX = width * 2 / 3; // 右侧
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText(stepText, stepX, textY, infoTextPaint);
-        infoTextPaint.setTextAlign(Paint.Align.LEFT); // 重置文本对齐
+        
+        // 重置文本对齐
+        infoTextPaint.setTextAlign(Paint.Align.LEFT);
+        turnPaint.setTextAlign(Paint.Align.LEFT);
     }
     
     // 获取对战模式名称
@@ -181,8 +210,8 @@ public class RoundView extends View {
         if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
-            // 固定高度，确保足够显示对战模式、回合和步数信息
-            height = 180; // 固定高度180px
+            // 固定高度，确保足够显示对战模式、评分、搜索深度、回合和步数信息
+            height = 220; // 增加高度到220px
         }
         
         viewWidth = width;

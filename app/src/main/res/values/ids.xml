@@ -2,4 +2,5 @@
 <resources>
     <item name="chessView" type="id"/>
     <item name="roundView" type="id"/>
+    <item name="setupModeView" type="id"/>
 </resources>

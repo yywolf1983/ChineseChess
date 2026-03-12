@@ -1,8 +1,9 @@
 package Info;
 
 import android.content.SharedPreferences;
+import java.io.Serializable;
 
-public class Setting {
+public class Setting implements Serializable {
     public boolean isMusicPlay;
     public boolean isEffectPlay;
     public int mLevel;

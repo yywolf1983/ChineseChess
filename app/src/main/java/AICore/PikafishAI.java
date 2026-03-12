@@ -371,13 +371,18 @@ public class PikafishAI {
             // 发送位置信息
             sendCommand("position fen " + fen);
             
-            // 发送思考命令，使用设置的深度
+            // 发送思考命令，同时设置深度和时间限制
             int depth = 20; // 默认深度
+            int time = 10000; // 默认时间限制（毫秒）
             if (chessInfo != null && chessInfo.setting != null) {
                 depth = chessInfo.setting.depth;
+                // 根据mLevel计算思考时间：mLevel * 2 + 1 秒
+                int thinkingTime = chessInfo.setting.mLevel * 2 + 1;
+                time = thinkingTime * 1000; // 转换为毫秒
             }
-            LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth);
-            sendCommand("go depth " + depth);
+            LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
+            // 使用深度和时间限制，任一到达就停止搜索
+            sendCommand("go depth " + depth + " movetime " + time);
             
             // 读取最佳走法和评分
             String bestMove = null;
