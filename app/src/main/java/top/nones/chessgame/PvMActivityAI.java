@@ -636,12 +636,15 @@ public class PvMActivityAI {
         // 创建TextView
         this.activity.aiInfoTextView = new android.widget.TextView(this.activity);
         this.activity.aiInfoTextView.setText("点击支招-AI建议");
-        this.activity.aiInfoTextView.setTextSize(16);
+        this.activity.aiInfoTextView.setTextSize(14);
         this.activity.aiInfoTextView.setTextColor(android.graphics.Color.BLACK);
-        this.activity.aiInfoTextView.setPadding(20, 10, 20, 10);
+        this.activity.aiInfoTextView.setPadding(15, 8, 15, 8);
         this.activity.aiInfoTextView.setGravity(android.view.Gravity.CENTER);
         this.activity.aiInfoTextView.setBackgroundColor(android.graphics.Color.parseColor("#FFFFCC"));
         this.activity.aiInfoTextView.setVisibility(android.view.View.VISIBLE);
+        
+        // 设置字体样式
+        this.activity.aiInfoTextView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         
         // 设置布局参数
         android.widget.RelativeLayout.LayoutParams params = new android.widget.RelativeLayout.LayoutParams(
@@ -650,7 +653,7 @@ public class PvMActivityAI {
         );
         params.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
         params.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
-        params.setMargins(30, 10, 30, 10); // 调整边距，确保横幅显示在棋盘下方，按钮上方
+        params.setMargins(30, 2, 30, 5); // 进一步减小顶部和底部边距，将条幅向上移动更多
         this.activity.aiInfoTextView.setLayoutParams(params);
         
         // 添加到布局
@@ -702,6 +705,7 @@ public class PvMActivityAI {
     // 深度更新线程的Runnable类
     private static class DepthUpdateRunnable implements Runnable {
         private final PvMActivityAI aiInstance;
+        private int dotCount = 0;
         
         public DepthUpdateRunnable(PvMActivityAI aiInstance) {
             this.aiInstance = aiInstance;
@@ -716,8 +720,15 @@ public class PvMActivityAI {
                     currentDepth = aiInstance.activity.pikafishAI.getCurrentDepth();
                 }
                 
-                // 显示真实的搜索深度
-                String depthText = "AI正在思考 (搜索深度: " + (currentDepth > 0 ? currentDepth : 1) + "层)";
+                // 添加动画效果，显示不同数量的点
+                dotCount = (dotCount + 1) % 4;
+                String dots = "";
+                for (int i = 0; i < dotCount; i++) {
+                    dots += ".";
+                }
+                
+                // 显示真实的搜索深度和动画效果
+                String depthText = "AI正在思考" + dots + " (搜索深度: " + (currentDepth > 0 ? currentDepth : 1) + "层)";
                 aiInstance.updateAIInfoText(depthText);
             }
         }

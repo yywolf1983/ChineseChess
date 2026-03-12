@@ -47,23 +47,26 @@ public class SetupModeView extends View {
         paint = new Paint();
         paint.setAntiAlias(true);
 
+        // 将dp转换为像素
+        int pieceSize = (int) convertDpToPixel(30, getContext());
+
         try {
             // 加载棋子图片
-            RP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shuai, 80, 80);
-            RP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shi, 80, 80);
-            RP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_xiang, 80, 80);
-            RP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ma, 80, 80);
-            RP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ju, 80, 80);
-            RP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_pao, 80, 80);
-            RP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_bing, 80, 80);
+            RP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shuai, pieceSize, pieceSize);
+            RP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shi, pieceSize, pieceSize);
+            RP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_xiang, pieceSize, pieceSize);
+            RP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ma, pieceSize, pieceSize);
+            RP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ju, pieceSize, pieceSize);
+            RP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_pao, pieceSize, pieceSize);
+            RP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_bing, pieceSize, pieceSize);
 
-            BP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_jiang, 80, 80);
-            BP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_shi, 80, 80);
-            BP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_xiang, 80, 80);
-            BP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ma, 80, 80);
-            BP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ju, 80, 80);
-            BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, 80, 80);
-            BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, 80, 80);
+            BP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_jiang, pieceSize, pieceSize);
+            BP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_shi, pieceSize, pieceSize);
+            BP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_xiang, pieceSize, pieceSize);
+            BP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ma, pieceSize, pieceSize);
+            BP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ju, pieceSize, pieceSize);
+            BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, pieceSize, pieceSize);
+            BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, pieceSize, pieceSize);
         } catch (Exception e) {
             android.util.Log.e("SetupModeView", "Error loading images: " + e.getMessage());
             // 确保即使图片加载失败，应用也能继续运行
@@ -116,16 +119,20 @@ public class SetupModeView extends View {
         paint.setStyle(Paint.Style.FILL);
         canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
 
+        // 将dp转换为像素
+        float textSize = convertDpToPixel(15, getContext());
+        int pieceSize = (int) convertDpToPixel(30, getContext());
+        int padding = (int) convertDpToPixel(2, getContext());
+        int titleY = (int) convertDpToPixel(20, getContext());
+
         // 绘制标题
         paint.setColor(Color.parseColor("#333333"));
         paint.setStyle(Paint.Style.FILL);
-        paint.setTextSize(30);
+        paint.setTextSize(textSize);
         paint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText("选择棋子", getWidth() / 2, 40, paint);
+        canvas.drawText("选择棋子", getWidth() / 2, titleY, paint);
 
         // 计算棋子选择区域的位置和大小
-        int pieceSize = 80; // 与棋盘棋子大小一致
-        int padding = 5; // 减小间距，让棋子更紧凑
         int windowWidth = getWidth();
 
         // 计算棋盘上各棋子的数量
@@ -161,11 +168,15 @@ public class SetupModeView extends View {
             }
         }
 
+        // 将dp转换为像素
+        int blackStartY = (int) convertDpToPixel(30, getContext());
+        int nameYOffset = (int) convertDpToPixel(10, getContext());
+        int redYOffset = (int) convertDpToPixel(15, getContext());
+
         // 计算每行棋子的总宽度和起始X坐标，使棋子居中
         int blackTotalWidth = blackPieceCount * (pieceSize + padding) - padding;
         int blackStartX = (windowWidth - blackTotalWidth) / 2;
         int blackCurrentX = blackStartX;
-        int blackStartY = 60;
 
         // 绘制黑棋
         String[] blackPieceNames = {"将", "士", "象", "马", "车", "炮", "卒"};
@@ -186,13 +197,15 @@ public class SetupModeView extends View {
                     paint.setStyle(Paint.Style.FILL);
                     paint.setAlpha(100); // 设置透明度，0-255，100表示半透明
                     // 使用与API级别16兼容的drawRoundRect方法
-                    android.graphics.RectF rectF = new android.graphics.RectF(x - 4, y - 4, x + pieceSize + 4, y + pieceSize + 4);
+                    int borderOffset = (int) convertDpToPixel(2, getContext());
+                    float strokeWidth = convertDpToPixel(1.5f, getContext());
+                    android.graphics.RectF rectF = new android.graphics.RectF(x - borderOffset, y - borderOffset, x + pieceSize + borderOffset, y + pieceSize + borderOffset);
                     canvas.drawRoundRect(rectF, 5, 5, paint);
 
                     // 绘制选中边框
                     paint.setColor(Color.parseColor("#FFD700"));
                     paint.setStyle(Paint.Style.STROKE);
-                    paint.setStrokeWidth(3);
+                    paint.setStrokeWidth(strokeWidth);
                     paint.setAlpha(255); // 边框不透明
                     // 直接使用已定义的rectF变量
                     canvas.drawRoundRect(rectF, 5, 5, paint);
@@ -201,9 +214,10 @@ public class SetupModeView extends View {
                 }
 
                 // 绘制棋子名称
-                paint.setTextSize(15);
+                float nameTextSize = convertDpToPixel(7, getContext());
+                paint.setTextSize(nameTextSize);
                 paint.setColor(Color.parseColor("#333333"));
-                canvas.drawText(blackPieceNames[i], x + pieceSize / 2, y + pieceSize + 20, paint);
+                canvas.drawText(blackPieceNames[i], x + pieceSize / 2, y + pieceSize + nameYOffset, paint);
                 blackCurrentX += pieceSize + padding;
             }
         }
@@ -212,7 +226,7 @@ public class SetupModeView extends View {
         int redTotalWidth = redPieceCount * (pieceSize + padding) - padding;
         int redStartX = (windowWidth - redTotalWidth) / 2;
         int redCurrentX = redStartX;
-        int redStartY = blackStartY + pieceSize + 30;
+        int redStartY = blackStartY + pieceSize + redYOffset;
 
         // 绘制红棋
         String[] redPieceNames = {"帅", "士", "相", "马", "车", "炮", "兵"};
@@ -233,13 +247,15 @@ public class SetupModeView extends View {
                     paint.setStyle(Paint.Style.FILL);
                     paint.setAlpha(100); // 设置透明度，0-255，100表示半透明
                     // 使用与API级别16兼容的drawRoundRect方法
-                    android.graphics.RectF rectF = new android.graphics.RectF(x - 4, y - 4, x + pieceSize + 4, y + pieceSize + 4);
+                    int borderOffset = (int) convertDpToPixel(2, getContext());
+                    float strokeWidth = convertDpToPixel(1.5f, getContext());
+                    android.graphics.RectF rectF = new android.graphics.RectF(x - borderOffset, y - borderOffset, x + pieceSize + borderOffset, y + pieceSize + borderOffset);
                     canvas.drawRoundRect(rectF, 5, 5, paint);
 
                     // 绘制选中边框
                     paint.setColor(Color.parseColor("#FFD700"));
                     paint.setStyle(Paint.Style.STROKE);
-                    paint.setStrokeWidth(3);
+                    paint.setStrokeWidth(strokeWidth);
                     paint.setAlpha(255); // 边框不透明
                     // 直接使用已定义的rectF变量
                     canvas.drawRoundRect(rectF, 5, 5, paint);
@@ -248,18 +264,20 @@ public class SetupModeView extends View {
                 }
 
                 // 绘制棋子名称
-                paint.setTextSize(15);
+                float nameTextSize = convertDpToPixel(7, getContext());
+                paint.setTextSize(nameTextSize);
                 paint.setColor(Color.parseColor("#333333"));
-                canvas.drawText(redPieceNames[i], x + pieceSize / 2, y + pieceSize + 20, paint);
+                canvas.drawText(redPieceNames[i], x + pieceSize / 2, y + pieceSize + nameYOffset, paint);
                 redCurrentX += pieceSize + padding;
             }
         }
 
         // 绘制清空棋盘按钮
-        int buttonWidth = 200; // 增大按钮宽度
-        int buttonHeight = 50; // 增大按钮高度
+        int buttonWidth = (int) convertDpToPixel(100, getContext()); // 使用dp单位
+        int buttonHeight = (int) convertDpToPixel(25, getContext()); // 使用dp单位
+        int buttonYOffset = (int) convertDpToPixel(15, getContext()); // 使用dp单位
         int buttonX = (windowWidth - buttonWidth) / 2;
-        int buttonY = redStartY + pieceSize + 30;
+        int buttonY = redStartY + pieceSize + buttonYOffset;
 
         // 绘制按钮背景
         paint.setColor(Color.parseColor("#E0E0E0"));
@@ -277,9 +295,10 @@ public class SetupModeView extends View {
 
         // 绘制按钮文本
         paint.setStyle(Paint.Style.FILL);
-        paint.setTextSize(20);
+        float buttonTextSize = convertDpToPixel(10, getContext());
+        paint.setTextSize(buttonTextSize);
         paint.setColor(Color.parseColor("#333333"));
-        canvas.drawText("清空棋盘", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + 8, paint);
+        canvas.drawText("清空棋盘", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + buttonTextSize / 2, paint);
     }
 
     // 获取每种棋子的最大数量
@@ -312,8 +331,8 @@ public class SetupModeView extends View {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
 
         int width = MeasureSpec.getSize(widthMeasureSpec);
-        // 进一步增加高度，确保足够显示所有棋子和按钮
-        int height = 350;
+        // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
+        int height = (int) convertDpToPixel(175, getContext()); // 175dp高度，确保足够显示所有棋子和按钮
 
         setMeasuredDimension(width, height);
     }
@@ -325,9 +344,9 @@ public class SetupModeView extends View {
         float x = event.getX();
         float y = event.getY();
 
-        // 计算棋子选择区域的位置和大小
-        int pieceSize = 80; // 与绘制时的棋子大小一致
-        int padding = 5; // 与绘制时的间距一致
+        // 将dp转换为像素
+        int pieceSize = (int) convertDpToPixel(30, getContext());
+        int padding = (int) convertDpToPixel(2, getContext());
         int windowWidth = getWidth();
 
         // 计算棋盘上各棋子的数量
@@ -363,11 +382,17 @@ public class SetupModeView extends View {
             }
         }
 
+        // 将dp转换为像素
+        int blackStartY = (int) convertDpToPixel(30, getContext());
+        int redYOffset = (int) convertDpToPixel(15, getContext());
+        int buttonYOffset = (int) convertDpToPixel(15, getContext());
+        int buttonWidth = (int) convertDpToPixel(100, getContext());
+        int buttonHeight = (int) convertDpToPixel(25, getContext());
+
         // 计算黑棋的起始X坐标，与绘制逻辑一致
         int blackTotalWidth = blackPieceCount * (pieceSize + padding) - padding;
         int blackStartX = (windowWidth - blackTotalWidth) / 2;
         int blackCurrentX = blackStartX;
-        int blackStartY = 60;
 
         // 检查黑棋
         for (int i = 0; i < BP.length; i++) {
@@ -392,7 +417,7 @@ public class SetupModeView extends View {
         int redTotalWidth = redPieceCount * (pieceSize + padding) - padding;
         int redStartX = (windowWidth - redTotalWidth) / 2;
         int redCurrentX = redStartX;
-        int redStartY = blackStartY + pieceSize + 30;
+        int redStartY = blackStartY + pieceSize + redYOffset;
 
         // 检查红棋
         for (int i = 0; i < RP.length; i++) {
@@ -414,10 +439,8 @@ public class SetupModeView extends View {
         }
 
         // 检查清空棋盘按钮
-        int buttonWidth = 200; // 与onDraw方法中保持一致
-        int buttonHeight = 50; // 与onDraw方法中保持一致
         int buttonX = (windowWidth - buttonWidth) / 2;
-        int buttonY = redStartY + pieceSize + 30;
+        int buttonY = redStartY + pieceSize + buttonYOffset;
         if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
             if (listener != null) {
                 listener.onClearBoard();
@@ -437,5 +460,10 @@ public class SetupModeView extends View {
     public void clearSelection() {
         selectedSetupPieceID = 0;
         invalidate();
+    }
+    
+    // 将dp转换为像素
+    private float convertDpToPixel(float dp, Context context) {
+        return dp * context.getResources().getDisplayMetrics().density;
     }
 }

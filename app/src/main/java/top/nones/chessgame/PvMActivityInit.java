@@ -219,31 +219,31 @@ public class PvMActivityInit {
         // 最后添加按钮组，确保它在顶层
         try {
             android.view.LayoutInflater inflater = android.view.LayoutInflater.from(activity);
-            if (inflater != null) {
-                android.widget.LinearLayout buttonGroup = (android.widget.LinearLayout) inflater.inflate(R.layout.button_group, activity.relativeLayout, false);
-                if (buttonGroup != null) {
-                    activity.relativeLayout.addView(buttonGroup);
+                if (inflater != null) {
+                    android.widget.LinearLayout buttonGroup = (android.widget.LinearLayout) inflater.inflate(R.layout.button_group, activity.relativeLayout, false);
+                    if (buttonGroup != null) {
+                        activity.relativeLayout.addView(buttonGroup);
 
-                    // 使用手动定义的ID
-                    int buttonGroupId = 10001;
-                    buttonGroup.setId(buttonGroupId);
+                        // 使用手动定义的ID
+                        int buttonGroupId = 10001;
+                        buttonGroup.setId(buttonGroupId);
 
-                    android.widget.RelativeLayout.LayoutParams paramsV = (android.widget.RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
-                    if (paramsV != null) {
-                        paramsV.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
-                        paramsV.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
-                        paramsV.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
-                        paramsV.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsV.setMargins(30, 120, 30, 10); // 增加顶部边距，确保不覆盖回合信息
-                        buttonGroup.setLayoutParams(paramsV);
+                        android.widget.RelativeLayout.LayoutParams paramsV = (android.widget.RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
+                        if (paramsV != null) {
+                            paramsV.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
+                            paramsV.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
+                            paramsV.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
+                            paramsV.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
+                            paramsV.setMargins(30, 20, 30, 20); // 减少顶部边距，将按钮整体位置向上移动
+                            buttonGroup.setLayoutParams(paramsV);
 
-                        // 处理嵌套的LinearLayout布局
-                        if (activity.controlsManager != null) {
-                            activity.controlsManager.setupButtonListeners(buttonGroup);
+                            // 处理嵌套的LinearLayout布局
+                            if (activity.controlsManager != null) {
+                                activity.controlsManager.setupButtonListeners(buttonGroup);
+                            }
                         }
                     }
                 }
-            }
             Log.d("PvMActivity", "按钮组初始化完成");
         } catch (Exception e) {
             Log.e("PvMActivityInit", "Error initializing button group: " + e.getMessage());

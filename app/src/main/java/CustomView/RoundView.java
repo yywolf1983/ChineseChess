@@ -22,6 +22,8 @@ public class RoundView extends View {
     private Paint redTextPaint;
     private Paint blackTextPaint; // 黑方回合画笔
     private Paint infoTextPaint; // 模式和评分画笔
+    private Paint borderPaint; // 边框画笔
+    private Paint modeTextPaint; // 模式文本画笔
     private int viewWidth = 0;
     private int viewHeight = 0;
 
@@ -62,9 +64,19 @@ public class RoundView extends View {
         backgroundPaint.setStyle(Paint.Style.FILL);
         backgroundPaint.setColor(Color.rgb(205, 133, 63)); // 更深的棕色背景，提高对比度
 
+        // 边框画笔
+        borderPaint = new Paint();
+        borderPaint.setStyle(Paint.Style.STROKE);
+        borderPaint.setColor(Color.rgb(160, 82, 45)); // 深棕色边框
+        borderPaint.setStrokeWidth(3);
+        borderPaint.setAntiAlias(true);
+
+        // 将dp转换为像素
+        float textSize = convertDpToPixel(18, getContext());
+
         // 红色文本画笔（红方回合）
         redTextPaint = new Paint();
-        redTextPaint.setTextSize(36); // 调整红方回合字体大小，更加协调
+        redTextPaint.setTextSize(textSize); // 使用dp单位
         redTextPaint.setStrokeWidth(2);
         redTextPaint.setAntiAlias(true);
         redTextPaint.setColor(Color.RED);
@@ -72,15 +84,15 @@ public class RoundView extends View {
 
         // 黑色文本画笔（黑方回合）
         blackTextPaint = new Paint();
-        blackTextPaint.setTextSize(36); // 调整黑方回合字体大小，与红方一致
+        blackTextPaint.setTextSize(textSize); // 使用dp单位
         blackTextPaint.setStrokeWidth(2);
         blackTextPaint.setAntiAlias(true);
         blackTextPaint.setColor(Color.BLACK); // 黑方使用黑色
         blackTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
 
         // 模式文本画笔（突出显示模式）
-        Paint modeTextPaint = new Paint();
-        modeTextPaint.setTextSize(38); // 模式字体稍大，突出显示
+        modeTextPaint = new Paint();
+        modeTextPaint.setTextSize(textSize); // 使用dp单位
         modeTextPaint.setStrokeWidth(2);
         modeTextPaint.setAntiAlias(true);
         modeTextPaint.setColor(Color.WHITE); // 模式文本使用白色，与背景对比更明显
@@ -88,11 +100,16 @@ public class RoundView extends View {
 
         // 信息文本画笔（评分和搜索深度）
         infoTextPaint = new Paint();
-        infoTextPaint.setTextSize(28); // 调整信息文本字体大小
+        infoTextPaint.setTextSize(textSize); // 使用dp单位
         infoTextPaint.setStrokeWidth(2);
         infoTextPaint.setAntiAlias(true);
         infoTextPaint.setColor(Color.WHITE); // 信息文本使用白色，与背景对比更明显
         infoTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+    }
+    
+    // 将dp转换为像素
+    private float convertDpToPixel(float dp, Context context) {
+        return dp * context.getResources().getDisplayMetrics().density;
     }
 
     @Override
@@ -110,18 +127,14 @@ public class RoundView extends View {
         // 绘制背景
         canvas.drawRect(0, 0, width, height, backgroundPaint);
         
-        // 创建模式文本画笔
-        Paint modeTextPaint = new Paint();
-        modeTextPaint.setTextSize(38); // 模式字体稍大，突出显示
-        modeTextPaint.setStrokeWidth(2);
-        modeTextPaint.setAntiAlias(true);
-        modeTextPaint.setColor(Color.WHITE); // 模式文本使用白色，与背景对比更明显
-        modeTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+        // 绘制边框
+        android.graphics.RectF rectF = new android.graphics.RectF(5, 5, width - 5, height - 5);
+        canvas.drawRoundRect(rectF, 10, 10, borderPaint);
         
         // 绘制对战模式（突出显示）
         String modeText = getGameModeName(gameMode);
         float modeX = width / 2;
-        float modeY = height / 4; // 上半部分，位置调整
+        float modeY = height * 1 / 4; // 上半部分，调整位置，增加行间距
         modeTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(modeText, modeX, modeY, modeTextPaint);
         
@@ -134,7 +147,7 @@ public class RoundView extends View {
         }
         String depthText = "搜索深度: " + searchDepth + "层";
         
-        float infoY = height / 2; // 中间部分
+        float infoY = height * 2 / 4; // 中间部分，调整位置，增加行间距
         float scoreX = width * 1 / 3; // 左侧
         float depthX = width * 2 / 3; // 右侧
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -142,11 +155,11 @@ public class RoundView extends View {
         canvas.drawText(depthText, depthX, infoY, infoTextPaint);
         
         // 绘制回合信息和回合数（下半部分）
-        String turnText = chessInfo.IsRedGo ? "红方回合" : "黑方回合";
+        String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
         
         float turnX = width * 1 / 3; // 左侧
-        float textY = height * 3 / 4; // 下半部分
+        float textY = height * 3 / 4; // 下半部分，调整位置，增加行间距
         
         // 绘制简单的图标提示
         float iconSize = 25;
@@ -210,8 +223,8 @@ public class RoundView extends View {
         if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
-            // 固定高度，确保足够显示对战模式、评分、搜索深度、回合和步数信息
-            height = 220; // 增加高度到220px
+            // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
+            height = (int) convertDpToPixel(100, getContext()); // 100dp高度，减少页头高度，让按钮显示出来
         }
         
         viewWidth = width;
