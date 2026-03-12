@@ -144,6 +144,7 @@ public class PvMActivityNotation {
     
     // 生成棋盘状态
     public void generateBoardStateFromNotation() {
+        System.out.println("PvMActivity: 开始生成棋盘状态，当前步数: " + currentMoveIndex);
         if (currentNotation != null) {
             // 初始化棋盘状态
             ChessInfo initialInfo = new ChessInfo();
@@ -151,6 +152,7 @@ public class PvMActivityNotation {
             // 检查是否有FEN信息
             String fen = currentNotation.getFen();
             if (fen != null && !fen.isEmpty()) {
+                System.out.println("PvMActivity: 使用FEN初始化棋盘: " + fen);
                 // 从FEN初始化棋盘状态
                 initialInfo = fenToChessInfo(fen);
             }
@@ -163,6 +165,7 @@ public class PvMActivityNotation {
             // 根据当前步数生成棋盘状态
             List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
             if (moveRecords != null && !moveRecords.isEmpty()) {
+                System.out.println("PvMActivity: 走法记录数量: " + moveRecords.size());
                 ChessInfo currentInfo = initialInfo;
                 int moveCount = 0;
                 
@@ -180,15 +183,19 @@ public class PvMActivityNotation {
                 // 遍历走法记录，生成到当前步数的棋盘状态
                 for (int i = 0; i < moveRecords.size(); i++) {
                     ChessNotation.MoveRecord record = moveRecords.get(i);
+                    System.out.println("PvMActivity: 处理第 " + (i + 1) + " 回合: 红方=" + record.redMove + ", 黑方=" + record.blackMove);
                     
                     if (moveCount >= currentMoveIndex) {
+                        System.out.println("PvMActivity: 已达到目标步数，停止处理");
                         break;
                     }
                     
                     // 处理红方走法
                     if (!record.redMove.isEmpty() && moveCount < currentMoveIndex) {
+                        System.out.println("PvMActivity: 执行红方走法: " + record.redMove);
                         currentInfo = simulateMove(currentInfo, record.redMove, true);
                         moveCount++;
+                        System.out.println("PvMActivity: 红方走法执行完成，当前步数: " + moveCount);
                         
                         // 将当前状态添加到 preInfo 栈
                         try {
@@ -204,8 +211,10 @@ public class PvMActivityNotation {
                     
                     // 处理黑方走法
                     if (!record.blackMove.isEmpty() && moveCount < currentMoveIndex) {
+                        System.out.println("PvMActivity: 执行黑方走法: " + record.blackMove);
                         currentInfo = simulateMove(currentInfo, record.blackMove, false);
                         moveCount++;
+                        System.out.println("PvMActivity: 黑方走法执行完成，当前步数: " + moveCount);
                         
                         // 将当前状态添加到 preInfo 栈
                         try {
@@ -222,6 +231,7 @@ public class PvMActivityNotation {
                 
                 // 更新棋盘状态
                 if (currentInfo != null) {
+                    System.out.println("PvMActivity: 更新棋盘状态，总步数: " + moveCount);
                     try {
                         // 清空现有棋盘并设置新状态
                         activity.chessInfo.setInfo(currentInfo);
@@ -239,20 +249,25 @@ public class PvMActivityNotation {
                     }
                     
                     // 重新绘制界面
+                    System.out.println("PvMActivity: 开始重新绘制界面，chessView=" + activity.chessView + ", roundView=" + activity.roundView);
                     if (activity.chessView != null) {
+                        System.out.println("PvMActivity: 调用 chessView.requestDraw()");
                         activity.chessView.requestDraw();
                         // 强制刷新界面
                         activity.chessView.invalidate();
                         activity.chessView.postInvalidate();
                     }
                     if (activity.roundView != null) {
+                        System.out.println("PvMActivity: 调用 roundView.requestDraw()");
                         activity.roundView.requestDraw();
                         // 强制刷新界面
                         activity.roundView.invalidate();
                         activity.roundView.postInvalidate();
                     }
+                    System.out.println("PvMActivity: 界面重新绘制完成");
                 }
             } else {
+                System.out.println("PvMActivity: 没有走法记录，使用初始棋盘状态");
                 // 如果没有走法记录，使用初始棋盘状态
                 try {
                     // 清空现有棋盘并设置新状态
@@ -294,6 +309,8 @@ public class PvMActivityNotation {
                     activity.roundView.postInvalidate();
                 }
             }
+        } else {
+            System.out.println("PvMActivity: 没有加载棋谱");
         }
     }
     
@@ -742,7 +759,7 @@ public class PvMActivityNotation {
                                 
                                 if (possibleMoves != null) {
                                     for (Pos targetPos : possibleMoves) {
-                                        String generatedMove = activity.generateMoveString(newInfo, piece, targetPiecePos, targetPos, isRed);
+                                        String generatedMove = generateMoveString(newInfo, piece, targetPiecePos, targetPos, isRed);
                                         String normalizedGeneratedMove;
                                         if (generatedMove != null) {
                                             if (isRed) {
@@ -829,7 +846,7 @@ public class PvMActivityNotation {
                                         
                                         if (otherPossibleMoves != null) {
                                             for (Pos targetPos : otherPossibleMoves) {
-                                                String generatedMove = activity.generateMoveString(newInfo, otherPiece, pos, targetPos, isRed);
+                                                String generatedMove = generateMoveString(newInfo, otherPiece, pos, targetPos, isRed);
                                                 String normalizedGeneratedMove;
                                                 if (generatedMove != null) {
                                                     if (isRed) {
@@ -917,7 +934,7 @@ public class PvMActivityNotation {
                                     // 尝试找到与走法字符串匹配的移动
                                     for (Pos targetPos : possibleMoves) {
                                         // 生成走法字符串并与输入进行比较
-                                        String generatedMove = activity.generateMoveString(newInfo, piece, targetPiecePos, targetPos, isRed);
+                                        String generatedMove = generateMoveString(newInfo, piece, targetPiecePos, targetPos, isRed);
                                         // 标准化生成的走法字符串以进行比较
                                         String normalizedGeneratedMove = generatedMove != null ? generatedMove.replace("１", "一")
                                                                                                 .replace("２", "二")
@@ -962,25 +979,39 @@ public class PvMActivityNotation {
     
     // 上一步
     public void handlePrevButton() {
+        System.out.println("PvMActivity: 点击上一步按钮");
+        System.out.println("PvMActivity: currentNotation = " + currentNotation);
+        System.out.println("PvMActivity: currentMoveIndex = " + currentMoveIndex);
         if (currentNotation != null) {
             java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
+            System.out.println("PvMActivity: 走法记录数量: " + (moveRecords != null ? moveRecords.size() : 0));
+            System.out.println("PvMActivity: 当前步数: " + currentMoveIndex);
             if (currentMoveIndex > 0) {
                 currentMoveIndex--;
+                System.out.println("PvMActivity: 执行上一步，新步数: " + currentMoveIndex);
                 // 重新生成棋盘状态
                 generateBoardStateFromNotation();
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
+                System.out.println("PvMActivity: 上一步执行完成");
 
             } else {
+                System.out.println("PvMActivity: 已经是第一步");
+
             }
         } else {
+            System.out.println("PvMActivity: 没有加载棋谱");
         }
     }
     
     // 下一步
     public void handleNextButton() {
+        System.out.println("PvMActivity: 点击下一步按钮");
+        System.out.println("PvMActivity: currentNotation = " + currentNotation);
+        System.out.println("PvMActivity: currentMoveIndex = " + currentMoveIndex);
         if (currentNotation != null) {
             java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
+            System.out.println("PvMActivity: 走法记录数量: " + (moveRecords != null ? moveRecords.size() : 0));
             if (moveRecords != null && !moveRecords.isEmpty()) {
                 // 计算实际可执行的步数
                 int actualTotalMoves = 0;
@@ -988,19 +1019,25 @@ public class PvMActivityNotation {
                     if (!record.redMove.isEmpty()) actualTotalMoves++;
                     if (!record.blackMove.isEmpty()) actualTotalMoves++;
                 }
+                System.out.println("PvMActivity: 当前步数: " + currentMoveIndex + ", 总步数: " + actualTotalMoves);
                 if (currentMoveIndex < actualTotalMoves) {
                     currentMoveIndex++;
+                    System.out.println("PvMActivity: 执行下一步，新步数: " + currentMoveIndex);
                     // 重新生成棋盘状态
                     generateBoardStateFromNotation();
                     // 显示当前步数信息
                     updateMoveInfoDisplay();
+                    System.out.println("PvMActivity: 下一步执行完成");
                 } else {
+                    System.out.println("PvMActivity: 已经是最后一步");
                     // 显示棋局结束提示
                     Toast.makeText(activity, "棋局结束", Toast.LENGTH_SHORT).show();
                 }
             } else {
+                System.out.println("PvMActivity: 没有走法记录");
             }
         } else {
+            System.out.println("PvMActivity: 没有加载棋谱");
         }
     }
     
@@ -1026,6 +1063,13 @@ public class PvMActivityNotation {
                     String boardPart = parts[0];
                     int rank = 9; // 从黑方底线开始
                     int file = 0;
+                    
+                    // 清空棋盘
+                    for (int i = 0; i < 10; i++) {
+                        for (int j = 0; j < 9; j++) {
+                            info.piece[i][j] = 0;
+                        }
+                    }
                     
                     for (char c : boardPart.toCharArray()) {
                         if (c == '/') {
@@ -1060,20 +1104,20 @@ public class PvMActivityNotation {
     // 从FEN字符获取棋子类型
     private int getPieceFromFEN(char c) {
         switch (c) {
-            case 'K': return 1; // 黑将
-            case 'A': return 2; // 黑士
-            case 'B': return 3; // 黑象
-            case 'N': return 4; // 黑马
-            case 'R': return 5; // 黑车
-            case 'C': return 6; // 黑炮
-            case 'P': return 7; // 黑卒
-            case 'k': return 8; // 红帅
-            case 'a': return 9; // 红士
-            case 'b': return 10; // 红相
-            case 'n': return 11; // 红马
-            case 'r': return 12; // 红车
-            case 'c': return 13; // 红炮
-            case 'p': return 14; // 红兵
+            case 'K': return 8; // 红帅
+            case 'A': return 9; // 红士
+            case 'B': return 10; // 红相
+            case 'N': return 11; // 红马
+            case 'R': return 12; // 红车
+            case 'C': return 13; // 红炮
+            case 'P': return 14; // 红兵
+            case 'k': return 1; // 黑将
+            case 'a': return 2; // 黑士
+            case 'b': return 3; // 黑象
+            case 'n': return 4; // 黑马
+            case 'r': return 5; // 黑车
+            case 'c': return 6; // 黑炮
+            case 'p': return 7; // 黑卒
             default: return 0;
         }
     }
@@ -1182,20 +1226,20 @@ public class PvMActivityNotation {
     // 从棋子类型获取FEN字符
     private char getFENFromPiece(int piece) {
         switch (piece) {
-            case 1: return 'K'; // 黑将
-            case 2: return 'A'; // 黑士
-            case 3: return 'B'; // 黑象
-            case 4: return 'N'; // 黑马
-            case 5: return 'R'; // 黑车
-            case 6: return 'C'; // 黑炮
-            case 7: return 'P'; // 黑卒
-            case 8: return 'k'; // 红帅
-            case 9: return 'a'; // 红士
-            case 10: return 'b'; // 红相
-            case 11: return 'n'; // 红马
-            case 12: return 'r'; // 红车
-            case 13: return 'c'; // 红炮
-            case 14: return 'p'; // 红兵
+            case 1: return 'k'; // 黑将
+            case 2: return 'a'; // 黑士
+            case 3: return 'b'; // 黑象
+            case 4: return 'n'; // 黑马
+            case 5: return 'r'; // 黑车
+            case 6: return 'c'; // 黑炮
+            case 7: return 'p'; // 黑卒
+            case 8: return 'K'; // 红帅
+            case 9: return 'A'; // 红士
+            case 10: return 'B'; // 红相
+            case 11: return 'N'; // 红马
+            case 12: return 'R'; // 红车
+            case 13: return 'C'; // 红炮
+            case 14: return 'P'; // 红兵
             default: return ' ';
         }
     }
@@ -1262,5 +1306,54 @@ public class PvMActivityNotation {
         
         content.append("*");
         return content.toString();
+    }
+    
+    // 生成走法字符串
+    private String generateMoveString(ChessInfo chessInfo, int piece, Pos fromPos, Pos toPos, boolean isRed) {
+        // 实现走法字符串生成逻辑
+        StringBuilder move = new StringBuilder();
+        
+        // 获取棋子名称
+        String pieceName = getPieceName(piece, isRed);
+        move.append(pieceName);
+        
+        // 计算移动类型和目标位置
+        if (fromPos.x == toPos.x) {
+            // 纵向移动
+            int distance = Math.abs(toPos.y - fromPos.y);
+            if (isRed && toPos.y < fromPos.y || !isRed && toPos.y > fromPos.y) {
+                // 前进
+                move.append("进").append(distance);
+            } else {
+                // 后退
+                move.append("退").append(distance);
+            }
+        } else {
+            // 横向移动
+            move.append("平").append(toPos.x + 1); // 转换为1-9的列号
+        }
+        
+        return move.toString();
+    }
+    
+    // 获取棋子名称
+    private String getPieceName(int piece, boolean isRed) {
+        switch (piece) {
+            case 1: return "将"; // 黑将
+            case 2: return "士"; // 黑士
+            case 3: return "象"; // 黑象
+            case 4: return "马"; // 黑马
+            case 5: return "车"; // 黑车
+            case 6: return "炮"; // 黑炮
+            case 7: return "卒"; // 黑卒
+            case 8: return "帅"; // 红帅
+            case 9: return "仕"; // 红士
+            case 10: return "相"; // 红相
+            case 11: return "马"; // 红马
+            case 12: return "车"; // 红车
+            case 13: return "炮"; // 红炮
+            case 14: return "兵"; // 红兵
+            default: return "";
+        }
     }
 }
