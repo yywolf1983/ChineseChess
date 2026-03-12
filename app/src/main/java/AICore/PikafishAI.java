@@ -381,6 +381,7 @@ public class PikafishAI {
                 time = thinkingTime * 1000; // 转换为毫秒
             }
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
+            Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             // 使用深度和时间限制，任一到达就停止搜索
             sendCommand("go depth " + depth + " movetime " + time);
             

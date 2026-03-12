@@ -142,6 +142,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
                     PvMActivity.backMusic.pause();
                 }
+                // 保存设置到SharedPreferences
+                PvMActivity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
             }
             if (onClickBottomListener != null) {
                 onClickBottomListener.onPositiveClick();

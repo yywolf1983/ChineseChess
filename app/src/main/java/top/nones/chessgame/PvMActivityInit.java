@@ -74,9 +74,8 @@ public class PvMActivityInit {
         // 初始化默认值
         try {
             activity.chessInfo = new ChessInfo();
-            if (activity.setting != null) {
-                activity.chessInfo.setting = activity.setting;
-            }
+            // 总是设置setting，确保使用最新的设置
+            activity.chessInfo.setting = activity.setting;
             activity.infoSet = new InfoSet();
             // 将初始状态保存到preInfo栈中，确保第一次悔棋时有可恢复的状态
             try {
@@ -106,9 +105,8 @@ public class PvMActivityInit {
                 if (notation != null) {
                     // 初始化棋盘状态为初始状态
                     activity.chessInfo = new ChessInfo();
-                    if (activity.setting != null) {
-                        activity.chessInfo.setting = activity.setting;
-                    }
+                    // 总是设置setting，确保使用最新的设置
+                    activity.chessInfo.setting = activity.setting;
                     activity.infoSet = new InfoSet();
                     // 延迟处理棋谱加载，确保notationManager已经初始化
                     if (activity.notationManager != null) {
@@ -578,6 +576,7 @@ public class PvMActivityInit {
         public void run() {
             if (activity != null) {
                 activity.chessInfo = loadedChessInfo;
+                // 总是设置setting，确保使用最新的设置
                 activity.chessInfo.setting = activity.setting;
                 // 更新roundView、chessView和setupModeView中的chessInfo引用
                 if (activity.roundView != null) {
@@ -616,6 +615,7 @@ public class PvMActivityInit {
         public void run() {
             if (activity != null) {
                 activity.chessInfo = new ChessInfo();
+                // 总是设置setting，确保使用最新的设置
                 activity.chessInfo.setting = activity.setting;
                 // 更新roundView、chessView和setupModeView中的chessInfo引用
                 if (activity.roundView != null) {
@@ -722,6 +722,7 @@ public class PvMActivityInit {
         public void run() {
             if (activity != null) {
                 activity.chessInfo = new ChessInfo();
+                // 总是设置setting，确保使用最新的设置
                 activity.chessInfo.setting = activity.setting;
                 activity.infoSet = new InfoSet();
                 try {
