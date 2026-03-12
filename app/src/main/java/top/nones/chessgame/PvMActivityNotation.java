@@ -472,9 +472,8 @@ public class PvMActivityNotation {
                                         }
                                     }
                                     // 转换为棋盘坐标（0-8）
-                                    // 红方：记谱列号1对应棋盘x=8，记谱列号9对应棋盘x=0
-                                    // 黑方：记谱列号1对应棋盘x=0，记谱列号9对应棋盘x=8
-                                    targetX = isRed ? 9 - targetCol : targetCol - 1;
+                                    // 使用 ChessNotationTranslator 中的方法，确保与参考代码一致
+                                    targetX = ChessNotationTranslator.getBoardX(targetCol, isRed);
                                 }
                             }
                             
@@ -1305,8 +1304,9 @@ public class PvMActivityNotation {
                                         int targetCol = Integer.parseInt(targetPosStr);
                                         int generatedTargetCol = Integer.parseInt(generatedTargetPosStr);
                                         // 转换为棋盘坐标
-                                        int targetX = isRed ? 9 - targetCol : targetCol - 1;
-                                        int generatedTargetX = isRed ? 9 - generatedTargetCol : generatedTargetCol - 1;
+                                        // 使用 ChessNotationTranslator 中的方法，确保与参考代码一致
+                                        int targetX = ChessNotationTranslator.getBoardX(targetCol, isRed);
+                                        int generatedTargetX = ChessNotationTranslator.getBoardX(generatedTargetCol, isRed);
                                         // 检查棋盘坐标是否相同
                                         if (targetX == generatedTargetX) {
                                             isMatch = true;
@@ -1498,35 +1498,8 @@ public class PvMActivityNotation {
     
     // 按y坐标排序棋子
     private void sortPiecesByY(java.util.List<Pos> pieces, boolean isRed) {
-        // 实现排序逻辑
-        if (pieces != null && !pieces.isEmpty()) {
-            // 使用冒泡排序实现，避免使用内部类
-            for (int i = 0; i < pieces.size() - 1; i++) {
-                for (int j = 0; j < pieces.size() - 1 - i; j++) {
-                    Pos pos1 = pieces.get(j);
-                    Pos pos2 = pieces.get(j + 1);
-                    
-                    // 添加空值检查
-                    if (pos1 == null || pos2 == null) {
-                        continue;
-                    }
-                    
-                    boolean needSwap = false;
-                    if (isRed) {
-                        // 红方：按y坐标升序排序
-                        needSwap = pos1.y > pos2.y;
-                    } else {
-                        // 黑方：按y坐标降序排序
-                        needSwap = pos1.y < pos2.y;
-                    }
-                    
-                    if (needSwap) {
-                        pieces.set(j, pos2);
-                        pieces.set(j + 1, pos1);
-                    }
-                }
-            }
-        }
+        // 使用 ChessNotationTranslator 中的方法，确保与参考代码一致
+        ChessNotationTranslator.sortPiecesByY(pieces, isRed);
     }
     
     // 生成FEN字符串
@@ -2016,38 +1989,8 @@ public class PvMActivityNotation {
     
     // 排序候选棋子
     private void sortCandidatePieces(java.util.List<Pos> pieces, boolean isRed, String moveString) {
-        // 按优先级排序：
-        // 1. 离对方底线最近的棋子优先
-        // 2. 对于同一行的棋子，根据走法中的列号选择
-        for (int i = 0; i < pieces.size() - 1; i++) {
-            for (int j = 0; j < pieces.size() - i - 1; j++) {
-                Pos pos1 = pieces.get(j);
-                Pos pos2 = pieces.get(j + 1);
-                
-                // 比较距离对方底线的距离
-                int distance1, distance2;
-                if (isRed) {
-                    // 红方：y值越大，离黑方底线（y=9）越近
-                    distance1 = 9 - pos1.y;
-                    distance2 = 9 - pos2.y;
-                } else {
-                    // 黑方：y值越小，离红方底线（y=0）越近
-                    distance1 = pos1.y;
-                    distance2 = pos2.y;
-                }
-                
-                // 如果距离相同，根据走法中的列号选择
-                if (distance1 == distance2) {
-                    // 这里可以添加根据走法列号的排序逻辑
-                }
-                
-                // 距离小的（离对方底线近的）排在前面
-                if (distance1 > distance2) {
-                    pieces.set(j, pos2);
-                    pieces.set(j + 1, pos1);
-                }
-            }
-        }
+        // 使用 ChessNotationTranslator 中的方法，确保与参考代码一致
+        ChessNotationTranslator.sortCandidatePieces(pieces, isRed, moveString);
     }
     
     // 将阿拉伯数字转换为中文数字
