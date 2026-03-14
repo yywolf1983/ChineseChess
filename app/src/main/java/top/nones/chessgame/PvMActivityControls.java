@@ -97,13 +97,9 @@ public class PvMActivityControls {
                 ChessInfo tmp = activity.infoSet.preInfo.pop();
                 try {
                     if (activity.chessInfo != null && activity.infoSet.curInfo != null && tmp != null) {
-                        // 保存当前的ZobristKeyCheck以便后续更新
-                        long currentKey = activity.chessInfo.ZobristKeyCheck;
                         // 恢复棋盘状态
                         activity.chessInfo.setInfo(tmp);
                         activity.infoSet.curInfo.setInfo(tmp);
-                        // 更新ZobristInfo
-                        activity.infoSet.recallZobristInfo(currentKey);
                         // 重新绘制界面
                         if (activity.chessView != null) {
                             activity.chessView.requestDraw();
@@ -385,8 +381,6 @@ public class PvMActivityControls {
                                                         showDrawConfirmationDialog("双方60回合内未吃子，是否和棋？");
                                                     } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
                                                         showDrawConfirmationDialog("双方都无攻击性棋子，是否和棋？");
-                                                    } else if (activity.infoSet != null && activity.infoSet.ZobristInfo != null && activity.chessInfo.ZobristKeyCheck != 0 && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) != null && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) >= 4) {
-                                                        showDrawConfirmationDialog("重复局面出现4次，是否和棋？");
                                                     }
                                                 }
                                             }
@@ -555,8 +549,6 @@ public class PvMActivityControls {
                     showDrawConfirmationDialog("双方60回合内未吃子，是否和棋？");
                 } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
                     showDrawConfirmationDialog("双方都无攻击性棋子，是否和棋？");
-                } else if (activity.infoSet != null && activity.infoSet.ZobristInfo != null && activity.chessInfo.ZobristKeyCheck != 0 && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) != null && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) >= 4) {
-                    showDrawConfirmationDialog("重复局面出现4次，是否和棋？");
                 }
             }
         }

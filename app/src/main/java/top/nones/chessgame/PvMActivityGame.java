@@ -289,19 +289,6 @@ public class PvMActivityGame {
                                             // 增加继续对局后的回合计数器
                                             activity.continueGameRoundCount++;
 
-                                            if (activity.chessInfo.status == 1) {
-                                                // 只有当继续对局后的回合数达到20次以上时，才会再次触发和棋提示
-                                                if (activity.continueGameRoundCount >= 20) {
-                                                    if (activity.chessInfo.peaceRound >= 60) {
-                                                        activity.controlsManager.showDrawConfirmationDialog("双方60回合内未吃子，是否和棋？");
-                                                    } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
-                                                        activity.controlsManager.showDrawConfirmationDialog("双方都无攻击性棋子，是否和棋？");
-                                                    } else if (activity.infoSet.ZobristInfo != null && activity.chessInfo.ZobristKeyCheck != 0 && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) != null && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) >= 4) {
-                                                        activity.controlsManager.showDrawConfirmationDialog("重复局面出现4次，是否和棋？");
-                                                    }
-                                                }
-                                            }
-
                                             // 获取当前局面的评分（在后台线程中执行）
                                             if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
                                                 new Thread(() -> {
@@ -373,20 +360,6 @@ public class PvMActivityGame {
             android.widget.Toast toast = android.widget.Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", android.widget.Toast.LENGTH_SHORT);
             toast.setGravity(android.view.Gravity.CENTER, 0, 0);
             toast.show();
-        }
-        
-        // 检查和棋条件
-        if (activity.chessInfo.status == 1) {
-            // 只有当继续对局后的回合数达到20次以上时，才会再次触发和棋提示
-            if (activity.continueGameRoundCount >= 20) {
-                if (activity.chessInfo.peaceRound >= 60) {
-                    activity.controlsManager.showDrawConfirmationDialog("双方60回合内未吃子，是否和棋？");
-                } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
-                    activity.controlsManager.showDrawConfirmationDialog("双方都无攻击性棋子，是否和棋？");
-                } else if (activity.infoSet.ZobristInfo != null && activity.chessInfo.ZobristKeyCheck != 0 && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) != null && activity.infoSet.ZobristInfo.get(activity.chessInfo.ZobristKeyCheck) >= 4) {
-                    activity.controlsManager.showDrawConfirmationDialog("重复局面出现4次，是否和棋？");
-                }
-            }
         }
     }
 }

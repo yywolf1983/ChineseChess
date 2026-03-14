@@ -240,9 +240,7 @@ public class PvPActivityControls {
                     ChessInfo tmp = infoSet.preInfo.pop();
                     cnt++;
                     try {
-                        if (infoSet.ZobristInfo != null) {
-                            infoSet.recallZobristInfo(chessInfo.ZobristKeyCheck);
-                        }
+
                         chessInfo.setInfo(tmp);
                         infoSet.curInfo.setInfo(tmp);
                     } catch (CloneNotSupportedException e) {

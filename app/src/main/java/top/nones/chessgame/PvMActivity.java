@@ -290,6 +290,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // 关闭PikafishAI资源
+        if (pikafishAI != null) {
+            pikafishAI.close();
+        }
         // 关闭AI线程池
         if (aiManager != null) {
             aiManager.shutdown();

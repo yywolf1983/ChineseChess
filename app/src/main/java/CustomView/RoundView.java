@@ -71,8 +71,8 @@ public class RoundView extends View {
         borderPaint.setStrokeWidth(3);
         borderPaint.setAntiAlias(true);
 
-        // 将dp转换为像素
-        float textSize = convertDpToPixel(18, getContext());
+        // 将dp转换为像素，统一文字大小
+        float textSize = convertDpToPixel(16, getContext());
 
         // 红色文本画笔（红方回合）
         redTextPaint = new Paint();
@@ -92,7 +92,7 @@ public class RoundView extends View {
 
         // 模式文本画笔（突出显示模式）
         modeTextPaint = new Paint();
-        modeTextPaint.setTextSize(textSize); // 使用dp单位
+        modeTextPaint.setTextSize(textSize + 2); // 模式文本稍大一点，突出显示
         modeTextPaint.setStrokeWidth(2);
         modeTextPaint.setAntiAlias(true);
         modeTextPaint.setColor(Color.WHITE); // 模式文本使用白色，与背景对比更明显
@@ -131,10 +131,14 @@ public class RoundView extends View {
         android.graphics.RectF rectF = new android.graphics.RectF(5, 5, width - 5, height - 5);
         canvas.drawRoundRect(rectF, 10, 10, borderPaint);
         
+        // 计算垂直间距
+        float paddingTop = convertDpToPixel(10, getContext());
+        float lineHeight = convertDpToPixel(24, getContext());
+        
         // 绘制对战模式（突出显示）
         String modeText = getGameModeName(gameMode);
         float modeX = width / 2;
-        float modeY = height * 1 / 4; // 上半部分，调整位置，增加行间距
+        float modeY = paddingTop + lineHeight * 0.8f; // 调整垂直位置
         modeTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(modeText, modeX, modeY, modeTextPaint);
         
@@ -145,9 +149,9 @@ public class RoundView extends View {
         if (PvMActivity.setting != null) {
             searchDepth = PvMActivity.setting.depth;
         }
-        String depthText = "搜索深度: " + searchDepth + "层";
+        String depthText = "深度: " + searchDepth + "层";
         
-        float infoY = height * 2 / 4; // 中间部分，调整位置，增加行间距
+        float infoY = modeY + lineHeight; // 中间部分，调整位置
         float scoreX = width * 1 / 3; // 左侧
         float depthX = width * 2 / 3; // 右侧
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -158,13 +162,13 @@ public class RoundView extends View {
         String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
         
-        float turnX = width * 1 / 3; // 左侧
-        float textY = height * 3 / 4; // 下半部分，调整位置，增加行间距
+        float textY = infoY + lineHeight; // 下半部分，调整位置
         
         // 绘制简单的图标提示
-        float iconSize = 25;
-        float iconX = turnX - iconSize - 10;
-        float iconY = textY - 12;
+        float iconSize = convertDpToPixel(16, getContext());
+        float turnX = width * 1 / 4; // 左侧
+        float iconX = turnX - iconSize - convertDpToPixel(8, getContext());
+        float iconY = textY - iconSize / 2;
         if (chessInfo.IsRedGo) {
             // 绘制红色圆形作为红方图标
             Paint redIconPaint = new Paint();
@@ -186,7 +190,7 @@ public class RoundView extends View {
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "回合: " + roundCount;
-        float stepX = width * 2 / 3; // 右侧
+        float stepX = width * 3 / 4; // 右侧
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText(stepText, stepX, textY, infoTextPaint);
         

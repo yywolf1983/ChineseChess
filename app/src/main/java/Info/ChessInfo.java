@@ -20,7 +20,6 @@ public class ChessInfo implements Cloneable, Serializable {
     public int totalMoves; // 总走步数
     public int attackNum_B;
     public int attackNum_R;
-    public long ZobristKeyCheck;
 
     public boolean IsSetupMode;
     public Setting setting;
@@ -83,7 +82,6 @@ public class ChessInfo implements Cloneable, Serializable {
         totalMoves = 0; // 初始化总走步数
         attackNum_B = 0;
         attackNum_R = 0;
-        ZobristKeyCheck = 0;
 
         IsSetupMode = false;
         
@@ -117,7 +115,6 @@ public class ChessInfo implements Cloneable, Serializable {
         this.totalMoves = info.totalMoves;
         this.attackNum_B = info.attackNum_B;
         this.attackNum_R = info.attackNum_R;
-        this.ZobristKeyCheck = info.ZobristKeyCheck;
 
         this.IsSetupMode = info.IsSetupMode;
         this.setting = info.setting;
@@ -181,7 +178,6 @@ public class ChessInfo implements Cloneable, Serializable {
         info.totalMoves = this.totalMoves; // 复制总走步数
         info.attackNum_B = this.attackNum_B;
         info.attackNum_R = this.attackNum_R;
-        info.ZobristKeyCheck = this.ZobristKeyCheck;
 
         info.IsSetupMode = this.IsSetupMode;
         info.setting = this.setting;

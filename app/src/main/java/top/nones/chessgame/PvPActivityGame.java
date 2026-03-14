@@ -287,9 +287,6 @@ public class PvPActivityGame {
             } else if (chessInfo.attackNum_B == 0 && chessInfo.attackNum_R == 0) {
                 chessInfo.status = 2;
                 Toast.makeText(activity, "双方都无攻击性棋子，此乃和棋", Toast.LENGTH_SHORT).show();
-            } else if (infoSet != null && infoSet.ZobristInfo != null && infoSet.ZobristInfo.get(chessInfo.ZobristKeyCheck) >= 4) {
-                chessInfo.status = 2;
-                Toast.makeText(activity, "重复局面出现4次，此乃和棋", Toast.LENGTH_SHORT).show();
             }
         }
     }
