@@ -541,7 +541,7 @@ public class PvMActivityAI {
                 }
                 
                 // 生成提示信息
-                String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo;
+                String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
                 aiInstance.updateAIInfoText(hintText);
                 
                 // 选中需要移动的棋子

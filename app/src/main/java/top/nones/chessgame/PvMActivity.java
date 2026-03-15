@@ -188,9 +188,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 构建走法字符串
         move.append(pieceName);
         
-        // 如果是车、马、炮、兵/卒，添加起始列号（或者前/后标识）
-        if (piece == 4 || piece == 5 || piece == 6 || piece == 7 || 
-            piece == 11 || piece == 12 || piece == 13 || piece == 14) {
+        // 如果是车、马、炮、兵/卒、象/相、士/仕，添加起始列号（或者前/后标识）
+        if (piece == 2 || piece == 3 || piece == 4 || piece == 5 || piece == 6 || piece == 7 || 
+            piece == 9 || piece == 10 || piece == 11 || piece == 12 || piece == 13 || piece == 14) {
             if (hasSamePieceInSameColumn) {
                 // 如果同一列有多个相同棋子，使用前/后标识
                 boolean isFront = false;
@@ -221,19 +221,61 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
         
         // 计算移动类型和目标位置
-        if (fromPos.x == toPos.x) {
-            // 纵向移动
-            int distance = Math.abs(toPos.y - fromPos.y);
-            if (isRed && toPos.y < fromPos.y || !isRed && toPos.y > fromPos.y) {
+        boolean isHorse = (piece == 4 || piece == 11); // 马
+        boolean isElephant = (piece == 3 || piece == 10); // 象/相
+        boolean isAdvisor = (piece == 2 || piece == 9); // 士/仕
+        boolean isPawn = (piece == 7 || piece == 14); // 卒/兵
+        
+        if (isHorse || isElephant || isAdvisor) {
+            // 马、象/相、士/仕的移动：斜向，用进/退+目标列号
+            if (isRed && toPos.y > fromPos.y || !isRed && toPos.y < fromPos.y) {
                 // 前进
-                move.append("进").append(distance);
+                move.append("进").append(toCol);
             } else {
                 // 后退
-                move.append("退").append(distance);
+                move.append("退").append(toCol);
+            }
+        } else if (isPawn) {
+            // 卒/兵的移动
+            boolean isPawnCrossedRiver = false;
+            if (isRed) {
+                // 红方兵过河：y < 5（在黑方区域）
+                isPawnCrossedRiver = fromPos.y < 5;
+            } else {
+                // 黑方卒过河：y >= 5（在红方区域）
+                isPawnCrossedRiver = fromPos.y >= 5;
+            }
+            
+            if (fromPos.x == toPos.x) {
+                // 纵向移动
+                int distance = Math.abs(toPos.y - fromPos.y);
+                if (isRed && toPos.y > fromPos.y || !isRed && toPos.y < fromPos.y) {
+                    // 前进
+                    move.append("进").append(distance);
+                } else {
+                    // 后退（兵/卒不能后退）
+                    move.append("进").append(distance);
+                }
+            } else {
+                // 横向移动（只有过河后才能平）
+                move.append("平").append(toCol);
             }
         } else {
-            // 横向移动
-            move.append("平").append(toCol);
+            // 其他棋子（车、炮等）的移动
+            if (fromPos.x == toPos.x) {
+                // 纵向移动
+                int distance = Math.abs(toPos.y - fromPos.y);
+                if (isRed && toPos.y > fromPos.y || !isRed && toPos.y < fromPos.y) {
+                    // 前进
+                    move.append("进").append(distance);
+                } else {
+                    // 后退
+                    move.append("退").append(distance);
+                }
+            } else {
+                // 横向移动
+                move.append("平").append(toCol);
+            }
         }
         
         return move.toString();
