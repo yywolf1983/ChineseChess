@@ -641,7 +641,7 @@ public class PvMActivityAI {
     }
     
     // 初始化AI支招信息显示
-    private void initAIInfoTextView() {
+    public void initAIInfoTextView() {
         if (this.activity == null || this.activity.relativeLayout == null) return;
         
         // 创建TextView
