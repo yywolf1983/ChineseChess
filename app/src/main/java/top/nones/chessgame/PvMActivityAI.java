@@ -426,8 +426,8 @@ public class PvMActivityAI {
             }
         }
         
-        // 显示AI思考提示
-        updateAIInfoText("AI正在分析最佳走法.");
+        // 启动AI搜索动画，显示搜索深度
+        startAISearch(isRed);
         
         // 保存当前实例引用
         final PvMActivityAI aiInstance = this;
@@ -541,7 +541,7 @@ public class PvMActivityAI {
                 }
                 
                 // 生成提示信息
-                String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo + " (" + (char)('a' + displayFromX) + (9 - displayFromY) + "到" + (char)('a' + displayToX) + (9 - displayToY) + ")";
+                String hintText = (isRed ? "红方" : "黑方") + ": " + moveInfo;
                 aiInstance.updateAIInfoText(hintText);
                 
                 // 选中需要移动的棋子

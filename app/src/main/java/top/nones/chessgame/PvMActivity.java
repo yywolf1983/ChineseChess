@@ -169,7 +169,56 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         
         // 获取棋子名称
         String pieceName = getPieceName(piece, isRed);
+        
+        // 计算列号（红方从右往左数，黑方从左往右数）
+        int fromCol = isRed ? (9 - fromPos.x) : (fromPos.x + 1);
+        int toCol = isRed ? (9 - toPos.x) : (toPos.x + 1);
+        
+        // 检查同一列是否有多个相同棋子
+        boolean hasSamePieceInSameColumn = false;
+        if (chessInfo != null && chessInfo.piece != null) {
+            for (int y = 0; y < 10; y++) {
+                if (y != fromPos.y && chessInfo.piece[y][fromPos.x] == piece) {
+                    hasSamePieceInSameColumn = true;
+                    break;
+                }
+            }
+        }
+        
+        // 构建走法字符串
         move.append(pieceName);
+        
+        // 如果是车、马、炮、兵/卒，添加起始列号（或者前/后标识）
+        if (piece == 4 || piece == 5 || piece == 6 || piece == 7 || 
+            piece == 11 || piece == 12 || piece == 13 || piece == 14) {
+            if (hasSamePieceInSameColumn) {
+                // 如果同一列有多个相同棋子，使用前/后标识
+                boolean isFront = false;
+                if (isRed) {
+                    // 红方：y越小越靠前
+                    isFront = true;
+                    for (int y = 0; y < fromPos.y; y++) {
+                        if (chessInfo.piece[y][fromPos.x] == piece) {
+                            isFront = false;
+                            break;
+                        }
+                    }
+                } else {
+                    // 黑方：y越大越靠前
+                    isFront = true;
+                    for (int y = fromPos.y + 1; y < 10; y++) {
+                        if (chessInfo.piece[y][fromPos.x] == piece) {
+                            isFront = false;
+                            break;
+                        }
+                    }
+                }
+                move.append(isFront ? "前" : "后");
+            } else {
+                // 否则使用列号
+                move.append(fromCol);
+            }
+        }
         
         // 计算移动类型和目标位置
         if (fromPos.x == toPos.x) {
@@ -184,7 +233,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             }
         } else {
             // 横向移动
-            move.append("平").append(toPos.x + 1); // 转换为1-9的列号
+            move.append("平").append(toCol);
         }
         
         return move.toString();
