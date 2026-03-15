@@ -213,7 +213,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         if (fromUser) {
             playEffect(selectMusic);
             if (seekBar == timeSeekBar) {
-                thinkingTime = progress;
+                // 确保思考时间在1-60秒之间
+                thinkingTime = Math.max(1, Math.min(60, progress));
                 timeValue.setText(thinkingTime + "秒");
             } else if (seekBar == depthSeekBar) {
                 // 确保搜索深度在5-35之间

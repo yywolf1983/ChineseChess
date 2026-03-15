@@ -140,6 +140,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
+            android:min="1"
             android:max="60"
             android:progress="5"
             android:thumb="@android:drawable/btn_star" />

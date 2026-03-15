@@ -553,16 +553,8 @@ public class PikafishAI {
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             
-            // 优化UCI命令：根据时间和深度选择合适的搜索方式
-            if (time < 3000) {
-                // 时间较短时，使用固定深度搜索，深度不超过15层
-                int limitedDepth = Math.min(depth, 15);
-                sendCommand("go depth " + limitedDepth);
-                LogUtils.i("PikafishAI", "时间较短，限制深度为: " + limitedDepth);
-            } else {
-                // 时间较长时，使用时间限制搜索
-                sendCommand("go movetime " + time);
-            }
+            // 使用时间限制搜索，不限制深度
+            sendCommand("go movetime " + time);
             
             // 读取最佳走法和评分
             String bestMove = null;

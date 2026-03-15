@@ -39,7 +39,8 @@ public class PvMActivityAI {
     // 计算AI最佳移动，带有深度更新
     public Move calculateAIMoveWithDepthUpdate() {
         // 显示AI开始搜索的信息，包含深度
-        startAISearch();
+        boolean isRed = this.activity != null && this.activity.chessInfo != null && this.activity.chessInfo.IsRedGo;
+        startAISearch(isRed);
         
         if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized() || this.activity.chessInfo.piece == null) {
             return null;
@@ -75,9 +76,9 @@ public class PvMActivityAI {
         }
         
         // 检查是否被将死
-        boolean isRed = this.activity.chessInfo.IsRedGo;
+        boolean isCurrentPlayerRed = this.activity.chessInfo.IsRedGo;
         
-        if (Rule.isDead(this.activity.chessInfo.piece, isRed)) {
+        if (Rule.isDead(this.activity.chessInfo.piece, isCurrentPlayerRed)) {
             return null;
         }
         
@@ -88,7 +89,7 @@ public class PvMActivityAI {
                 int piece = this.activity.chessInfo.piece[i][j];
                 if (piece != 0) {
                     boolean pieceIsRed = piece >= 8 && piece <= 14;
-                    if (pieceIsRed == isRed) {
+                    if (pieceIsRed == isCurrentPlayerRed) {
                         List<Pos> possibleMoves = Rule.PossibleMoves(this.activity.chessInfo.piece, j, i, piece);
                         if (!possibleMoves.isEmpty()) {
                             hasValidMoves = true;
@@ -147,6 +148,9 @@ public class PvMActivityAI {
                 return null;
             }
         }
+        
+        // 停止AI搜索动画
+        stopAISearch();
         
         return move;
     }
@@ -278,13 +282,13 @@ public class PvMActivityAI {
             this.activity.controlsManager.checkGameStatus(isRed);
         }
         
+        // 停止深度更新动画
+        stopAISearch();
+        
         // 双机对战模式下，自动触发下一次AI移动
         if (this.activity.gameMode == 3 && this.activity.chessInfo.status == 1) {
-            // 添加300ms行棋间隔
-            this.scheduledExecutorService.schedule(new DoubleAIRunnable(this), 300, TimeUnit.MILLISECONDS);
-        } else {
-            // 停止深度更新
-            stopAISearch();
+            // 直接触发下一次AI移动
+            checkAIMove();
         }
         
         return true;
@@ -670,7 +674,7 @@ public class PvMActivityAI {
     }
     
     // 启动AI搜索
-    private void startAISearch() {
+    private void startAISearch(boolean isRed) {
         // 显示AI开始搜索的信息，包含深度
         if (this.activity != null) {
             // 初始化AI信息TextView（如果未初始化），确保在主线程中执行
@@ -682,7 +686,7 @@ public class PvMActivityAI {
             if (this.depthUpdateFuture != null) {
                 this.depthUpdateFuture.cancel(true);
             }
-            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this), 0, 500, TimeUnit.MILLISECONDS);
+            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 500, TimeUnit.MILLISECONDS);
         }
     }
     
@@ -705,10 +709,12 @@ public class PvMActivityAI {
     // 深度更新线程的Runnable类
     private static class DepthUpdateRunnable implements Runnable {
         private final PvMActivityAI aiInstance;
+        private final boolean isRed;
         private int dotCount = 0;
         
-        public DepthUpdateRunnable(PvMActivityAI aiInstance) {
+        public DepthUpdateRunnable(PvMActivityAI aiInstance, boolean isRed) {
             this.aiInstance = aiInstance;
+            this.isRed = isRed;
         }
         
         @Override
@@ -727,8 +733,8 @@ public class PvMActivityAI {
                     dots += ".";
                 }
                 
-                // 显示真实的搜索深度和动画效果
-                String depthText = "AI正在思考" + dots + " (搜索深度: " + (currentDepth > 0 ? currentDepth : 1) + "层)";
+                // 显示真实的搜索深度和动画效果，包含红方/黑方信息
+                String depthText = (isRed ? "红方" : "黑方") + "AI正在思考" + dots + " (搜索深度: " + (currentDepth > 0 ? currentDepth : 1) + "层)";
                 aiInstance.updateAIInfoText(depthText);
             }
         }
