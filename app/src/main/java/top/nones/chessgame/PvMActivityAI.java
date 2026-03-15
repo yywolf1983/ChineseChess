@@ -465,9 +465,13 @@ public class PvMActivityAI {
                 Move move = null;
                 
                 try {
-                    // 直接使用原始chessInfo进行分析，不再使用临时对象
-                    // 这样可以确保AI分析基于最新的棋盘状态
-                    move = aiInstance.calculateAIMove();
+                    // 直接使用原始chessInfo进行分析
+                    if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
+                        PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
+                        if (moveWithScore != null) {
+                            move = moveWithScore.move;
+                        }
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
@@ -504,6 +508,9 @@ public class PvMActivityAI {
             if (aiInstance == null || activity == null || activity.aiInfoTextView == null || activity.chessInfo == null || activity.chessView == null) {
                 return;
             }
+            
+            // 停止AI搜索动画
+            aiInstance.stopAISearch();
             
             if (move != null && move.fromPos != null && move.toPos != null) {
                 // 转换为显示坐标
