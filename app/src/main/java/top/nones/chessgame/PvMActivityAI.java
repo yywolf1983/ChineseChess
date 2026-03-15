@@ -149,6 +149,11 @@ public class PvMActivityAI {
             }
         }
         
+        // 中断AI搜索
+        if (this.activity != null && this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
+            this.activity.pikafishAI.interrupt();
+        }
+        
         // 停止AI搜索动画
         stopAISearch();
         
@@ -475,6 +480,11 @@ public class PvMActivityAI {
                 } catch (Exception e) {
                     e.printStackTrace();
                 } finally {
+                    // 中断AI搜索
+                    if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
+                        activity.pikafishAI.interrupt();
+                    }
+                    
                     aiInstance.isAIAnalyzing = false;
                     aiInstance.dotCount = 0;
                     

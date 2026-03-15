@@ -20,6 +20,8 @@ public class PikafishAI {
     private BufferedWriter writer;
     private boolean initialized = false;
     private Context context;
+    private volatile boolean isSearching = false;
+    private volatile boolean shouldStop = false;
     
     public PikafishAI(Context context) {
         this.context = context;
@@ -515,6 +517,22 @@ public class PikafishAI {
                 }
             }
             
+            // 先确保停止之前的搜索
+            shouldStop = true;
+            if (isSearching) {
+                sendCommand("stop");
+                // 短暂等待让stop命令生效
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            
+            // 重置标志位开始新搜索
+            shouldStop = false;
+            isSearching = true;
+            
             // 重置当前深度
             currentDepth = 0;
             
@@ -527,12 +545,12 @@ public class PikafishAI {
             
             // 发送思考命令，优化时间管理
             int depth = 20; // 默认深度
-            int time = 10000; // 默认时间限制（毫秒）
+            int time = 3000; // 默认时间限制（毫秒，缩短为3秒）
             if (chessInfo != null && chessInfo.setting != null) {
                 depth = chessInfo.setting.depth;
-                // 根据mLevel计算思考时间：mLevel * 2 + 1 秒
-                int thinkingTime = chessInfo.setting.mLevel * 2 + 1;
-                time = thinkingTime * 1000; // 转换为毫秒
+                // 根据mLevel计算思考时间：缩短为 mLevel + 0.5 秒
+                int thinkingTime = Math.max(1, chessInfo.setting.mLevel);
+                time = thinkingTime * 500 + 500; // 转换为毫秒，最短1秒，最长约10.5秒
             }
             
             // 评估局面复杂度，动态调整搜索参数
@@ -613,6 +631,12 @@ public class PikafishAI {
                         }
                         break;
                     }
+                    
+                    // 如果需要停止，发送stop命令并继续等待bestmove
+                    if (shouldStop && bestMove == null) {
+                        LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
+                        sendCommand("stop");
+                    }
                 }
             } catch (IOException e) {
                 LogUtils.e("PikafishAI", "读取响应失败，可能进程已崩溃: " + e.getMessage());
@@ -623,11 +647,13 @@ public class PikafishAI {
                     LogUtils.i("PikafishAI", "重新初始化成功，再次尝试获取走法");
                     return getBestMoveWithScore(chessInfo);
                 }
+            } finally {
+                isSearching = false;
             }
             
             // 计算实际搜索时间
             long actualSearchTime = System.currentTimeMillis() - startTime;
-            LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", 节点数: " + nodes + ", 节点/秒: " + nps + ", 搜索时间: " + actualSearchTime + "ms");
+            LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", 节点数: " + nodes + ", 节点/秒: " + nps + ", 搜索时间: " + actualSearchTime + "ms, 已停止: " + shouldStop);
             
             if (bestMove != null) {
                 Move move = uciToMove(bestMove);
@@ -771,6 +797,14 @@ public class PikafishAI {
     
     public boolean isInitialized() {
         return initialized;
+    }
+    
+    // 中断AI搜索
+    public void interrupt() {
+        shouldStop = true;
+        if (isSearching) {
+            sendCommand("stop");
+        }
     }
     
     public void close() {
