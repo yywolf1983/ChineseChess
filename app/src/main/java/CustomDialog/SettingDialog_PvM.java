@@ -44,6 +44,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public boolean isMusicPlay, isEffectPlay;
     public int thinkingTime; // 思考时间（秒）
     public int searchDepth; // 搜索深度
+    public int skillLevel; // 技能级别（1-20）
+    public int multiPV; // 多主变搜索（1-5）
 
     public SettingDialog_PvM(Context context) {
         super(context, R.style.CustomDialog);
@@ -55,17 +57,25 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             // 将原来的mLevel转换为思考时间，1-3级对应3-7秒
             thinkingTime = PvMActivity.setting.mLevel * 2 + 1;
             searchDepth = PvMActivity.setting.depth;
+            skillLevel = PvMActivity.setting.skillLevel;
+            multiPV = PvMActivity.setting.multiPV;
         } else {
             // 设置默认值
             isMusicPlay = true;
             isEffectPlay = true;
             thinkingTime = 5; // 默认5秒
             searchDepth = 10; // 默认搜索深度10
+            skillLevel = 20; // 默认最高技能级别
+            multiPV = 1; // 默认单主变
         }
     }
 
     public SeekBar depthSeekBar;
     public TextView depthValue;
+    public SeekBar skillLevelSeekBar;
+    public TextView skillLevelValue;
+    public SeekBar multiPVSeekBar;
+    public TextView multiPVValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -90,10 +100,18 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         // 设置搜索深度滑块
         depthSeekBar.setProgress(searchDepth);
         depthValue.setText(searchDepth + "层");
+        // 设置技能级别滑块
+        skillLevelSeekBar.setProgress(skillLevel);
+        skillLevelValue.setText(skillLevel + "级");
+        // 设置MultiPV滑块
+        multiPVSeekBar.setProgress(multiPV - 1); // 因为SeekBar从0开始，所以减1
+        multiPVValue.setText(multiPV + "变");
         musicGroup.setOnCheckedChangeListener(this);
         effectGroup.setOnCheckedChangeListener(this);
         timeSeekBar.setOnSeekBarChangeListener(this);
         depthSeekBar.setOnSeekBarChangeListener(this);
+        skillLevelSeekBar.setOnSeekBarChangeListener(this);
+        multiPVSeekBar.setOnSeekBarChangeListener(this);
     }
 
     private void initView() {
@@ -115,6 +133,12 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         // 初始化搜索深度滑块
         depthSeekBar = (SeekBar) findViewById(R.id.depthSeekBar);
         depthValue = (TextView) findViewById(R.id.depthValue);
+        // 初始化技能级别滑块
+        skillLevelSeekBar = (SeekBar) findViewById(R.id.skillLevelSeekBar);
+        skillLevelValue = (TextView) findViewById(R.id.skillLevelValue);
+        // 初始化MultiPV滑块
+        multiPVSeekBar = (SeekBar) findViewById(R.id.multiPVSeekBar);
+        multiPVValue = (TextView) findViewById(R.id.multiPVValue);
     }
 
 
@@ -136,6 +160,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 // 将思考时间转换回mLevel（1-3级）
                 PvMActivity.setting.mLevel = (thinkingTime - 1) / 2;
                 PvMActivity.setting.depth = searchDepth;
+                PvMActivity.setting.skillLevel = skillLevel;
+                PvMActivity.setting.multiPV = multiPV;
                 // 立即生效：更新音乐播放状态
                 if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
                     PvMActivity.backMusic.start();
@@ -190,9 +216,17 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 thinkingTime = progress;
                 timeValue.setText(thinkingTime + "秒");
             } else if (seekBar == depthSeekBar) {
-                // 确保搜索深度不低于5
-                searchDepth = Math.max(5, progress);
+                // 确保搜索深度在5-35之间
+                searchDepth = Math.max(5, Math.min(35, progress));
                 depthValue.setText(searchDepth + "层");
+            } else if (seekBar == skillLevelSeekBar) {
+                // 确保技能级别在1-20之间
+                skillLevel = Math.max(1, Math.min(20, progress));
+                skillLevelValue.setText(skillLevel + "级");
+            } else if (seekBar == multiPVSeekBar) {
+                // 确保MultiPV在1-5之间（因为SeekBar从0开始，所以加1）
+                multiPV = Math.max(1, Math.min(5, progress + 1));
+                multiPVValue.setText(multiPV + "变");
             }
         }
     }

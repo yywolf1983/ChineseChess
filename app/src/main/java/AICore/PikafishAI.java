@@ -171,11 +171,28 @@ public class PikafishAI {
                 sendCommand("setoption name Hash value " + hashSize);
                 LogUtils.i("PikafishAI", "设置哈希表大小: " + hashSize + " MB");
                 
-                // 3. 设置多主变（MultiPV）
-                sendCommand("setoption name MultiPV value 1");
+                // 3. 获取设置值
+                int skillLevel = 20; // 默认最高级别
+                int multiPV = 1; // 默认单主变
+                try {
+                    // 尝试获取Setting中的值
+                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                    Object settingObj = pvmaClass.getField("setting").get(null);
+                    if (settingObj != null) {
+                        skillLevel = (int) settingObj.getClass().getField("skillLevel").get(settingObj);
+                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
+                    }
+                } catch (Exception e) {
+                    LogUtils.e("PikafishAI", "获取设置值失败: " + e.getMessage());
+                }
                 
-                // 4. 设置技能级别（默认最高）
-                sendCommand("setoption name Skill Level value 20");
+                // 4. 设置多主变（MultiPV）
+                sendCommand("setoption name MultiPV value " + multiPV);
+                LogUtils.i("PikafishAI", "设置MultiPV: " + multiPV);
+                
+                // 5. 设置技能级别
+                sendCommand("setoption name Skill Level value " + skillLevel);
+                LogUtils.i("PikafishAI", "设置技能级别: " + skillLevel);
                 
                 // 等待参数设置完成
                 sendCommand("isready");

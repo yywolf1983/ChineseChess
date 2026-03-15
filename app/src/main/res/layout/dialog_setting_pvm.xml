@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical"
-    android:minWidth="300dp"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/shape_dialog">
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:minWidth="300dp"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/shape_dialog">
 
     <TextView
         android:id="@+id/textView3"
@@ -12,9 +17,9 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_margin="15dp"
-        android:textSize="30dp"
+        android:textSize="20sp"
         android:textColor="#000000"
-        android:text="设置" />
+        android:text="设置 (2)" />
 
     <RadioGroup
         android:id="@+id/musicGroup"
@@ -30,7 +35,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="24dp"
+            android:textSize="16sp"
             android:textColor="#000000"
             android:text="音乐" />
 
@@ -40,7 +45,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="24dp"
+            android:textSize="16sp"
             android:textColor="#000000"
             android:text="开" />
 
@@ -50,7 +55,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="24dp"
+            android:textSize="16sp"
             android:textColor="#000000"
             android:text="关" />
     </RadioGroup>
@@ -69,7 +74,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="24dp"
+            android:textSize="16sp"
             android:textColor="#000000"
             android:text="音效" />
 
@@ -79,7 +84,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="24dp"
+            android:textSize="16sp"
             android:textColor="#000000"
             android:text="开" />
 
@@ -89,7 +94,7 @@
             android:layout_width="80dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:textSize="24dp"
+            android:textSize="16sp"
             android:textColor="#000000"
             android:text="关" />
     </RadioGroup>
@@ -114,7 +119,7 @@
                 android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="24dp"
+                android:textSize="16sp"
                 android:textColor="#000000"
                 android:text="思考时间" />
 
@@ -123,7 +128,7 @@
                 android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="24dp"
+                android:textSize="16sp"
                 android:textColor="#000000"
                 android:gravity="center"
                 android:text="5秒" />
@@ -148,7 +153,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="14dp"
+                android:textSize="12sp"
                 android:textColor="#000000"
                 android:text="1秒" />
 
@@ -156,7 +161,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="right"
-                android:textSize="14dp"
+                android:textSize="12sp"
                 android:textColor="#000000"
                 android:text="60秒" />
         </LinearLayout>
@@ -182,7 +187,7 @@
                 android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="24dp"
+                android:textSize="16sp"
                 android:textColor="#000000"
                 android:text="搜索深度" />
 
@@ -191,7 +196,7 @@
                 android:layout_width="80dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="24dp"
+                android:textSize="16sp"
                 android:textColor="#000000"
                 android:gravity="center"
                 android:text="10层" />
@@ -204,7 +209,7 @@
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
             android:min="5"
-            android:max="30"
+            android:max="35"
             android:progress="10"
             android:thumb="@android:drawable/btn_star" />
 
@@ -217,7 +222,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="14dp"
+                android:textSize="12sp"
                 android:textColor="#000000"
                 android:text="5层" />
 
@@ -225,10 +230,164 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="right"
-                android:textSize="14dp"
+                android:textSize="12sp"
                 android:textColor="#000000"
-                android:text="30层" />
+                android:text="35层" />
         </LinearLayout>
+    </LinearLayout>
+
+    <!-- 技能级别设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        android:layout_marginRight="25dp"
+        android:layout_marginLeft="25dp"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center">
+
+            <TextView
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:text="技能级别" />
+
+            <TextView
+                android:id="@+id/skillLevelValue"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:gravity="center"
+                android:text="20级" />
+        </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/skillLevelSeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:min="1"
+            android:max="20"
+            android:progress="20"
+            android:thumb="@android:drawable/btn_star" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:text="1级" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="right"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:text="20级" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:textColor="#666666"
+            android:layout_marginTop="5dp"
+            android:text="技能级别影响AI的走棋风格和强度，20级为最高水平" />
+    </LinearLayout>
+
+    <!-- MultiPV设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        android:layout_marginRight="25dp"
+        android:layout_marginLeft="25dp"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center">
+
+            <TextView
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:text="MultiPV" />
+
+            <TextView
+                android:id="@+id/multiPVValue"
+                android:layout_width="80dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:gravity="center"
+                android:text="1变" />
+        </LinearLayout>
+
+        <SeekBar
+            android:id="@+id/multiPVSeekBar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="10dp"
+            android:min="0"
+            android:max="4"
+            android:progress="0"
+            android:thumb="@android:drawable/btn_star" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:text="1变" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="right"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:text="5变" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="10sp"
+            android:textColor="#666666"
+            android:layout_marginTop="5dp"
+            android:text="MultiPV影响AI考虑的走法多样性，值越大计算负担越重" />
     </LinearLayout>
 
     <LinearLayout
@@ -244,7 +403,7 @@
             android:layout_weight="1"
             android:layout_margin="15dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="20dp"
+            android:textSize="14sp"
             android:text="确定" />
 
         <Button
@@ -255,8 +414,10 @@
             android:layout_weight="1"
             android:layout_margin="15dp"
             android:background="@drawable/selector_btn2"
-            android:textSize="20dp"
+            android:textSize="14sp"
             android:text="取消" />
     </LinearLayout>
 
-</LinearLayout>
+    </LinearLayout>
+
+</ScrollView>
