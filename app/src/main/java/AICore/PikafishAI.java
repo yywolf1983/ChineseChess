@@ -543,36 +543,21 @@ public class PikafishAI {
             // 发送位置信息
             sendCommand("position fen " + fen);
             
-            // 发送思考命令，优化时间管理
+            // 发送思考命令，严格使用设置的深度和时间
             int depth = 20; // 默认深度
-            int time = 3000; // 默认时间限制（毫秒，缩短为3秒）
+            int time = 10000; // 默认时间限制（毫秒，10秒）
             if (chessInfo != null && chessInfo.setting != null) {
                 depth = chessInfo.setting.depth;
-                // 根据mLevel计算思考时间：缩短为 mLevel + 0.5 秒
+                // 根据mLevel计算思考时间：mLevel * 1 秒
                 int thinkingTime = Math.max(1, chessInfo.setting.mLevel);
-                time = thinkingTime * 500 + 500; // 转换为毫秒，最短1秒，最长约10.5秒
-            }
-            
-            // 评估局面复杂度，动态调整搜索参数
-            int complexity = evaluatePositionComplexity(chessInfo);
-            LogUtils.i("PikafishAI", "局面复杂度评估: " + complexity);
-            
-            // 根据复杂度调整搜索参数
-            if (complexity > 70) {
-                // 复杂局面，增加搜索深度
-                depth = Math.min(depth + 2, 35); // 深度最多增加到35
-                LogUtils.i("PikafishAI", "复杂局面，增加深度至: " + depth);
-            } else if (complexity < 30) {
-                // 简单局面，减少搜索深度
-                depth = Math.max(depth - 2, 5); // 深度最少为5
-                LogUtils.i("PikafishAI", "简单局面，减少深度至: " + depth);
+                time = thinkingTime * 1000; // 转换为毫秒，最短1秒
             }
             
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             
-            // 使用时间限制搜索，不限制深度
-            sendCommand("go movetime " + time);
+            // 同时使用深度限制和时间限制，先达到哪个条件就停止
+            sendCommand("go depth " + depth + " movetime " + time);
             
             // 读取最佳走法和评分
             String bestMove = null;
