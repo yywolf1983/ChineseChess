@@ -54,8 +54,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         if (PvMActivity.setting != null) {
             isMusicPlay = PvMActivity.setting.isMusicPlay;
             isEffectPlay = PvMActivity.setting.isEffectPlay;
-            // 将原来的mLevel转换为思考时间，1-3级对应3-7秒
-            thinkingTime = PvMActivity.setting.mLevel * 2 + 1;
+            // 直接使用mLevel作为思考时间
+            thinkingTime = PvMActivity.setting.mLevel;
             searchDepth = PvMActivity.setting.depth;
             skillLevel = PvMActivity.setting.skillLevel;
             multiPV = PvMActivity.setting.multiPV;
@@ -68,6 +68,9 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             skillLevel = 20; // 默认最高技能级别
             multiPV = 1; // 默认单主变
         }
+        
+        // 确保思考时间在合理范围内
+        thinkingTime = Math.max(1, Math.min(60, thinkingTime));
     }
 
     public SeekBar depthSeekBar;
@@ -150,36 +153,57 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     }
 
     @Override
-    public void onClick(View v) {
-        int id = v.getId();
-        if (id == R.id.posBtn) {
-            // 保存设置到PvMActivity.setting
-            if (PvMActivity.setting != null) {
-                PvMActivity.setting.isMusicPlay = isMusicPlay;
-                PvMActivity.setting.isEffectPlay = isEffectPlay;
-                // 将思考时间转换回mLevel（1-3级）
-                PvMActivity.setting.mLevel = (thinkingTime - 1) / 2;
-                PvMActivity.setting.depth = searchDepth;
-                PvMActivity.setting.skillLevel = skillLevel;
-                PvMActivity.setting.multiPV = multiPV;
-                // 立即生效：更新音乐播放状态
-                if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
-                    PvMActivity.backMusic.start();
-                } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
-                    PvMActivity.backMusic.pause();
+        public void onClick(View v) {
+            int id = v.getId();
+            if (id == R.id.posBtn) {
+                // 保存设置到PvMActivity.setting
+                if (PvMActivity.setting != null) {
+                    PvMActivity.setting.isMusicPlay = isMusicPlay;
+                    PvMActivity.setting.isEffectPlay = isEffectPlay;
+                    // 直接保存思考时间，不再转换为mLevel
+                    // 由于PikafishAI现在直接使用思考时间，我们不需要转换
+                    PvMActivity.setting.mLevel = thinkingTime;
+                    PvMActivity.setting.depth = searchDepth;
+                    PvMActivity.setting.skillLevel = skillLevel;
+                    PvMActivity.setting.multiPV = multiPV;
+                    // 立即生效：更新音乐播放状态
+                    if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
+                        PvMActivity.backMusic.start();
+                    } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
+                        PvMActivity.backMusic.pause();
+                    }
+                    // 保存设置到SharedPreferences
+                    PvMActivity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
+                    
+                    // 同时更新chessInfo.setting，确保AI使用最新设置
+                    try {
+                        Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                        Object instance = pvmaClass.getField("instance").get(null);
+                        if (instance != null) {
+                            Object chessInfoObj = pvmaClass.getField("chessInfo").get(instance);
+                            if (chessInfoObj != null) {
+                                chessInfoObj.getClass().getField("setting").set(chessInfoObj, PvMActivity.setting);
+                            }
+                            
+                            // 更新PikafishAI的设置
+                            Object pikafishAIObj = pvmaClass.getField("pikafishAI").get(instance);
+                            if (pikafishAIObj != null) {
+                                pikafishAIObj.getClass().getMethod("updateSettings", int.class, int.class).invoke(pikafishAIObj, skillLevel, multiPV);
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 忽略异常
+                    }
                 }
-                // 保存设置到SharedPreferences
-                PvMActivity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
-            }
-            if (onClickBottomListener != null) {
-                onClickBottomListener.onPositiveClick();
-            }
-        } else if (id == R.id.negBtn) {
-            if (onClickBottomListener != null) {
-                onClickBottomListener.onNegtiveClick();
+                if (onClickBottomListener != null) {
+                    onClickBottomListener.onPositiveClick();
+                }
+            } else if (id == R.id.negBtn) {
+                if (onClickBottomListener != null) {
+                    onClickBottomListener.onNegtiveClick();
+                }
             }
         }
-    }
 
     public SettingDialog_PvM.OnClickBottomListener onClickBottomListener;
 

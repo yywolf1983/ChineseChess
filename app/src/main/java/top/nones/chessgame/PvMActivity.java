@@ -36,6 +36,9 @@ import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import ChessMove.Rule;
 import CustomView.RoundView;
@@ -52,6 +55,9 @@ import AICore.PikafishAI;
 import ChessMove.Move;
 
 public class PvMActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
+    // 静态实例，用于在其他类中访问
+    public static PvMActivity instance;
+    
     // 从HomeActivity移动过来的静态变量和方法
     public static final int MIN_CLICK_DELAY_TIME = 100;
     public static long curClickTime = 0L;
@@ -81,6 +87,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // AI相关变量
     public PikafishAI pikafishAI;
     
+    // 行棋时间记录
+    public long redTime = 0; // 红方行棋时间（毫秒）
+    public long blackTime = 0; // 黑方行棋时间（毫秒）
+    public long currentTurnStartTime = 0; // 当前回合开始时间
+    
+    // 时间更新线程
+    private ScheduledExecutorService timeUpdateExecutor;
+    
     // 模块管理器
     public PvMActivityNotation notationManager;
     public PvMActivitySetup setupManager;
@@ -92,6 +106,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pvm);
+        // 初始化静态实例
+        instance = this;
         relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
 
         // 先初始化模块
@@ -102,6 +118,34 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         init.init();
         init.initViews();
         init.initBackgroundTasks();
+        
+        // 初始化时间更新线程
+        initTimeUpdateExecutor();
+    }
+    
+    // 初始化时间更新线程
+    private void initTimeUpdateExecutor() {
+        timeUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
+        // 每100毫秒更新一次时间显示
+        timeUpdateExecutor.scheduleAtFixedRate(() -> {
+            if (currentTurnStartTime > 0 && chessInfo != null) {
+                runOnUiThread(() -> {
+                    // 计算当前回合已经经过的时间
+                    long elapsed = System.currentTimeMillis() - currentTurnStartTime;
+                    // 显示当前行棋方的时间，同时保留对方时间
+                    if (chessInfo.IsRedGo) {
+                        roundView.setTime(elapsed, blackTime);
+                    } else {
+                        roundView.setTime(redTime, elapsed);
+                    }
+                });
+            } else if (chessInfo != null) {
+                // 行棋后保留当前时间
+                runOnUiThread(() -> {
+                    roundView.setTime(redTime, blackTime);
+                });
+            }
+        }, 0, 100, TimeUnit.MILLISECONDS);
     }
     
     // 初始化模块
@@ -159,6 +203,54 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         } else if (viewId == R.id.btn_setup) {
             // 切换摆棋模式
             setupManager.toggleSetupMode();
+        }
+    }
+    
+    // 格式化时间（毫秒转分:秒）
+    public String formatTime(long milliseconds) {
+        int seconds = (int) (milliseconds / 1000);
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        return String.format("%02d:%02d", minutes, seconds);
+    }
+    
+    // 更新时间显示
+    public void updateTimeDisplay() {
+        if (roundView != null) {
+            roundView.setTime(redTime, blackTime);
+        }
+    }
+    
+    // 开始当前回合计时
+    public void startTurnTimer() {
+        // 只有在currentTurnStartTime为0时才重新开始计时
+        // 这样可以避免点击棋子时重置时间
+        if (currentTurnStartTime == 0) {
+            currentTurnStartTime = System.currentTimeMillis();
+        }
+    }
+    
+    // 结束当前回合计时
+    public void stopTurnTimer() {
+        if (currentTurnStartTime > 0) {
+            // 计算当前回合已经经过的时间
+            long elapsed = System.currentTimeMillis() - currentTurnStartTime;
+            // 更新当前行棋方的时间
+            if (chessInfo != null) {
+                // 现在stopTurnTimer是在updateAllInfo之前调用的
+                // 所以chessInfo.IsRedGo还没有切换，使用当前的IsRedGo来更新时间
+                if (chessInfo.IsRedGo) {
+                    // 当前是红方回合，更新红方时间
+                    redTime = elapsed;
+                } else {
+                    // 当前是黑方回合，更新黑方时间
+                    blackTime = elapsed;
+                }
+            }
+            // 行棋后保留当前时间，不归零
+            currentTurnStartTime = 0;
+            // 更新时间显示
+            updateTimeDisplay();
         }
     }
     
@@ -388,6 +480,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 关闭AI线程池
         if (aiManager != null) {
             aiManager.shutdown();
+        }
+        // 关闭时间更新线程
+        if (timeUpdateExecutor != null) {
+            timeUpdateExecutor.shutdown();
         }
     }
 }

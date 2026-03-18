@@ -17,6 +17,10 @@ public class RoundView extends View {
     public ChessInfo chessInfo;
     private int gameMode = 0; // 对战模式
     private int moveScore = 0; // 走法评分
+    private long redTime = 0; // 红方行棋时间（毫秒）
+    private long blackTime = 0; // 黑方行棋时间（毫秒）
+    private int redSearchDepth = 0; // 红方AI搜索深度
+    private int blackSearchDepth = 0; // 黑方AI搜索深度
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
@@ -49,6 +53,30 @@ public class RoundView extends View {
     // 设置走法评分
     public void setMoveScore(int score) {
         this.moveScore = score;
+        invalidate();
+    }
+    
+    // 设置时间
+    public void setTime(long redTime, long blackTime) {
+        this.redTime = redTime;
+        this.blackTime = blackTime;
+        invalidate();
+    }
+    
+    // 设置搜索深度
+    public void setSearchDepth(int depth, boolean isRed) {
+        if (isRed) {
+            this.redSearchDepth = depth;
+        } else {
+            this.blackSearchDepth = depth;
+        }
+        invalidate();
+    }
+    
+    // 重载方法，保持向后兼容
+    public void setSearchDepth(int depth) {
+        // 默认为黑方深度
+        this.blackSearchDepth = depth;
         invalidate();
     }
     
@@ -133,7 +161,7 @@ public class RoundView extends View {
         
         // 计算垂直间距
         float paddingTop = convertDpToPixel(10, getContext());
-        float lineHeight = convertDpToPixel(24, getContext());
+        float lineHeight = convertDpToPixel(22, getContext());
         
         // 绘制对战模式（突出显示）
         String modeText = getGameModeName(gameMode);
@@ -142,61 +170,63 @@ public class RoundView extends View {
         modeTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(modeText, modeX, modeY, modeTextPaint);
         
-        // 绘制评分和搜索深度（并排显示）
-        String scoreText = "评分: " + moveScore;
-        // 获取当前搜索深度
-        int searchDepth = 10; // 默认值
-        if (PvMActivity.setting != null) {
-            searchDepth = PvMActivity.setting.depth;
-        }
-        String depthText = "深度: " + searchDepth + "层";
-        
+        // 绘制评分和回合信息（居中显示）
         float infoY = modeY + lineHeight; // 中间部分，调整位置
+        
+        // 绘制评分（左侧）
+        String scoreText = "评分: " + moveScore;
         float scoreX = width * 1 / 3; // 左侧
-        float depthX = width * 2 / 3; // 右侧
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(scoreText, scoreX, infoY, infoTextPaint);
-        canvas.drawText(depthText, depthX, infoY, infoTextPaint);
         
-        // 绘制回合信息和回合数（下半部分）
-        String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
-        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        
-        float textY = infoY + lineHeight; // 下半部分，调整位置
-        
-        // 绘制简单的图标提示
-        float iconSize = convertDpToPixel(16, getContext());
-        float turnX = width * 1 / 4; // 左侧
-        float iconX = turnX - iconSize - convertDpToPixel(8, getContext());
-        float iconY = textY - iconSize / 2;
-        if (chessInfo.IsRedGo) {
-            // 绘制红色圆形作为红方图标
-            Paint redIconPaint = new Paint();
-            redIconPaint.setColor(Color.RED);
-            redIconPaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(iconX, iconY, iconSize/2, redIconPaint);
-        } else {
-            // 绘制黑色圆形作为黑方图标
-            Paint blackIconPaint = new Paint();
-            blackIconPaint.setColor(Color.BLACK);
-            blackIconPaint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(iconX, iconY, iconSize/2, blackIconPaint);
-        }
-        
-        turnPaint.setTextAlign(Paint.Align.LEFT);
-        canvas.drawText(turnText, turnX, textY, turnPaint);
-        
-        // 绘制回合数
+        // 绘制回合数（右侧）
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
-        String stepText = "回合: " + roundCount;
-        float stepX = width * 3 / 4; // 右侧
-        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
-        canvas.drawText(stepText, stepX, textY, infoTextPaint);
+        String stepText = "第" + roundCount + "回合";
+        float stepX = width * 2 / 3; // 右侧
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(stepText, stepX, infoY, infoTextPaint);
+        
+        // 绘制红方和黑方时间（居中显示）
+        float textY = infoY + lineHeight; // 下半部分，调整位置
+        float iconSize = convertDpToPixel(16, getContext());
+        
+        // 红方时间（左半部分居中）
+        float redCenterX = width * 1 / 3;
+        // 绘制时间
+        redTextPaint.setTextAlign(Paint.Align.CENTER);
+        String redText = formatTime(redTime);
+        canvas.drawText(redText, redCenterX, textY, redTextPaint);
+        
+        // 绘制搜索深度（中间位置）
+        float depthCenterX = width * 1 / 2;
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        // 只要返回层数就显示，优先显示较大的层数
+        if (redSearchDepth > 0 || blackSearchDepth > 0) {
+            int depth = Math.max(redSearchDepth, blackSearchDepth);
+            String depthText = depth + "层";
+            canvas.drawText(depthText, depthCenterX, textY, infoTextPaint);
+        }
+        
+        // 黑方时间（右半部分居中）
+        float blackCenterX = width * 2 / 3;
+        // 绘制时间
+        blackTextPaint.setTextAlign(Paint.Align.CENTER);
+        String blackText = formatTime(blackTime);
+        canvas.drawText(blackText, blackCenterX, textY, blackTextPaint);
         
         // 重置文本对齐
         infoTextPaint.setTextAlign(Paint.Align.LEFT);
-        turnPaint.setTextAlign(Paint.Align.LEFT);
+        redTextPaint.setTextAlign(Paint.Align.LEFT);
+        blackTextPaint.setTextAlign(Paint.Align.LEFT);
+    }
+    
+    // 格式化时间（毫秒转分:秒）
+    private String formatTime(long milliseconds) {
+        int seconds = (int) (milliseconds / 1000);
+        int minutes = seconds / 60;
+        seconds = seconds % 60;
+        return String.format("%02d:%02d", minutes, seconds);
     }
     
     // 获取对战模式名称
@@ -228,7 +258,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(100, getContext()); // 100dp高度，减少页头高度，让按钮显示出来
+            height = (int) convertDpToPixel(100, getContext()); // 100dp高度，使布局更加紧凑
         }
         
         viewWidth = width;

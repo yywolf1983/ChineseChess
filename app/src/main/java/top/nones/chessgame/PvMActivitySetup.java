@@ -303,9 +303,17 @@ public class PvMActivitySetup {
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
                 }
+                // 重置时间
+                activity.redTime = 0;
+                activity.blackTime = 0;
+                activity.currentTurnStartTime = 0;
+                activity.updateTimeDisplay();
                 // 重新绘制界面
                 if (activity.chessView != null) {
                     activity.chessView.requestDraw();
+                }
+                if (activity.roundView != null) {
+                    activity.roundView.requestDraw();
                 }
             });
             builder.setNegativeButton("黑方开始", (dialog, which) -> {
@@ -326,9 +334,17 @@ public class PvMActivitySetup {
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
                 }
+                // 重置时间
+                activity.redTime = 0;
+                activity.blackTime = 0;
+                activity.currentTurnStartTime = 0;
+                activity.updateTimeDisplay();
                 // 重新绘制界面
                 if (activity.chessView != null) {
                     activity.chessView.requestDraw();
+                }
+                if (activity.roundView != null) {
+                    activity.roundView.requestDraw();
                 }
             });
             builder.setCancelable(false); // 必须选择一个选项

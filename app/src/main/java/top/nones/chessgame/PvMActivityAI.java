@@ -40,6 +40,12 @@ public class PvMActivityAI {
     public Move calculateAIMoveWithDepthUpdate() {
         // 显示AI开始搜索的信息，包含深度
         boolean isRed = this.activity != null && this.activity.chessInfo != null && this.activity.chessInfo.IsRedGo;
+        
+        // 开始AI回合计时
+        if (this.activity != null) {
+            this.activity.startTurnTimer();
+        }
+        
         startAISearch(isRed);
         
         if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized() || this.activity.chessInfo.piece == null) {
@@ -260,6 +266,9 @@ public class PvMActivityAI {
             Utils.LogUtils.i("Move", "AI走棋: " + moveString);
         }
         
+        // 停止AI回合计时（在updateAllInfo之前调用，确保获取正确的行棋方）
+        this.activity.stopTurnTimer();
+        
         // 更新游戏信息
         this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp);
         this.activity.chessInfo.isMachine = true; // 标记为AI移动
@@ -281,6 +290,9 @@ public class PvMActivityAI {
         
         // 增加继续对局后的回合计数器
         this.activity.continueGameRoundCount++;
+        
+        // 开始对方的回合计时
+        this.activity.startTurnTimer();
         
         // 检查游戏状态
         if (this.activity.controlsManager != null) {
@@ -485,6 +497,17 @@ public class PvMActivityAI {
                         activity.pikafishAI.interrupt();
                     }
                     
+                    // 手动更新搜索深度，传递正确的isRed值
+                    if (activity != null && activity.roundView != null) {
+                        int currentDepth = 0;
+                        if (activity.pikafishAI != null) {
+                            currentDepth = activity.pikafishAI.getCurrentDepth();
+                        }
+                        if (currentDepth > 0) {
+                            activity.roundView.setSearchDepth(currentDepth, isRed);
+                        }
+                    }
+                    
                     aiInstance.isAIAnalyzing = false;
                     aiInstance.dotCount = 0;
                     
@@ -654,7 +677,7 @@ public class PvMActivityAI {
     public void initAIInfoTextView() {
         if (this.activity == null || this.activity.relativeLayout == null) return;
         
-        // 创建TextView
+        // 创建AI信息TextView
         this.activity.aiInfoTextView = new android.widget.TextView(this.activity);
         this.activity.aiInfoTextView.setText("点击支招-AI建议");
         this.activity.aiInfoTextView.setTextSize(14);
@@ -667,15 +690,15 @@ public class PvMActivityAI {
         // 设置字体样式
         this.activity.aiInfoTextView.setTypeface(android.graphics.Typeface.DEFAULT_BOLD);
         
-        // 设置布局参数
-        android.widget.RelativeLayout.LayoutParams params = new android.widget.RelativeLayout.LayoutParams(
+        // 设置AI信息布局参数
+        android.widget.RelativeLayout.LayoutParams aiParams = new android.widget.RelativeLayout.LayoutParams(
             android.widget.RelativeLayout.LayoutParams.MATCH_PARENT,
             android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT
         );
-        params.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
-        params.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
-        params.setMargins(30, 2, 30, 5); // 进一步减小顶部和底部边距，将条幅向上移动更多
-        this.activity.aiInfoTextView.setLayoutParams(params);
+        aiParams.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
+        aiParams.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
+        aiParams.setMargins(30, 2, 30, 5);
+        this.activity.aiInfoTextView.setLayoutParams(aiParams);
         
         // 添加到布局
         this.activity.relativeLayout.addView(this.activity.aiInfoTextView);

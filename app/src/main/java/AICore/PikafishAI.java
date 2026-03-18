@@ -548,10 +548,14 @@ public class PikafishAI {
             int time = 10000; // 默认时间限制（毫秒，10秒）
             if (chessInfo != null && chessInfo.setting != null) {
                 depth = chessInfo.setting.depth;
-                // 根据mLevel计算思考时间：mLevel * 1 秒
-                int thinkingTime = Math.max(1, chessInfo.setting.mLevel);
-                time = thinkingTime * 1000; // 转换为毫秒，最短1秒
+                // 直接使用用户设置的思考时间（现在mLevel保存的就是思考时间）
+                int thinkingTime = chessInfo.setting.mLevel;
+                time = thinkingTime * 1000; // 转换为毫秒
             }
+            
+            // 确保时间和深度设置合理
+            time = Math.max(1000, time); // 最少1秒
+            depth = Math.max(5, depth); // 最少5层
             
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
@@ -634,6 +638,35 @@ public class PikafishAI {
                 }
             } finally {
                 isSearching = false;
+                // 保存最终的搜索深度
+                final int finalDepth = currentDepth;
+                // 更新RoundView中的搜索深度
+                try {
+                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                    Object instance = pvmaClass.getField("instance").get(null);
+                    if (instance != null) {
+                        Object roundViewObj = pvmaClass.getField("roundView").get(instance);
+                        if (roundViewObj != null) {
+                            // 获取当前行棋方
+                            Object chessInfoObj = pvmaClass.getField("chessInfo").get(instance);
+                            boolean isRed = false;
+                            if (chessInfoObj != null) {
+                                isRed = (boolean) chessInfoObj.getClass().getField("IsRedGo").get(chessInfoObj);
+                            }
+                            // 调用带isRed参数的方法
+                            try {
+                                roundViewObj.getClass().getMethod("setSearchDepth", int.class, boolean.class).invoke(roundViewObj, finalDepth, isRed);
+                            } catch (NoSuchMethodException e) {
+                                // 如果方法不存在，调用旧方法
+                                roundViewObj.getClass().getMethod("setSearchDepth", int.class).invoke(roundViewObj, finalDepth);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    // 忽略异常
+                }
+                // 不重置搜索深度，保持最后的值
+                // currentDepth = 0;
             }
             
             // 计算实际搜索时间
@@ -789,6 +822,38 @@ public class PikafishAI {
         shouldStop = true;
         if (isSearching) {
             sendCommand("stop");
+        }
+    }
+    
+    // 更新设置
+    public void updateSettings(int skillLevel, int multiPV) {
+        if (initialized) {
+            // 设置多主变（MultiPV）
+            sendCommand("setoption name MultiPV value " + multiPV);
+            LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
+            
+            // 设置技能级别
+            sendCommand("setoption name Skill Level value " + skillLevel);
+            LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
+            
+            // 等待参数设置完成
+            sendCommand("isready");
+        }
+    }
+    
+    // 更新设置（包含所有参数）
+    public void updateSettings(int skillLevel, int multiPV, int depth, int thinkingTime) {
+        if (initialized) {
+            // 设置多主变（MultiPV）
+            sendCommand("setoption name MultiPV value " + multiPV);
+            LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
+            
+            // 设置技能级别
+            sendCommand("setoption name Skill Level value " + skillLevel);
+            LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
+            
+            // 等待参数设置完成
+            sendCommand("isready");
         }
     }
     

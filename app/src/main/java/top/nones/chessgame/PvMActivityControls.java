@@ -72,6 +72,11 @@ public class PvMActivityControls {
             activity.notationManager.setCurrentMoveIndex(0);
             // 重置继续对局后的回合计数器
             activity.continueGameRoundCount = 0;
+            // 重置时间
+            activity.redTime = 0;
+            activity.blackTime = 0;
+            activity.currentTurnStartTime = 0;
+            activity.updateTimeDisplay();
 
             // 重新绘制界面
             if (activity.chessView != null) {
@@ -100,6 +105,11 @@ public class PvMActivityControls {
                         // 恢复棋盘状态
                         activity.chessInfo.setInfo(tmp);
                         activity.infoSet.curInfo.setInfo(tmp);
+                        // 重置时间
+                        activity.redTime = 0;
+                        activity.blackTime = 0;
+                        activity.currentTurnStartTime = 0;
+                        activity.updateTimeDisplay();
                         // 重新绘制界面
                         if (activity.chessView != null) {
                             activity.chessView.requestDraw();
@@ -120,6 +130,11 @@ public class PvMActivityControls {
                     if (activity.chessInfo != null && activity.infoSet.curInfo != null) {
                         activity.chessInfo.setInfo(initialInfo);
                         activity.infoSet.curInfo.setInfo(initialInfo);
+                        // 重置时间
+                        activity.redTime = 0;
+                        activity.blackTime = 0;
+                        activity.currentTurnStartTime = 0;
+                        activity.updateTimeDisplay();
                         // 重新绘制界面
                         if (activity.chessView != null) {
                             activity.chessView.requestDraw();
@@ -263,6 +278,8 @@ public class PvMActivityControls {
                                         boolean canSelect = (isRedPiece && activity.chessInfo.IsRedGo) || (!isRedPiece && !activity.chessInfo.IsRedGo);
                                         
                                         if (canSelect) {
+                                            // 开始计时
+                                            activity.startTurnTimer();
                                             activity.chessInfo.prePos = new Pos(i, j);
                                             activity.chessInfo.IsChecked = true;
                                             java.util.List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
@@ -344,7 +361,13 @@ public class PvMActivityControls {
                                                 Utils.LogUtils.i("Move", "用户走棋: " + moveString);
                                             }
 
+                                            // 停止计时（在updateAllInfo之前调用，确保获取正确的行棋方）
+                                            activity.stopTurnTimer();
+
                                             activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp);
+
+                                            // 开始对方的回合计时
+                                            activity.startTurnTimer();
 
                                             // 保存移动后的状态到栈中
                                             try {
