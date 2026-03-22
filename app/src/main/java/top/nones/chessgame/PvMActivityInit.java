@@ -516,40 +516,10 @@ public class PvMActivityInit {
         public void run() {
             Log.d("PvMActivity", "开始加载数据");
             try {
-                // 尝试从文件加载数据
-                if (SaveInfo.fileIsExists("ChessInfo_pvm.bin")) {
-                    try {
-                        final ChessInfo loadedChessInfo = SaveInfo.DeserializeChessInfo("ChessInfo_pvm.bin");
-                        if (activity != null) {
-                            activity.runOnUiThread(new LoadChessInfoRunnable(activity, loadedChessInfo));
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        // 加载失败，使用默认值
-                        if (activity != null) {
-                            activity.runOnUiThread(new LoadDefaultChessInfoRunnable(activity));
-                        }
-                    }
-                }
-
-                if (SaveInfo.fileIsExists("InfoSet_pvm.bin")) {
-                    try {
-                        final InfoSet loadedInfoSet = SaveInfo.DeserializeInfoSet("InfoSet_pvm.bin");
-                        if (activity != null) {
-                            activity.runOnUiThread(new LoadInfoSetRunnable(activity, loadedInfoSet));
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        // 加载失败，使用默认值
-                        if (activity != null) {
-                            activity.runOnUiThread(new LoadDefaultInfoSetRunnable(activity));
-                        }
-                    }
-                } else {
-                    // 如果没有InfoSet文件，确保preInfo栈中有初始状态
-                    if (activity != null) {
-                        activity.runOnUiThread(new PushInitialInfoRunnable(activity));
-                    }
+                // 总是使用新的游戏状态，不加载旧存档
+                // 这样可以确保新局总是被正确初始化
+                if (activity != null) {
+                    activity.runOnUiThread(new LoadDefaultAllRunnable(activity));
                 }
                 Log.d("PvMActivity", "数据加载完成");
             } catch (Exception e) {

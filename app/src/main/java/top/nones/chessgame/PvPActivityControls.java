@@ -220,12 +220,23 @@ public class PvPActivityControls {
     }
 
     private void handleRetryButton() {
-        // 简化实现，直接重置游戏
+        // 完全重置游戏状态
         try {
-            chessInfo.setInfo(new ChessInfo());
-            infoSet.newInfo();
+            // 创建新的ChessInfo对象
+            chessInfo = new ChessInfo();
+            // 创建新的InfoSet对象
+            infoSet = new InfoSet();
             // 重新推入初始状态
             infoSet.pushInfo(chessInfo);
+            // 重新绘制界面
+            if (activity.getChessView() != null) {
+                activity.getChessView().setChessInfo(chessInfo);
+                activity.getChessView().requestDraw();
+            }
+            if (activity.getRoundView() != null) {
+                activity.getRoundView().setChessInfo(chessInfo);
+                activity.getRoundView().requestDraw();
+            }
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }

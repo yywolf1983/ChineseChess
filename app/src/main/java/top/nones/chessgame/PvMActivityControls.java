@@ -49,22 +49,21 @@ public class PvMActivityControls {
         builder.setTitle("新局确认");
         builder.setMessage("确定要开始新局吗？当前游戏进度将被清除。");
         builder.setPositiveButton("确定", (dialog, which) -> {
-            // 简化实现，直接重置游戏
+            // 完全重置游戏状态
             try {
-                if (activity.chessInfo != null) {
-                    activity.chessInfo.setInfo(new ChessInfo());
-                    // 重新设置setting属性
-                    if (PvMActivity.setting != null) {
-                        activity.chessInfo.setting = PvMActivity.setting;
-                    }
-                    // 确保摆棋模式被关闭
-                    activity.chessInfo.IsSetupMode = false;
+                // 创建新的ChessInfo对象
+                activity.chessInfo = new ChessInfo();
+                // 重新设置setting属性
+                if (PvMActivity.setting != null) {
+                    activity.chessInfo.setting = PvMActivity.setting;
                 }
-                if (activity.infoSet != null) {
-                    activity.infoSet.newInfo();
-                    // 重新推入初始状态
-                    activity.infoSet.pushInfo(activity.chessInfo);
-                }
+                // 确保摆棋模式被关闭
+                activity.chessInfo.IsSetupMode = false;
+                
+                // 创建新的InfoSet对象
+                activity.infoSet = new InfoSet();
+                // 重新推入初始状态
+                activity.infoSet.pushInfo(activity.chessInfo);
             } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
             }
@@ -82,12 +81,15 @@ public class PvMActivityControls {
 
             // 重新绘制界面
             if (activity.chessView != null) {
+                activity.chessView.setChessInfo(activity.chessInfo);
                 activity.chessView.requestDraw();
             }
             if (activity.roundView != null) {
+                activity.roundView.setChessInfo(activity.chessInfo);
                 activity.roundView.requestDraw();
             }
             if (activity.setupModeView != null) {
+                activity.setupModeView.setChessInfo(activity.chessInfo);
                 activity.setupModeView.setVisibility(View.GONE);
             }
         });
