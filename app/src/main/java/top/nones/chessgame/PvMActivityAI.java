@@ -119,9 +119,12 @@ public class PvMActivityAI {
         Move move = moveWithScore.move;
         int score = moveWithScore.score;
         
-        // 更新评分显示
-        if (this.activity.roundView != null) {
-            this.activity.roundView.setMoveScore(score);
+        // 确保评分始终以红方为基准
+        // 红方行棋时，引擎返回的评分已经是以红方为基准
+        // 黑方行棋时，引擎返回的评分是以黑方为基准，需要取反
+        boolean isRedTurn = this.activity.chessInfo.IsRedGo;
+        if (!isRedTurn) {
+            score = -score;
         }
         
         // 验证移动的有效性

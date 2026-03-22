@@ -412,12 +412,21 @@ public class PvMActivityControls {
                                             if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
                                                 new Thread(() -> {
                                                     AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
-                                                    final int score = moveWithScore.score;
+                                                    int score = moveWithScore.score;
                                                     
+                                                    // 确保评分始终以红方为基准
+                                                    // 红方行棋时，引擎返回的评分已经是以红方为基准
+                                                    // 黑方行棋时，引擎返回的评分是以黑方为基准，需要取反
+                                                    boolean isRedTurn = activity.chessInfo.IsRedGo;
+                                                    if (!isRedTurn) {
+                                                        score = -score;
+                                                    }
+                                                    
+                                                    final int finalScore = score;
                                                     // 更新评分显示
                                                     activity.runOnUiThread(() -> {
                                                         if (activity.roundView != null) {
-                                                            activity.roundView.setMoveScore(score);
+                                                            activity.roundView.setMoveScore(finalScore);
                                                         }
                                                     });
                                                 }).start();

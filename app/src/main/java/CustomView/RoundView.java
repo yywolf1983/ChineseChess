@@ -174,7 +174,14 @@ public class RoundView extends View {
         float infoY = modeY + lineHeight; // 中间部分，调整位置
         
         // 绘制评分（左侧）
-        String scoreText = "评分: " + moveScore;
+        String scoreText;
+        if (moveScore > 0) {
+            scoreText = "红方领先: " + moveScore;
+        } else if (moveScore < 0) {
+            scoreText = "黑方领先: " + Math.abs(moveScore);
+        } else {
+            scoreText = "双方均势";
+        }
         float scoreX = width * 1 / 3; // 左侧
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(scoreText, scoreX, infoY, infoTextPaint);
