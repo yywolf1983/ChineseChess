@@ -252,6 +252,9 @@ public class PvMActivityNotation {
                         if (activity.chessView != null) {
                             activity.chessView.setChessInfo(activity.chessInfo);
                         }
+                        // 重新初始化 infoSet.preInfo 栈
+                        activity.infoSet.newInfo();
+                        activity.infoSet.pushInfo(activity.chessInfo);
                     } catch (CloneNotSupportedException e) {
                         e.printStackTrace();
                     }
@@ -289,6 +292,9 @@ public class PvMActivityNotation {
                     if (activity.chessView != null) {
                         activity.chessView.setChessInfo(activity.chessInfo);
                     }
+                    // 重新初始化 infoSet.preInfo 栈
+                    activity.infoSet.newInfo();
+                    activity.infoSet.pushInfo(activity.chessInfo);
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
                 }
