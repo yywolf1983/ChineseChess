@@ -247,11 +247,16 @@ public class PvPActivityControls {
         if (infoSet != null && infoSet.preInfo != null && chessInfo != null && infoSet.curInfo != null) {
             // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
             if (infoSet.preInfo.size() > 1) {
-                // 只悔一步棋，不使用循环
-                ChessInfo tmp = infoSet.preInfo.pop();
+                // 弹出栈顶元素（当前状态）
+                infoSet.preInfo.pop();
+                // 恢复到新的栈顶元素的状态
+                ChessInfo tmp = infoSet.preInfo.peek();
                 try {
                     chessInfo.setInfo(tmp);
                     infoSet.curInfo.setInfo(tmp);
+                    // 清除过时的走法记录，避免保存棋谱时处理到这些值
+                    chessInfo.prePos = null;
+                    chessInfo.curPos = null;
                     // 重新绘制界面
                     if (activity.getChessView() != null) {
                         activity.getChessView().requestDraw();
@@ -268,6 +273,9 @@ public class PvPActivityControls {
                 try {
                     chessInfo.setInfo(tmp);
                     infoSet.curInfo.setInfo(tmp);
+                    // 清除过时的走法记录，避免保存棋谱时处理到这些值
+                    chessInfo.prePos = null;
+                    chessInfo.curPos = null;
                     // 重新绘制界面
                     if (activity.getChessView() != null) {
                         activity.getChessView().requestDraw();
@@ -442,39 +450,6 @@ public class PvPActivityControls {
                                             lastRecord.blackMove = move;
                                         }
                                     }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // 只有在非摆棋模式下才处理当前chessInfo中的走法记录（最后一步）
-            if (chessInfo != null && !chessInfo.IsSetupMode && chessInfo.prePos != null && chessInfo.curPos != null) {
-                // 尝试获取移动的棋子类型
-                int piece = 0;
-                boolean isRed = false;
-                
-                // 首先尝试从当前位置获取棋子
-                if (chessInfo.piece != null && chessInfo.curPos.y >= 0 && chessInfo.curPos.y < chessInfo.piece.length && 
-                    chessInfo.curPos.x >= 0 && chessInfo.curPos.x < chessInfo.piece[chessInfo.curPos.y].length) {
-                    piece = chessInfo.piece[chessInfo.curPos.y][chessInfo.curPos.x];
-                    isRed = piece >= 8 && piece <= 14;
-                }
-                
-                if (piece != 0) {
-                    String move = gameModule.generateMoveString(piece, chessInfo.prePos, chessInfo.curPos, isRed);
-                    
-                    if (move != null) {
-                        if (isRed) {
-                            // 红方走法，添加新记录
-                            notation.addMoveRecord(move, "");
-                        } else {
-                            // 黑方走法，更新最后一条记录
-                            if (!notation.getMoveRecords().isEmpty()) {
-                                Info.ChessNotation.MoveRecord lastRecord = notation.getMoveRecords().get(notation.getMoveRecords().size() - 1);
-                                if (lastRecord.blackMove.isEmpty()) {
-                                    lastRecord.blackMove = move;
                                 }
                             }
                         }

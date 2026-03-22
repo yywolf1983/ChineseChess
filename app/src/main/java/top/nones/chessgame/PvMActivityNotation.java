@@ -1776,11 +1776,6 @@ public class PvMActivityNotation {
             ChessInfo info = tempList.get(i);
             addMoveToNotation(notation, info);
         }
-        
-        // 处理当前chessInfo中的最后一步走法
-        if (activity.chessInfo.prePos != null && activity.chessInfo.curPos != null) {
-            addMoveToNotation(notation, activity.chessInfo);
-        }
     }
     
     // 将走法添加到棋谱

@@ -102,13 +102,18 @@ public class PvMActivityControls {
         if (activity.infoSet != null && activity.infoSet.preInfo != null && activity.chessInfo != null && activity.infoSet.curInfo != null) {
             // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
             if (activity.infoSet.preInfo.size() > 1) {
-                // 弹出并恢复到上一个状态（只退回一步）
-                ChessInfo tmp = activity.infoSet.preInfo.pop();
+                // 弹出栈顶元素（当前状态）
+                activity.infoSet.preInfo.pop();
+                // 恢复到新的栈顶元素的状态
+                ChessInfo tmp = activity.infoSet.preInfo.peek();
                 try {
                     if (tmp != null) {
                         // 恢复棋盘状态
                         activity.chessInfo.setInfo(tmp);
                         activity.infoSet.curInfo.setInfo(tmp);
+                        // 清除当前chessInfo的过时走法记录，避免保存棋谱时处理到这些值
+                        activity.chessInfo.prePos = null;
+                        activity.chessInfo.curPos = null;
                         // 重置时间
                         activity.redTime = 0;
                         activity.blackTime = 0;
@@ -135,6 +140,9 @@ public class PvMActivityControls {
                         // 恢复棋盘状态
                         activity.chessInfo.setInfo(tmp);
                         activity.infoSet.curInfo.setInfo(tmp);
+                        // 清除当前chessInfo的过时走法记录，避免保存棋谱时处理到这些值
+                        activity.chessInfo.prePos = null;
+                        activity.chessInfo.curPos = null;
                         // 重置时间
                         activity.redTime = 0;
                         activity.blackTime = 0;
