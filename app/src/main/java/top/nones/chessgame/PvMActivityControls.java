@@ -62,6 +62,8 @@ public class PvMActivityControls {
                 }
                 if (activity.infoSet != null) {
                     activity.infoSet.newInfo();
+                    // 重新推入初始状态
+                    activity.infoSet.pushInfo(activity.chessInfo);
                 }
             } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
@@ -95,13 +97,13 @@ public class PvMActivityControls {
     
     // 处理悔棋按钮
     public void handleRecallButton() {
-        if (activity.infoSet != null && activity.infoSet.preInfo != null) {
-            // 确保至少有一个状态可以恢复
-            if (!activity.infoSet.preInfo.isEmpty()) {
+        if (activity.infoSet != null && activity.infoSet.preInfo != null && activity.chessInfo != null && activity.infoSet.curInfo != null) {
+            // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
+            if (activity.infoSet.preInfo.size() > 1) {
                 // 弹出并恢复到上一个状态（只退回一步）
                 ChessInfo tmp = activity.infoSet.preInfo.pop();
                 try {
-                    if (activity.chessInfo != null && activity.infoSet.curInfo != null && tmp != null) {
+                    if (tmp != null) {
                         // 恢复棋盘状态
                         activity.chessInfo.setInfo(tmp);
                         activity.infoSet.curInfo.setInfo(tmp);
@@ -123,13 +125,14 @@ public class PvMActivityControls {
                     e.printStackTrace();
 
                 }
-            } else {
-                // 当栈为空时，重置为初始状态
+            } else if (activity.infoSet.preInfo.size() == 1) {
+                // 只剩一个状态了，这就是初始状态，直接恢复它但不弹出
+                ChessInfo tmp = activity.infoSet.preInfo.peek();
                 try {
-                    ChessInfo initialInfo = new ChessInfo();
-                    if (activity.chessInfo != null && activity.infoSet.curInfo != null) {
-                        activity.chessInfo.setInfo(initialInfo);
-                        activity.infoSet.curInfo.setInfo(initialInfo);
+                    if (tmp != null) {
+                        // 恢复棋盘状态
+                        activity.chessInfo.setInfo(tmp);
+                        activity.infoSet.curInfo.setInfo(tmp);
                         // 重置时间
                         activity.redTime = 0;
                         activity.blackTime = 0;
@@ -149,8 +152,6 @@ public class PvMActivityControls {
 
                 }
             }
-        } else {
-
         }
     }
     
@@ -415,12 +416,8 @@ public class PvMActivityControls {
                                                     int score = moveWithScore.score;
                                                     
                                                     // 确保评分始终以红方为基准
-                                                    // 红方行棋时，引擎返回的评分已经是以红方为基准
-                                                    // 黑方行棋时，引擎返回的评分是以黑方为基准，需要取反
                                                     boolean isRedTurn = activity.chessInfo.IsRedGo;
-                                                    if (!isRedTurn) {
-                                                        score = -score;
-                                                    }
+                                                    score = PvMActivity.normalizeScore(score, isRedTurn);
                                                     
                                                     final int finalScore = score;
                                                     // 更新评分显示

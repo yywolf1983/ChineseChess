@@ -36,6 +36,7 @@ import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.lang.ref.WeakReference;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -55,8 +56,13 @@ import AICore.PikafishAI;
 import ChessMove.Move;
 
 public class PvMActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
-    // 静态实例，用于在其他类中访问
-    public static PvMActivity instance;
+    // 静态实例，使用WeakReference避免内存泄漏
+    private static WeakReference<PvMActivity> weakInstance;
+    
+    // 获取Activity实例的方法
+    public static PvMActivity getInstance() {
+        return weakInstance != null ? weakInstance.get() : null;
+    }
     
     // 从HomeActivity移动过来的静态变量和方法
     public static final int MIN_CLICK_DELAY_TIME = 100;
@@ -107,7 +113,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pvm);
         // 初始化静态实例
-        instance = this;
+        weakInstance = new WeakReference<>(this);
         relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
 
         // 先初始化模块
@@ -212,6 +218,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         int minutes = seconds / 60;
         seconds = seconds % 60;
         return String.format("%02d:%02d", minutes, seconds);
+    }
+    
+    // 标准化评分，确保始终以红方为基准
+    public static int normalizeScore(int score, boolean isRedTurn) {
+        if (!isRedTurn) {
+            return -score;
+        }
+        return score;
     }
     
     // 更新时间显示
@@ -483,7 +497,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
         // 关闭时间更新线程
         if (timeUpdateExecutor != null) {
-            timeUpdateExecutor.shutdown();
+            timeUpdateExecutor.shutdownNow();
+            try {
+                if (!timeUpdateExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                    timeUpdateExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                timeUpdateExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+        // 清理静态引用
+        if (weakInstance != null && weakInstance.get() == this) {
+            weakInstance.clear();
+            weakInstance = null;
         }
     }
 }

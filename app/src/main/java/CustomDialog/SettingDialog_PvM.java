@@ -15,6 +15,7 @@ import android.widget.TextView;
 import top.nones.chessgame.PvMActivity;
 import static top.nones.chessgame.PvMActivity.selectMusic;
 import top.nones.chessgame.R;
+import Utils.LogUtils;
 
 /**
  * Created by 77304 on 2021/4/14.
@@ -177,22 +178,19 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                     
                     // 同时更新chessInfo.setting，确保AI使用最新设置
                     try {
-                        Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                        Object instance = pvmaClass.getField("instance").get(null);
-                        if (instance != null) {
-                            Object chessInfoObj = pvmaClass.getField("chessInfo").get(instance);
-                            if (chessInfoObj != null) {
-                                chessInfoObj.getClass().getField("setting").set(chessInfoObj, PvMActivity.setting);
+                        PvMActivity activity = PvMActivity.getInstance();
+                        if (activity != null) {
+                            if (activity.chessInfo != null) {
+                                activity.chessInfo.setting = PvMActivity.setting;
                             }
                             
                             // 更新PikafishAI的设置
-                            Object pikafishAIObj = pvmaClass.getField("pikafishAI").get(instance);
-                            if (pikafishAIObj != null) {
-                                pikafishAIObj.getClass().getMethod("updateSettings", int.class, int.class).invoke(pikafishAIObj, skillLevel, multiPV);
+                            if (activity.pikafishAI != null) {
+                                activity.pikafishAI.updateSettings(skillLevel, multiPV);
                             }
                         }
                     } catch (Exception e) {
-                        // 忽略异常
+                        LogUtils.e("SettingDialog_PvM", "更新设置失败: " + e.getMessage());
                     }
                 }
                 if (onClickBottomListener != null) {

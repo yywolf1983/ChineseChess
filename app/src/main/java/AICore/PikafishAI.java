@@ -6,6 +6,7 @@ import android.util.Log;
 import Info.ChessInfo;
 import Info.Pos;
 import ChessMove.Move;
+import top.nones.chessgame.PvMActivity;
 import ChessMove.Rule;
 import Utils.LogUtils;
 
@@ -15,6 +16,13 @@ import java.util.List;
 import java.util.Locale;
 
 public class PikafishAI {
+    private static final int DEFAULT_DEPTH = 20;
+    private static final int DEFAULT_TIME_MS = 10000;
+    private static final int MIN_DEPTH = 5;
+    private static final int MIN_TIME_MS = 1000;
+    private static final long INIT_TIMEOUT_MS = 10000;
+    private static final long SHUTDOWN_WAIT_SECONDS = 5;
+    
     private Process process;
     private BufferedReader reader;
     private BufferedWriter writer;
@@ -143,7 +151,6 @@ public class PikafishAI {
             // 读取初始化响应
             String line;
             long startTime = System.currentTimeMillis();
-            long timeout = 10000; // 10秒超时
             
             while ((line = reader.readLine()) != null) {
                 Log.e("PikafishAI", "初始化响应: " + line);
@@ -154,7 +161,7 @@ public class PikafishAI {
                     LogUtils.i("PikafishAI", "UCI初始化成功");
                     break;
                 }
-                if (System.currentTimeMillis() - startTime > timeout) {
+                if (System.currentTimeMillis() - startTime > INIT_TIMEOUT_MS) {
                     Log.e("PikafishAI", "UCI初始化超时");
                     LogUtils.e("PikafishAI", "UCI初始化超时");
                     break;
@@ -209,7 +216,7 @@ public class PikafishAI {
                         LogUtils.i("PikafishAI", "就绪成功");
                         break;
                     }
-                    if (System.currentTimeMillis() - startTime > timeout) {
+                    if (System.currentTimeMillis() - startTime > INIT_TIMEOUT_MS) {
                         Log.e("PikafishAI", "就绪超时");
                         LogUtils.e("PikafishAI", "就绪超时");
                         break;
@@ -381,91 +388,6 @@ public class PikafishAI {
         }
     }
     
-    /**
-     * 评估局面复杂度
-     * @param chessInfo 棋盘信息
-     * @return 复杂度评分（0-100）
-     */
-    private int evaluatePositionComplexity(ChessInfo chessInfo) {
-        if (chessInfo == null || chessInfo.piece == null) {
-            return 50; // 默认中等复杂度
-        }
-        
-        int complexity = 50; // 基础复杂度
-        
-        // 1. 计算棋子数量
-        int pieceCount = 0;
-        int redPieceCount = 0;
-        int blackPieceCount = 0;
-        int attackPieceCount = 0;
-        
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
-                int piece = chessInfo.piece[i][j];
-                if (piece != 0) {
-                    pieceCount++;
-                    if (piece >= 8) {
-                        redPieceCount++;
-                    } else {
-                        blackPieceCount++;
-                    }
-                    // 攻击型棋子：车、马、炮、兵/卒
-                    if (piece == 5 || piece == 4 || piece == 6 || piece == 7 || 
-                        piece == 12 || piece == 11 || piece == 13 || piece == 14) {
-                        attackPieceCount++;
-                    }
-                }
-            }
-        }
-        
-        // 2. 基于棋子数量调整复杂度
-        // 棋子数量适中时复杂度较高
-        if (pieceCount >= 20 && pieceCount <= 25) {
-            complexity += 10;
-        } else if (pieceCount < 10) {
-            complexity -= 15; // 残局复杂度较低
-        }
-        
-        // 3. 基于攻击型棋子数量调整复杂度
-        if (attackPieceCount > 10) {
-            complexity += 15; // 攻击型棋子多，复杂度高
-        }
-        
-        // 4. 计算可移动性（合法走法数量）
-        int legalMovesCount = 0;
-        boolean isRed = chessInfo.IsRedGo;
-        
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
-                int piece = chessInfo.piece[i][j];
-                if (piece != 0) {
-                    boolean pieceIsRed = piece >= 8;
-                    if (pieceIsRed == isRed) {
-                        java.util.List<Info.Pos> moves = ChessMove.Rule.PossibleMoves(chessInfo.piece, j, i, piece);
-                        legalMovesCount += moves.size();
-                    }
-                }
-            }
-        }
-        
-        // 5. 基于可移动性调整复杂度
-        if (legalMovesCount > 30) {
-            complexity += 20; // 可移动性高，复杂度高
-        } else if (legalMovesCount < 10) {
-            complexity -= 10; // 可移动性低，复杂度低
-        }
-        
-        // 6. 检查是否有将军
-        if (ChessMove.Rule.isKingDanger(chessInfo.piece, isRed)) {
-            complexity += 15; // 将军局面复杂度高
-        }
-        
-        // 7. 确保复杂度在0-100之间
-        complexity = Math.max(0, Math.min(100, complexity));
-        
-        return complexity;
-    }
-    
     private void sendCommand(String command) {
         try {
             writer.write(command + "\n");
@@ -544,8 +466,8 @@ public class PikafishAI {
             sendCommand("position fen " + fen);
             
             // 发送思考命令，严格使用设置的深度和时间
-            int depth = 20; // 默认深度
-            int time = 10000; // 默认时间限制（毫秒，10秒）
+            int depth = DEFAULT_DEPTH;
+            int time = DEFAULT_TIME_MS;
             if (chessInfo != null && chessInfo.setting != null) {
                 depth = chessInfo.setting.depth;
                 // 直接使用用户设置的思考时间（现在mLevel保存的就是思考时间）
@@ -554,8 +476,8 @@ public class PikafishAI {
             }
             
             // 确保时间和深度设置合理
-            time = Math.max(1000, time); // 最少1秒
-            depth = Math.max(5, depth); // 最少5层
+            time = Math.max(MIN_TIME_MS, time);
+            depth = Math.max(MIN_DEPTH, depth);
             
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
@@ -642,28 +564,17 @@ public class PikafishAI {
                 final int finalDepth = currentDepth;
                 // 更新RoundView中的搜索深度
                 try {
-                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                    Object instance = pvmaClass.getField("instance").get(null);
-                    if (instance != null) {
-                        Object roundViewObj = pvmaClass.getField("roundView").get(instance);
-                        if (roundViewObj != null) {
-                            // 获取当前行棋方
-                            Object chessInfoObj = pvmaClass.getField("chessInfo").get(instance);
-                            boolean isRed = false;
-                            if (chessInfoObj != null) {
-                                isRed = (boolean) chessInfoObj.getClass().getField("IsRedGo").get(chessInfoObj);
-                            }
-                            // 调用带isRed参数的方法
-                            try {
-                                roundViewObj.getClass().getMethod("setSearchDepth", int.class, boolean.class).invoke(roundViewObj, finalDepth, isRed);
-                            } catch (NoSuchMethodException e) {
-                                // 如果方法不存在，调用旧方法
-                                roundViewObj.getClass().getMethod("setSearchDepth", int.class).invoke(roundViewObj, finalDepth);
-                            }
+                    PvMActivity activity = top.nones.chessgame.PvMActivity.getInstance();
+                    if (activity != null && activity.roundView != null && activity.chessInfo != null) {
+                        boolean isRed = activity.chessInfo.IsRedGo;
+                        try {
+                            activity.roundView.setSearchDepth(finalDepth, isRed);
+                        } catch (NoSuchMethodError e) {
+                            activity.roundView.setSearchDepth(finalDepth);
                         }
                     }
                 } catch (Exception e) {
-                    // 忽略异常
+                    LogUtils.e("PikafishAI", "更新搜索深度失败: " + e.getMessage());
                 }
                 // 不重置搜索深度，保持最后的值
                 // currentDepth = 0;

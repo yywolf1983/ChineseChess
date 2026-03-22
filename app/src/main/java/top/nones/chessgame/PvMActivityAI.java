@@ -120,12 +120,8 @@ public class PvMActivityAI {
         int score = moveWithScore.score;
         
         // 确保评分始终以红方为基准
-        // 红方行棋时，引擎返回的评分已经是以红方为基准
-        // 黑方行棋时，引擎返回的评分是以黑方为基准，需要取反
         boolean isRedTurn = this.activity.chessInfo.IsRedGo;
-        if (!isRedTurn) {
-            score = -score;
-        }
+        score = PvMActivity.normalizeScore(score, isRedTurn);
         
         // 验证移动的有效性
         if (move != null) {
@@ -878,7 +874,30 @@ public class PvMActivityAI {
     
     // 关闭线程池
     public void shutdown() {
-        executorService.shutdown();
-        scheduledExecutorService.shutdown();
+        // 关闭executorService
+        if (executorService != null && !executorService.isShutdown()) {
+            executorService.shutdownNow();
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+        
+        // 关闭scheduledExecutorService
+        if (scheduledExecutorService != null && !scheduledExecutorService.isShutdown()) {
+            scheduledExecutorService.shutdownNow();
+            try {
+                if (!scheduledExecutorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    scheduledExecutorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                scheduledExecutorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }

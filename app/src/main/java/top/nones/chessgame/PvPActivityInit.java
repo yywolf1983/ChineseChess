@@ -48,43 +48,13 @@ public class PvPActivityInit {
     }
 
     private void initChessInfo() {
-        if (SaveInfo.fileIsExists("ChessInfo_pvp.bin")) {
-            try {
-                chessInfo = SaveInfo.DeserializeChessInfo("ChessInfo_pvp.bin");
-            } catch (Exception e) {
-                e.printStackTrace();
-                chessInfo = new ChessInfo();
-            }
-        } else {
-            chessInfo = new ChessInfo();
-        }
-
-        if (SaveInfo.fileIsExists("InfoSet_pvp.bin")) {
-            try {
-                infoSet = SaveInfo.DeserializeInfoSet("InfoSet_pvp.bin");
-                if (infoSet.preInfo == null || infoSet.preInfo.isEmpty()) {
-                    try {
-                        infoSet.pushInfo(chessInfo);
-                    } catch (CloneNotSupportedException ce) {
-                        ce.printStackTrace();
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-                infoSet = new InfoSet();
-                try {
-                    infoSet.pushInfo(chessInfo);
-                } catch (CloneNotSupportedException ce) {
-                    ce.printStackTrace();
-                }
-            }
-        } else {
-            infoSet = new InfoSet();
-            try {
-                infoSet.pushInfo(chessInfo);
-            } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
-            }
+        // 总是使用新的游戏状态，不加载旧存档
+        chessInfo = new ChessInfo();
+        infoSet = new InfoSet();
+        try {
+            infoSet.pushInfo(chessInfo);
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
         }
     }
 

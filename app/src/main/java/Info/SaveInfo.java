@@ -99,11 +99,18 @@ public class SaveInfo {
         if (!externalDir.exists()) {
             externalDir.mkdirs();
         }
-        // 使用.pgn扩展名
-        File file = new File(externalDir, fileName.replace(".bin", ".pgn"));
-        FileWriter writer = null;
+        // 只使用.pgn扩展名
+        String cleanFileName = fileName.replace(".pgn", "");
+        File file = new File(externalDir, cleanFileName + ".pgn");
+        // 先删除旧的.pgn文件，确保完全覆盖
+        if (file.exists()) {
+            file.delete();
+        }
+        java.io.OutputStreamWriter writer = null;
         try {
-            writer = new FileWriter(file);
+            // 使用 FileOutputStream 确保完全覆盖旧文件内容
+            java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
+            writer = new java.io.OutputStreamWriter(fos, "UTF-8");
             
             // 写入PGN标签
             writer.write("[Game \"Chinese Chess\"]\n");
@@ -198,18 +205,14 @@ public class SaveInfo {
         if (!externalDir.exists()) {
             externalDir.mkdirs();
         }
-        // 处理文件名，确保正确的扩展名
+        // 只使用.pgn扩展名
         String cleanFileName = fileName;
-        if (!fileName.endsWith(".pgn") && !fileName.endsWith(".txt")) {
+        if (!fileName.endsWith(".pgn")) {
             cleanFileName = fileName + ".pgn";
         }
         File file = new File(externalDir, cleanFileName);
         if (!file.exists()) {
-            // 尝试.txt扩展名作为兼容
-            file = new File(externalDir, cleanFileName.replace(".pgn", ".txt"));
-            if (!file.exists()) {
-                throw new Exception("File not found: " + file.getAbsolutePath());
-            }
+            throw new Exception("File not found: " + file.getAbsolutePath());
         }
         FileInputStream fis = null;
         InputStreamReader reader = null;

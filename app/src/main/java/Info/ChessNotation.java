@@ -189,7 +189,7 @@ public class ChessNotation implements Serializable {
     public boolean saveToFile(Context context, String fileName) {
         try {
             // 确保文件名不包含后缀
-            String cleanFileName = fileName.replace(".pgn", "").replace(".txt", "");
+            String cleanFileName = fileName.replace(".pgn", "");
             
             // 使用toSaveContent方法生成PGN内容
             String content = toSaveContent();
@@ -203,8 +203,14 @@ public class ChessNotation implements Serializable {
             if (!externalDir.exists()) {
                 externalDir.mkdirs();
             }
-            // 使用.pgn扩展名
+            // 只使用.pgn扩展名
             java.io.File file = new java.io.File(externalDir, cleanFileName + ".pgn");
+            
+            // 先删除旧的.pgn文件，确保完全覆盖
+            if (file.exists()) {
+                file.delete();
+            }
+            
             // 使用FileOutputStream确保完全覆盖文件内容
             java.io.FileOutputStream fos = new java.io.FileOutputStream(file);
             java.io.OutputStreamWriter writer = new java.io.OutputStreamWriter(fos, "UTF-8");
@@ -228,21 +234,11 @@ public class ChessNotation implements Serializable {
                 if (!externalDir.exists()) {
                     externalDir.mkdirs();
                 }
-                // 同时支持.pgn和.txt文件
+                // 只获取.pgn文件
                 File[] pgnFiles = externalDir.listFiles((dir, name) -> name.endsWith(".pgn"));
                 if (pgnFiles != null) {
                     for (File file : pgnFiles) {
                         notations.add(file.getName().replace(".pgn", ""));
-                    }
-                }
-                File[] txtFiles = externalDir.listFiles((dir, name) -> name.endsWith(".txt"));
-                if (txtFiles != null) {
-                    for (File file : txtFiles) {
-                        String fileName = file.getName().replace(".txt", "");
-                        // 避免重复
-                        if (!notations.contains(fileName)) {
-                            notations.add(fileName);
-                        }
                     }
                 }
             }
@@ -265,14 +261,9 @@ public class ChessNotation implements Serializable {
             // 从外部存储空间删除棋谱
             File externalDir = context.getExternalFilesDir(null);
             if (externalDir != null) {
-                // 尝试删除.pgn文件
+                // 只删除.pgn文件
                 File pgnFile = new File(externalDir, fileName + ".pgn");
-                boolean pgnDeleted = pgnFile.delete();
-                // 尝试删除.txt文件（兼容旧格式）
-                File txtFile = new File(externalDir, fileName + ".txt");
-                boolean txtDeleted = txtFile.delete();
-                // 只要删除了其中一个就算成功
-                return pgnDeleted || txtDeleted;
+                return pgnFile.delete();
             }
         }
         return false;

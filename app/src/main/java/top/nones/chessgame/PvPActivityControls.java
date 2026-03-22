@@ -224,6 +224,8 @@ public class PvPActivityControls {
         try {
             chessInfo.setInfo(new ChessInfo());
             infoSet.newInfo();
+            // 重新推入初始状态
+            infoSet.pushInfo(chessInfo);
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
@@ -231,36 +233,14 @@ public class PvPActivityControls {
     }
 
     private void handleRecallButton() {
-        int cnt = 0;
-        int total = 1; // 一次悔一步
         if (infoSet != null && infoSet.preInfo != null && chessInfo != null && infoSet.curInfo != null) {
-            // 确保至少有一个状态可以恢复
-            if (!infoSet.preInfo.isEmpty()) {
-                while (!infoSet.preInfo.empty() && cnt < total) {
-                    ChessInfo tmp = infoSet.preInfo.pop();
-                    cnt++;
-                    try {
-
-                        chessInfo.setInfo(tmp);
-                        infoSet.curInfo.setInfo(tmp);
-                    } catch (CloneNotSupportedException e) {
-                        e.printStackTrace();
-                    }
-                }
-                // 重新绘制界面
-                if (activity.getChessView() != null) {
-                    activity.getChessView().requestDraw();
-                }
-                if (activity.getRoundView() != null) {
-                    activity.getRoundView().requestDraw();
-                }
-                Toast.makeText(activity, "已悔棋", Toast.LENGTH_SHORT).show();
-            } else {
-                // 当栈为空时，重置为初始状态
+            // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
+            if (infoSet.preInfo.size() > 1) {
+                // 只悔一步棋，不使用循环
+                ChessInfo tmp = infoSet.preInfo.pop();
                 try {
-                    ChessInfo initialInfo = new ChessInfo();
-                    chessInfo.setInfo(initialInfo);
-                    infoSet.curInfo.setInfo(initialInfo);
+                    chessInfo.setInfo(tmp);
+                    infoSet.curInfo.setInfo(tmp);
                     // 重新绘制界面
                     if (activity.getChessView() != null) {
                         activity.getChessView().requestDraw();
@@ -268,13 +248,26 @@ public class PvPActivityControls {
                     if (activity.getRoundView() != null) {
                         activity.getRoundView().requestDraw();
                     }
-                    Toast.makeText(activity, "已重置到初始局面", Toast.LENGTH_SHORT).show();
+                } catch (CloneNotSupportedException e) {
+                    e.printStackTrace();
+                }
+            } else if (infoSet.preInfo.size() == 1) {
+                // 只剩一个状态了，这就是初始状态，直接恢复它但不弹出
+                ChessInfo tmp = infoSet.preInfo.peek();
+                try {
+                    chessInfo.setInfo(tmp);
+                    infoSet.curInfo.setInfo(tmp);
+                    // 重新绘制界面
+                    if (activity.getChessView() != null) {
+                        activity.getChessView().requestDraw();
+                    }
+                    if (activity.getRoundView() != null) {
+                        activity.getRoundView().requestDraw();
+                    }
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
                 }
             }
-        } else {
-            Toast.makeText(activity, "无法悔棋", Toast.LENGTH_SHORT).show();
         }
     }
 
