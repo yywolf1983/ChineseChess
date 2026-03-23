@@ -36,6 +36,9 @@ public class PvMActivityAI {
         return calculateAIMoveWithDepthUpdate();
     }
     
+    // 存储当前AI移动的评分
+    private int currentAIScore = 0;
+
     // 计算AI最佳移动，带有深度更新
     public Move calculateAIMoveWithDepthUpdate() {
         // 显示AI开始搜索的信息，包含深度
@@ -122,6 +125,9 @@ public class PvMActivityAI {
         // 确保评分始终以红方为基准
         boolean isRedTurn = this.activity.chessInfo.IsRedGo;
         score = PvMActivity.normalizeScore(score, isRedTurn);
+        
+        // 保存当前评分
+        this.currentAIScore = score;
         
         // 验证移动的有效性
         if (move != null) {
@@ -277,6 +283,25 @@ public class PvMActivityAI {
             this.activity.infoSet.pushInfo(this.activity.chessInfo);
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
+        }
+        
+        // AI落子后重新计算评分，反映落子后的棋盘状态
+        if (this.activity.roundView != null && this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
+            try {
+                // 重新计算评分
+                PikafishAI.MoveWithScore moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                if (moveWithScore != null) {
+                    int score = moveWithScore.score;
+                    // 确保评分始终以红方为基准
+                    boolean isRedTurn = this.activity.chessInfo.IsRedGo;
+                    score = PvMActivity.normalizeScore(score, isRedTurn);
+                    // 平滑更新评分
+                    this.activity.roundView.setMoveScore(score);
+                }
+            } catch (Exception e) {
+                // 忽略异常，使用之前的评分
+                this.activity.roundView.setMoveScore(this.currentAIScore);
+            }
         }
         
         // AI移动后重新绘制界面
@@ -479,6 +504,7 @@ public class PvMActivityAI {
                 aiInstance.isAIAnalyzing = true;
                 
                 Move move = null;
+                int score = 0;
                 
                 try {
                     // 直接使用原始chessInfo进行分析
@@ -486,6 +512,11 @@ public class PvMActivityAI {
                         PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
                         if (moveWithScore != null) {
                             move = moveWithScore.move;
+                            score = moveWithScore.score;
+                            // 确保评分始终以红方为基准
+                            score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
+                            // 保存当前评分
+                            aiInstance.currentAIScore = score;
                         }
                     }
                 } catch (Exception e) {
@@ -505,6 +536,8 @@ public class PvMActivityAI {
                         if (currentDepth > 0) {
                             activity.roundView.setSearchDepth(currentDepth, isRed);
                         }
+                        // 支招结束后更新评分
+                        activity.roundView.setMoveScore(aiInstance.currentAIScore);
                     }
                     
                     aiInstance.isAIAnalyzing = false;

@@ -17,6 +17,7 @@ public class RoundView extends View {
     public ChessInfo chessInfo;
     private int gameMode = 0; // 对战模式
     private int moveScore = 0; // 走法评分
+    private int targetMoveScore = 0; // 目标评分（用于平滑过渡）
     private long redTime = 0; // 红方行棋时间（毫秒）
     private long blackTime = 0; // 黑方行棋时间（毫秒）
     private int redSearchDepth = 0; // 红方AI搜索深度
@@ -50,9 +51,16 @@ public class RoundView extends View {
         invalidate();
     }
     
-    // 设置走法评分
+    // 设置走法评分（平滑过渡）
     public void setMoveScore(int score) {
+        this.targetMoveScore = score;
+        invalidate();
+    }
+    
+    // 立即更新走法评分（跳过平滑过渡）
+    public void setMoveScoreImmediately(int score) {
         this.moveScore = score;
+        this.targetMoveScore = score;
         invalidate();
     }
     
@@ -175,12 +183,61 @@ public class RoundView extends View {
         
         // 绘制评分（左侧）
         String scoreText;
-        if (moveScore > 0) {
-            scoreText = "红方领先: " + moveScore;
-        } else if (moveScore < 0) {
-            scoreText = "黑方领先: " + Math.abs(moveScore);
+        
+        // 检查是否有一方被将死或王被吃掉
+        boolean redKingExists = false;
+        boolean blackKingExists = false;
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (chessInfo.piece[i][j] == 1) { // 黑将
+                    blackKingExists = true;
+                } else if (chessInfo.piece[i][j] == 8) { // 红帅
+                    redKingExists = true;
+                }
+            }
+        }
+        
+        // 检查是否被将死
+        boolean redDead = false;
+        boolean blackDead = false;
+        try {
+            redDead = ChessMove.Rule.isDead(chessInfo.piece, true);
+            blackDead = ChessMove.Rule.isDead(chessInfo.piece, false);
+        } catch (Exception e) {
+            // 忽略异常
+        }
+        
+        // 优先显示将死或王被吃掉的情况
+        if (!redKingExists) {
+            scoreText = "黑方胜利！";
+        } else if (!blackKingExists) {
+            scoreText = "红方胜利！";
+        } else if (redDead) {
+            scoreText = "黑方胜利！";
+        } else if (blackDead) {
+            scoreText = "红方胜利！";
         } else {
-            scoreText = "双方均势";
+            // 评分平滑过渡处理
+            if (moveScore != targetMoveScore) {
+                int diff = targetMoveScore - moveScore;
+                if (Math.abs(diff) <= 5) {
+                    // 差异较小时直接设置
+                    moveScore = targetMoveScore;
+                } else {
+                    // 差异较大时使用平滑过渡
+                    moveScore += diff / 5;
+                }
+                // 触发下一次重绘
+                postInvalidateDelayed(50);
+            }
+            
+            if (moveScore > 0) {
+                scoreText = "红方领先: " + moveScore;
+            } else if (moveScore < 0) {
+                scoreText = "黑方领先: " + Math.abs(moveScore);
+            } else {
+                scoreText = "双方均势";
+            }
         }
         float scoreX = width * 1 / 3; // 左侧
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
