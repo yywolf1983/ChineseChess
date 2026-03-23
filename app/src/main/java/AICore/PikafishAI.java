@@ -196,12 +196,18 @@ public class PikafishAI {
                 }
                 
                 // 4. 设置多主变（MultiPV）
+                // 确保 MultiPV 至少为 2，让引擎考虑多个可能的走法，避免重复
+                multiPV = Math.max(2, multiPV);
                 sendCommand("setoption name MultiPV value " + multiPV);
                 LogUtils.i("PikafishAI", "设置MultiPV: " + multiPV);
                 
                 // 5. 设置技能级别
                 sendCommand("setoption name Skill Level value " + skillLevel);
                 LogUtils.i("PikafishAI", "设置技能级别: " + skillLevel);
+                
+                // 6. 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
+                sendCommand("setoption name Contempt value 20");
+                LogUtils.i("PikafishAI", "设置Contempt值: 20");
                 
                 // 等待参数设置完成
                 sendCommand("isready");
@@ -740,12 +746,18 @@ public class PikafishAI {
     public void updateSettings(int skillLevel, int multiPV) {
         if (initialized) {
             // 设置多主变（MultiPV）
+            // 确保 MultiPV 至少为 2，让引擎考虑多个可能的走法，避免重复
+            multiPV = Math.max(2, multiPV);
             sendCommand("setoption name MultiPV value " + multiPV);
             LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
             
             // 设置技能级别
             sendCommand("setoption name Skill Level value " + skillLevel);
             LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
+            
+            // 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
+            sendCommand("setoption name Contempt value 20");
+            LogUtils.i("PikafishAI", "设置Contempt值: 20");
             
             // 等待参数设置完成
             sendCommand("isready");
@@ -756,12 +768,18 @@ public class PikafishAI {
     public void updateSettings(int skillLevel, int multiPV, int depth, int thinkingTime) {
         if (initialized) {
             // 设置多主变（MultiPV）
+            // 确保 MultiPV 至少为 2，让引擎考虑多个可能的走法，避免重复
+            multiPV = Math.max(2, multiPV);
             sendCommand("setoption name MultiPV value " + multiPV);
             LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
             
             // 设置技能级别
             sendCommand("setoption name Skill Level value " + skillLevel);
             LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
+            
+            // 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
+            sendCommand("setoption name Contempt value 20");
+            LogUtils.i("PikafishAI", "设置Contempt值: 20");
             
             // 等待参数设置完成
             sendCommand("isready");

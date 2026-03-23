@@ -259,6 +259,16 @@ public class PvMActivityNotation {
                         e.printStackTrace();
                     }
                     
+                    // 重置时间相关变量，确保时间显示正确
+                    activity.currentTurnStartTime = 0;
+                    activity.redTime = 0;
+                    activity.blackTime = 0;
+                    
+                    // 更新时间显示
+                    if (activity.roundView != null) {
+                        activity.roundView.setTime(0, 0);
+                    }
+                    
                     // 重新绘制界面
                     System.out.println("PvMActivity: 开始重新绘制界面，chessView=" + activity.chessView + ", roundView=" + activity.roundView);
                     if (activity.chessView != null) {
