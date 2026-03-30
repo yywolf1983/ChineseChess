@@ -8,6 +8,7 @@ import Info.ChessInfo;
 import Info.InfoSet;
 import CustomView.ChessView;
 import CustomView.SetupModeView;
+import top.nones.chessgame.FENHandler;
 
 public class PvMActivitySetup {
     private PvMActivity activity;
@@ -288,13 +289,15 @@ public class PvMActivitySetup {
             builder.setPositiveButton("红方开始", (dialog, which) -> {
                 // 红方开始，设置IsRedGo为true
                 activity.chessInfo.IsRedGo = true;
+                // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                FENHandler fenHandler = new FENHandler();
+                String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                activity.notationManager.setSetupFEN(setupFEN);
+                System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
                 // 退出摆棋模式
                 activity.chessInfo.IsSetupMode = false;
                 // 确保游戏状态为进行中
                 activity.chessInfo.status = 1;
-                // 生成并保存摆棋结束时的FEN信息
-                activity.notationManager.setSetupFEN(activity.notationManager.generateFEN(activity.chessInfo));
-                System.out.println("PvMActivity: 摆棋结束，保存FEN: " + activity.notationManager.getSetupFEN());
                 // 重置infoSet，清空摆棋过程中的记录
                 activity.infoSet = new InfoSet();
                 // 将当前摆棋局面保存到infoSet中作为初始状态
@@ -319,13 +322,15 @@ public class PvMActivitySetup {
             builder.setNegativeButton("黑方开始", (dialog, which) -> {
                 // 黑方开始，设置IsRedGo为false
                 activity.chessInfo.IsRedGo = false;
+                // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                FENHandler fenHandler = new FENHandler();
+                String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                activity.notationManager.setSetupFEN(setupFEN);
+                System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
                 // 退出摆棋模式
                 activity.chessInfo.IsSetupMode = false;
                 // 确保游戏状态为进行中
                 activity.chessInfo.status = 1;
-                // 生成并保存摆棋结束时的FEN信息
-                activity.notationManager.setSetupFEN(activity.notationManager.generateFEN(activity.chessInfo));
-                System.out.println("PvMActivity: 摆棋结束，保存FEN: " + activity.notationManager.getSetupFEN());
                 // 重置infoSet，清空摆棋过程中的记录
                 activity.infoSet = new InfoSet();
                 // 将当前摆棋局面保存到infoSet中作为初始状态

@@ -438,6 +438,7 @@ public class ChessNotation implements Serializable {
         sb.append("[Opening \"").append(escapePGNString(opening)).append("\"]\n");
         sb.append("[Variation \"").append(escapePGNString(variation)).append("\"]\n");
         if (fen != null && !fen.isEmpty()) {
+            sb.append("[SetUp \"1\"]\n");
             sb.append("[FEN \"").append(escapePGNString(fen)).append("\"]\n");
         }
         

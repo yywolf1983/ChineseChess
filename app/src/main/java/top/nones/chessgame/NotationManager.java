@@ -325,9 +325,13 @@ public class NotationManager {
         }
         
         // 按照临时列表的顺序处理，保证走法记录顺序正确
+        // 从索引1开始，跳过初始位置（setup position）
         for (int i = tempList.size() - 1; i >= 0; i--) {
             ChessInfo info = tempList.get(i);
-            addMoveToNotation(notation, info);
+            // 只有当prePos和curPos都不为null时，才添加到走法记录
+            if (info.prePos != null && info.curPos != null) {
+                addMoveToNotation(notation, info);
+            }
         }
     }
     
