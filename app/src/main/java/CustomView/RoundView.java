@@ -85,6 +85,8 @@ public class RoundView extends View {
                 this.blackSearchDepth = depth;
             }
         }
+        // 当深度为0时，表示AI思考完成，隐藏"AI正在思考"提示
+        // 当深度大于0时，表示AI正在思考，显示"AI正在思考"提示
         this.isAIThinking = depth > 0;
         // 只有当AI正在思考时才更新isRedTurn，这样当AI思考完成后，isRedTurn会保持为AI的颜色
         if (this.isAIThinking) {
@@ -326,9 +328,6 @@ public class RoundView extends View {
             shouldShowAIInfo = true;
             // 支招模式下，使用当前行棋方的深度
             currentDepth = chessInfo != null && chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
-        } else if (gameMode == 0) {
-            // 双人模式：不显示
-            shouldShowAIInfo = false;
         } else if (gameMode == 1) {
             // 人机对战（玩家红）：显示黑方（AI）的深度
             shouldShowAIInfo = true;
@@ -344,6 +343,18 @@ public class RoundView extends View {
             shouldShowAIInfo = true;
             // 双机对战下，使用AI的颜色对应的深度
             currentDepth = isRedTurn ? redSearchDepth : blackSearchDepth;
+        } else if (gameMode == 0) {
+            // 双人模式：只在有深度信息时显示
+            // 检查是否有深度信息
+            int redDepth = redSearchDepth;
+            int blackDepth = blackSearchDepth;
+            if (redDepth > 0 || blackDepth > 0) {
+                shouldShowAIInfo = true;
+                // 双人模式下，使用当前行棋方的深度
+                currentDepth = chessInfo != null && chessInfo.IsRedGo ? redDepth : blackDepth;
+            } else {
+                shouldShowAIInfo = false;
+            }
         }
         
         // 额外检查：如果有深度信息且不是双人模式，强制显示深度

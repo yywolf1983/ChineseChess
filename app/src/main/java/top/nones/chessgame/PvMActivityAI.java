@@ -499,7 +499,7 @@ public class PvMActivityAI {
                         activity.roundView.setMoveScore(aiInstance.currentAIScore);
                         // 支招完成后，重置为非支招模式
                         activity.roundView.setSuggestMode(false);
-                        // 重置AI思考状态，确保不显示"AI正在思考"
+                        // 发送深度为0的调用，隐藏"AI正在思考"提示，但保留深度信息
                         activity.roundView.setSearchDepth(0, isRed);
                     }
                     
