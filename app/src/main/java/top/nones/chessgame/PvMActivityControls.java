@@ -418,7 +418,8 @@ public class PvMActivityControls {
                                             checkGameStatus(isRed);
 
                                             // 获取当前局面的评分（在后台线程中执行）
-                                            if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
+                                            // 只在非双人对战模式下获取评分，避免双人对战时显示AI思考
+                                            if (activity.pikafishAI != null && activity.pikafishAI.isInitialized() && activity.gameMode != 0) {
                                                 new Thread(() -> {
                                                     AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
                                                     int score = moveWithScore.score;
