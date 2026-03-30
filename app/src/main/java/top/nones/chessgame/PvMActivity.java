@@ -133,7 +133,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         timeUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
         // 每100毫秒更新一次时间显示
         timeUpdateExecutor.scheduleAtFixedRate(() -> {
-            if (currentTurnStartTime > 0 && chessInfo != null) {
+            if (currentTurnStartTime > 0 && chessInfo != null && roundView != null) {
                 runOnUiThread(() -> {
                     // 计算当前回合已经经过的时间
                     long elapsed = System.currentTimeMillis() - currentTurnStartTime;
@@ -144,7 +144,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         roundView.setTime(redTime, elapsed);
                     }
                 });
-            } else if (chessInfo != null) {
+            } else if (chessInfo != null && roundView != null) {
                 // 行棋后保留当前时间
                 runOnUiThread(() -> {
                     roundView.setTime(redTime, blackTime);
@@ -288,7 +288,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         boolean hasSamePieceInSameColumn = false;
         if (chessInfo != null && chessInfo.piece != null) {
             for (int y = 0; y < 10; y++) {
-                if (y != fromPos.y && chessInfo.piece[y][fromPos.x] == piece) {
+                if (y != fromPos.y && chessInfo.piece[y] != null && chessInfo.piece[y][fromPos.x] == piece) {
                     hasSamePieceInSameColumn = true;
                     break;
                 }
@@ -301,14 +301,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 如果是车、马、炮、兵/卒、象/相、士/仕，添加起始列号（或者前/后标识）
         if (piece == 2 || piece == 3 || piece == 4 || piece == 5 || piece == 6 || piece == 7 || 
             piece == 9 || piece == 10 || piece == 11 || piece == 12 || piece == 13 || piece == 14) {
-            if (hasSamePieceInSameColumn) {
+            if (hasSamePieceInSameColumn && chessInfo != null && chessInfo.piece != null) {
                 // 如果同一列有多个相同棋子，使用前/后标识
                 boolean isFront = false;
                 if (isRed) {
                     // 红方：y越小越靠前
                     isFront = true;
                     for (int y = 0; y < fromPos.y; y++) {
-                        if (chessInfo.piece[y][fromPos.x] == piece) {
+                        if (chessInfo.piece[y] != null && chessInfo.piece[y][fromPos.x] == piece) {
                             isFront = false;
                             break;
                         }
@@ -317,7 +317,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     // 黑方：y越大越靠前
                     isFront = true;
                     for (int y = fromPos.y + 1; y < 10; y++) {
-                        if (chessInfo.piece[y][fromPos.x] == piece) {
+                        if (chessInfo.piece[y] != null && chessInfo.piece[y][fromPos.x] == piece) {
                             isFront = false;
                             break;
                         }

@@ -185,6 +185,15 @@ public class NotationManager {
     
     // 保存棋谱到URI
     public void saveChessNotationToUri(Uri uri) {
+        if (activity == null) {
+            return;
+        }
+        
+        if (uri == null) {
+            Toast.makeText(activity, "保存路径无效", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
         try {
             // 使用保存对话框中输入的信息
             String fileName = pendingSaveFileName != null ? pendingSaveFileName : "棋谱.pgn";
@@ -256,7 +265,9 @@ public class NotationManager {
             
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            if (activity != null) {
+                Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            }
         }
     }
     

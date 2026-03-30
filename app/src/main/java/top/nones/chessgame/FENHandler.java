@@ -8,7 +8,7 @@ public class FENHandler {
     public ChessInfo fenToChessInfo(String fen) {
         ChessInfo info = new ChessInfo();
         try {
-            if (fen != null && !fen.isEmpty()) {
+            if (fen != null && !fen.isEmpty() && info.piece != null) {
                 // 简单的FEN解析实现
                 String[] parts = fen.split(" ");
                 if (parts.length > 0) {
@@ -19,8 +19,10 @@ public class FENHandler {
                     
                     // 清空棋盘
                     for (int i = 0; i < 10; i++) {
-                        for (int j = 0; j < 9; j++) {
-                            info.piece[i][j] = 0;
+                        if (info.piece[i] != null) {
+                            for (int j = 0; j < 9; j++) {
+                                info.piece[i][j] = 0;
+                            }
                         }
                     }
                     
@@ -35,7 +37,7 @@ public class FENHandler {
                         } else {
                             // 棋子
                             int piece = getPieceFromFEN(c);
-                            if (piece != 0 && rank >= 0 && rank < 10 && file >= 0 && file < 9) {
+                            if (piece != 0 && rank >= 0 && rank < 10 && file >= 0 && file < 9 && info.piece[rank] != null) {
                                 info.piece[rank][file] = piece;
                             }
                             file++;
@@ -77,40 +79,49 @@ public class FENHandler {
     
     // 生成FEN字符串
     public String generateFEN(ChessInfo chessInfo) {
-        if (chessInfo == null) {
+        if (chessInfo == null || chessInfo.piece == null) {
             return "";
         }
         
         StringBuilder fen = new StringBuilder();
         
-        // 生成棋盘部分
-        for (int rank = 9; rank >= 0; rank--) { // 从黑方底线开始
-            int emptyCount = 0;
-            for (int file = 0; file < 9; file++) {
-                int piece = chessInfo.piece[rank][file];
-                if (piece == 0) {
-                    emptyCount++;
-                } else {
-                    if (emptyCount > 0) {
-                        fen.append(emptyCount);
-                        emptyCount = 0;
+        try {
+            // 生成棋盘部分
+            for (int rank = 9; rank >= 0; rank--) { // 从黑方底线开始
+                int emptyCount = 0;
+                for (int file = 0; file < 9; file++) {
+                    if (chessInfo.piece[rank] != null) {
+                        int piece = chessInfo.piece[rank][file];
+                        if (piece == 0) {
+                            emptyCount++;
+                        } else {
+                            if (emptyCount > 0) {
+                                fen.append(emptyCount);
+                                emptyCount = 0;
+                            }
+                            fen.append(getFENFromPiece(piece));
+                        }
+                    } else {
+                        emptyCount++;
                     }
-                    fen.append(getFENFromPiece(piece));
+                }
+                if (emptyCount > 0) {
+                    fen.append(emptyCount);
+                }
+                if (rank > 0) {
+                    fen.append("/");
                 }
             }
-            if (emptyCount > 0) {
-                fen.append(emptyCount);
-            }
-            if (rank > 0) {
-                fen.append("/");
-            }
+            
+            // 添加轮到谁走棋
+            fen.append(" " + (chessInfo.IsRedGo ? "w" : "b"));
+            
+            // 添加其他FEN部分（简化实现）
+            fen.append(" - - 0 1");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "";
         }
-        
-        // 添加轮到谁走棋
-        fen.append(" " + (chessInfo.IsRedGo ? "w" : "b"));
-        
-        // 添加其他FEN部分（简化实现）
-        fen.append(" - - 0 1");
         
         return fen.toString();
     }

@@ -12,6 +12,11 @@ public class BoardStateGenerator {
     
     // 生成棋盘状态
     public void generateBoardStateFromNotation(ChessNotation notation, int moveIndex) {
+        if (activity == null) {
+            System.out.println("PvMActivity: 生成棋盘状态失败，activity 为 null");
+            return;
+        }
+        
         System.out.println("PvMActivity: 开始生成棋盘状态，当前步数: " + moveIndex);
         if (notation != null) {
             // 初始化棋盘状态
@@ -45,6 +50,9 @@ public class BoardStateGenerator {
                 // 遍历走法记录，生成到当前步数的棋盘状态
                 for (int i = 0; i < moveRecords.size(); i++) {
                     ChessNotation.MoveRecord record = moveRecords.get(i);
+                    if (record == null) {
+                        continue;
+                    }
                     System.out.println("PvMActivity: 处理第 " + (i + 1) + " 回合: 红方=" + record.redMove + ", 黑方=" + record.blackMove);
                     
                     if (moveCount >= moveIndex) {
@@ -56,23 +64,29 @@ public class BoardStateGenerator {
                     if (!record.redMove.isEmpty() && moveCount < moveIndex) {
                         System.out.println("PvMActivity: 执行红方走法: " + record.redMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
-                        currentInfo = moveSimulator.simulateMove(currentInfo, record.redMove, true);
-                        moveCount++;
-                        System.out.println("PvMActivity: 红方走法执行完成，当前步数: " + moveCount);
+                        ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, record.redMove, true);
+                        if (tempInfo != null) {
+                            currentInfo = tempInfo;
+                            moveCount++;
+                            System.out.println("PvMActivity: 红方走法执行完成，当前步数: " + moveCount);
+                        }
                     }
                     
                     // 处理黑方走法
                     if (!record.blackMove.isEmpty() && moveCount < moveIndex) {
                         System.out.println("PvMActivity: 执行黑方走法: " + record.blackMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
-                        currentInfo = moveSimulator.simulateMove(currentInfo, record.blackMove, false);
-                        moveCount++;
-                        System.out.println("PvMActivity: 黑方走法执行完成，当前步数: " + moveCount);
+                        ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, record.blackMove, false);
+                        if (tempInfo != null) {
+                            currentInfo = tempInfo;
+                            moveCount++;
+                            System.out.println("PvMActivity: 黑方走法执行完成，当前步数: " + moveCount);
+                        }
                     }
                 }
                 
                 // 更新棋盘状态
-                if (currentInfo != null) {
+                if (currentInfo != null && activity.chessInfo != null && activity.infoSet != null && activity.infoSet.curInfo != null) {
                     System.out.println("PvMActivity: 更新棋盘状态，总步数: " + moveCount);
                     try {
                         // 清空现有棋盘并设置新状态
@@ -124,37 +138,39 @@ public class BoardStateGenerator {
             } else {
                 System.out.println("PvMActivity: 没有走法记录，使用初始棋盘状态");
                 // 如果没有走法记录，使用初始棋盘状态
-                try {
-                    // 清空现有棋盘并设置新状态
-                    activity.chessInfo.setInfo(initialInfo);
-                    // 重置 totalMoves 为 0
-                    activity.chessInfo.totalMoves = 0;
-                    activity.infoSet.curInfo.setInfo(initialInfo);
-                    // 重置 infoSet.curInfo 的 totalMoves 为 0
-                    activity.infoSet.curInfo.totalMoves = 0;
-                    // 更新 ChessView 中的 chessInfo 对象
-                    if (activity.chessView != null) {
-                        activity.chessView.setChessInfo(activity.chessInfo);
+                if (activity.chessInfo != null && activity.infoSet != null && activity.infoSet.curInfo != null) {
+                    try {
+                        // 清空现有棋盘并设置新状态
+                        activity.chessInfo.setInfo(initialInfo);
+                        // 重置 totalMoves 为 0
+                        activity.chessInfo.totalMoves = 0;
+                        activity.infoSet.curInfo.setInfo(initialInfo);
+                        // 重置 infoSet.curInfo 的 totalMoves 为 0
+                        activity.infoSet.curInfo.totalMoves = 0;
+                        // 更新 ChessView 中的 chessInfo 对象
+                        if (activity.chessView != null) {
+                            activity.chessView.setChessInfo(activity.chessInfo);
+                        }
+                        // 重新初始化 infoSet.preInfo 栈
+                        activity.infoSet.newInfo();
+                        activity.infoSet.pushInfo(activity.chessInfo);
+                    } catch (CloneNotSupportedException e) {
+                        e.printStackTrace();
                     }
-                    // 重新初始化 infoSet.preInfo 栈
-                    activity.infoSet.newInfo();
-                    activity.infoSet.pushInfo(activity.chessInfo);
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-                }
-                
-                // 重新绘制界面
-                if (activity.chessView != null) {
-                    activity.chessView.requestDraw();
-                    // 强制刷新界面
-                    activity.chessView.invalidate();
-                    activity.chessView.postInvalidate();
-                }
-                if (activity.roundView != null) {
-                    activity.roundView.requestDraw();
-                    // 强制刷新界面
-                    activity.roundView.invalidate();
-                    activity.roundView.postInvalidate();
+                    
+                    // 重新绘制界面
+                    if (activity.chessView != null) {
+                        activity.chessView.requestDraw();
+                        // 强制刷新界面
+                        activity.chessView.invalidate();
+                        activity.chessView.postInvalidate();
+                    }
+                    if (activity.roundView != null) {
+                        activity.roundView.requestDraw();
+                        // 强制刷新界面
+                        activity.roundView.invalidate();
+                        activity.roundView.postInvalidate();
+                    }
                 }
             }
         } else {

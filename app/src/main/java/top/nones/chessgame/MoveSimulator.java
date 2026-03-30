@@ -127,14 +127,18 @@ public class MoveSimulator {
                     if (pieceType != -1) {
                         // 收集同一类型且同一颜色的所有棋子
                         java.util.List<Pos> piecePositions = new java.util.ArrayList<>();
-                        for (int y = 0; y < 10; y++) {
-                            for (int x = 0; x < 9; x++) {
-                                int piece = newInfo.piece[y][x];
-                                // 检查棋子类型是否匹配，并且颜色是否与当前方一致
-                                boolean isSameColor = (isRed && piece >= 8 && piece <= 14) || (!isRed && piece >= 1 && piece <= 7);
-                                if (piece == pieceType && isSameColor) {
-                                    piecePositions.add(new Pos(x, y));
-                                    System.out.println("PvMActivity: 收集到棋子: 位置= " + x + "," + y + ", 类型= " + piece);
+                        if (newInfo.piece != null) {
+                            for (int y = 0; y < 10; y++) {
+                                if (newInfo.piece[y] != null) {
+                                    for (int x = 0; x < 9; x++) {
+                                        int piece = newInfo.piece[y][x];
+                                        // 检查棋子类型是否匹配，并且颜色是否与当前方一致
+                                        boolean isSameColor = (isRed && piece >= 8 && piece <= 14) || (!isRed && piece >= 1 && piece <= 7);
+                                        if (piece == pieceType && isSameColor) {
+                                            piecePositions.add(new Pos(x, y));
+                                            System.out.println("PvMActivity: 收集到棋子: 位置= " + x + "," + y + ", 类型= " + piece);
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -740,15 +744,19 @@ public class MoveSimulator {
             
             // 先收集所有符合条件的棋子，然后按优先级排序
             java.util.List<Pos> candidatePieces = new java.util.ArrayList<>();
-            for (int y = 0; y < 10; y++) {
-                for (int x = 0; x < 9; x++) {
-                    int piece = newInfo.piece[y][x];
-                    if (piece != 0) {
-                        // 检查是否是当前方的棋子且类型匹配
-                        boolean isCurrentSide = (isRed && piece >= 8 && piece <= 14) || (!isRed && piece >= 1 && piece <= 7);
-                        if (isCurrentSide && piece == targetPieceType) {
-                            candidatePieces.add(new Pos(x, y));
-                            System.out.println("PvMActivity: 找到候选棋子: 位置= " + x + "," + y + ", 类型= " + piece);
+            if (newInfo.piece != null) {
+                for (int y = 0; y < 10; y++) {
+                    if (newInfo.piece[y] != null) {
+                        for (int x = 0; x < 9; x++) {
+                            int piece = newInfo.piece[y][x];
+                            if (piece != 0) {
+                                // 检查是否是当前方的棋子且类型匹配
+                                boolean isCurrentSide = (isRed && piece >= 8 && piece <= 14) || (!isRed && piece >= 1 && piece <= 7);
+                                if (isCurrentSide && piece == targetPieceType) {
+                                    candidatePieces.add(new Pos(x, y));
+                                    System.out.println("PvMActivity: 找到候选棋子: 位置= " + x + "," + y + ", 类型= " + piece);
+                                }
+                            }
                         }
                     }
                 }

@@ -281,111 +281,133 @@ public class PvMActivitySetup {
     
     // 结束摆棋并选择开局方
     public void finishSetup() {
-        if (checkSetupComplete()) {
+        if (activity != null && checkSetupComplete()) {
             // 显示选择开局方的对话框
             AlertDialog.Builder builder = new AlertDialog.Builder(activity);
             builder.setTitle("选择开局方");
             builder.setMessage("请选择由哪一方开始下棋");
             builder.setPositiveButton("红方开始", (dialog, which) -> {
-                // 红方开始，设置IsRedGo为true
-                activity.chessInfo.IsRedGo = true;
-                // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
-                FENHandler fenHandler = new FENHandler();
-                String setupFEN = fenHandler.generateFEN(activity.chessInfo);
-                activity.notationManager.setSetupFEN(setupFEN);
-                System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
-                // 退出摆棋模式
-                activity.chessInfo.IsSetupMode = false;
-                // 确保游戏状态为进行中
-                activity.chessInfo.status = 1;
-                // 重置infoSet，清空摆棋过程中的记录
-                activity.infoSet = new InfoSet();
-                // 将当前摆棋局面保存到infoSet中作为初始状态
-                try {
-                    activity.infoSet.pushInfo(activity.chessInfo);
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-                }
-                // 重置时间
-                activity.redTime = 0;
-                activity.blackTime = 0;
-                activity.currentTurnStartTime = 0;
-                activity.updateTimeDisplay();
-                // 重新绘制界面
-                if (activity.chessView != null) {
-                    activity.chessView.requestDraw();
-                }
-                if (activity.roundView != null) {
-                    activity.roundView.requestDraw();
+                if (activity != null && activity.chessInfo != null) {
+                    // 红方开始，设置IsRedGo为true
+                    activity.chessInfo.IsRedGo = true;
+                    // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                    FENHandler fenHandler = new FENHandler();
+                    String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                    if (activity.notationManager != null) {
+                        activity.notationManager.setSetupFEN(setupFEN);
+                        System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
+                    }
+                    // 退出摆棋模式
+                    activity.chessInfo.IsSetupMode = false;
+                    // 确保游戏状态为进行中
+                    activity.chessInfo.status = 1;
+                    // 重置infoSet，清空摆棋过程中的记录
+                    activity.infoSet = new InfoSet();
+                    // 将当前摆棋局面保存到infoSet中作为初始状态
+                    try {
+                        if (activity.infoSet != null) {
+                            activity.infoSet.pushInfo(activity.chessInfo);
+                        }
+                    } catch (CloneNotSupportedException e) {
+                        e.printStackTrace();
+                    }
+                    // 重置时间
+                    activity.redTime = 0;
+                    activity.blackTime = 0;
+                    activity.currentTurnStartTime = 0;
+                    activity.updateTimeDisplay();
+                    // 重新绘制界面
+                    if (activity.chessView != null) {
+                        activity.chessView.requestDraw();
+                    }
+                    if (activity.roundView != null) {
+                        activity.roundView.requestDraw();
+                    }
                 }
             });
             builder.setNegativeButton("黑方开始", (dialog, which) -> {
-                // 黑方开始，设置IsRedGo为false
-                activity.chessInfo.IsRedGo = false;
-                // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
-                FENHandler fenHandler = new FENHandler();
-                String setupFEN = fenHandler.generateFEN(activity.chessInfo);
-                activity.notationManager.setSetupFEN(setupFEN);
-                System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
-                // 退出摆棋模式
-                activity.chessInfo.IsSetupMode = false;
-                // 确保游戏状态为进行中
-                activity.chessInfo.status = 1;
-                // 重置infoSet，清空摆棋过程中的记录
-                activity.infoSet = new InfoSet();
-                // 将当前摆棋局面保存到infoSet中作为初始状态
-                try {
-                    activity.infoSet.pushInfo(activity.chessInfo);
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-                }
-                // 重置时间
-                activity.redTime = 0;
-                activity.blackTime = 0;
-                activity.currentTurnStartTime = 0;
-                activity.updateTimeDisplay();
-                // 重新绘制界面
-                if (activity.chessView != null) {
-                    activity.chessView.requestDraw();
-                }
-                if (activity.roundView != null) {
-                    activity.roundView.requestDraw();
+                if (activity != null && activity.chessInfo != null) {
+                    // 黑方开始，设置IsRedGo为false
+                    activity.chessInfo.IsRedGo = false;
+                    // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                    FENHandler fenHandler = new FENHandler();
+                    String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                    if (activity.notationManager != null) {
+                        activity.notationManager.setSetupFEN(setupFEN);
+                        System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
+                    }
+                    // 退出摆棋模式
+                    activity.chessInfo.IsSetupMode = false;
+                    // 确保游戏状态为进行中
+                    activity.chessInfo.status = 1;
+                    // 重置infoSet，清空摆棋过程中的记录
+                    activity.infoSet = new InfoSet();
+                    // 将当前摆棋局面保存到infoSet中作为初始状态
+                    try {
+                        if (activity.infoSet != null) {
+                            activity.infoSet.pushInfo(activity.chessInfo);
+                        }
+                    } catch (CloneNotSupportedException e) {
+                        e.printStackTrace();
+                    }
+                    // 重置时间
+                    activity.redTime = 0;
+                    activity.blackTime = 0;
+                    activity.currentTurnStartTime = 0;
+                    activity.updateTimeDisplay();
+                    // 重新绘制界面
+                    if (activity.chessView != null) {
+                        activity.chessView.requestDraw();
+                    }
+                    if (activity.roundView != null) {
+                        activity.roundView.requestDraw();
+                    }
                 }
             });
             builder.setCancelable(false); // 必须选择一个选项
             builder.show();
         } else {
-            Toast.makeText(activity, "棋子放置不完整，请继续放置棋子", Toast.LENGTH_SHORT).show();
+            if (activity != null) {
+                Toast.makeText(activity, "棋子放置不完整，请继续放置棋子", Toast.LENGTH_SHORT).show();
+            }
         }
     }
     
     // 处理摆棋模式的触摸事件
     public boolean handleSetupModeTouch(float x, float y, android.view.MotionEvent event) {
-        if (activity.chessInfo != null && activity.chessInfo.IsSetupMode) {
+        if (activity != null && activity.chessInfo != null && activity.chessInfo.IsSetupMode) {
             // 检查是否点击在棋盘上
             if (activity.chessView != null && x >= 0 && x <= activity.chessView.Board_width && y >= 0 && y <= activity.chessView.Board_height) {
-                    activity.chessInfo.Select = activity.getPos(event);
-                    int i = activity.chessInfo.Select[0];
-                    int j = activity.chessInfo.Select[1];
+                int[] pos = activity.getPos(event);
+                if (pos != null && pos.length >= 2) {
+                    activity.chessInfo.Select = pos;
+                    int i = pos[0];
+                    int j = pos[1];
 
                     if (i >= 0 && i <= 8 && j >= 0 && j <= 9) {
                         // 获取点击位置的棋子ID
-                        int boardPieceID = activity.chessInfo.piece[j][i];
+                        int boardPieceID = 0;
+                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > j && activity.chessInfo.piece[j] != null && activity.chessInfo.piece[j].length > i) {
+                            boardPieceID = activity.chessInfo.piece[j][i];
+                        }
                         
                         // 如果已经选中了棋盘上的棋子
                         if (selectedBoardPiecePos[0] != -1 && selectedBoardPiecePos[1] != -1) {
                             // 获取要操作的棋子ID
-                            int pieceToOperate = activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]];
+                            int pieceToOperate = 0;
+                            if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > selectedBoardPiecePos[1] && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
+                                pieceToOperate = activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]];
+                            }
                             
                             // 检查是否是点击原位置（下架）
                             if (i == selectedBoardPiecePos[0] && j == selectedBoardPiecePos[1]) {
                                 // 点击原位置，下架棋子
-                                    if (pieceToOperate != 1 && pieceToOperate != 8) { // 老将不能下架
-                                        placePiece(selectedBoardPiecePos[0], selectedBoardPiecePos[1], 0);
-                                        // 重置选中状态
-                                        selectedBoardPiecePos[0] = -1;
-                                        selectedBoardPiecePos[1] = -1;
-                                    }
+                                if (pieceToOperate != 1 && pieceToOperate != 8) { // 老将不能下架
+                                    placePiece(selectedBoardPiecePos[0], selectedBoardPiecePos[1], 0);
+                                    // 重置选中状态
+                                    selectedBoardPiecePos[0] = -1;
+                                    selectedBoardPiecePos[1] = -1;
+                                }
                             }
                             // 点击的是空白区域（移动棋子）
                             else if (boardPieceID == 0) {
@@ -395,24 +417,28 @@ public class PvMActivitySetup {
                                     // 检查新位置是否合理
                                     if (isValidPiecePosition(pieceToOperate, i, j)) {
                                         // 先将原位置设为0
-                                        activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
-                                        // 再将新位置设为棋子ID
-                                        placePiece(i, j, pieceToOperate);
-                                        // 重置选中状态
-                                        selectedBoardPiecePos[0] = -1;
-                                        selectedBoardPiecePos[1] = -1;
+                                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > selectedBoardPiecePos[1] && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
+                                            activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
+                                            // 再将新位置设为棋子ID
+                                            placePiece(i, j, pieceToOperate);
+                                            // 重置选中状态
+                                            selectedBoardPiecePos[0] = -1;
+                                            selectedBoardPiecePos[1] = -1;
+                                        }
                                     }
                                 } else {
                                     // 不是老将，可以移动
                                     // 检查新位置是否合理
                                     if (isValidPiecePosition(pieceToOperate, i, j)) {
                                         // 先将原位置设为0
-                                        activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
-                                        // 再将新位置设为棋子ID
-                                        placePiece(i, j, pieceToOperate);
-                                        // 重置选中状态
-                                        selectedBoardPiecePos[0] = -1;
-                                        selectedBoardPiecePos[1] = -1;
+                                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > selectedBoardPiecePos[1] && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
+                                            activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
+                                            // 再将新位置设为棋子ID
+                                            placePiece(i, j, pieceToOperate);
+                                            // 重置选中状态
+                                            selectedBoardPiecePos[0] = -1;
+                                            selectedBoardPiecePos[1] = -1;
+                                        }
                                     }
                                 }
                             }
@@ -452,6 +478,7 @@ public class PvMActivitySetup {
                         }
                     }
                 }
+            }
         }
         return false;
     }
