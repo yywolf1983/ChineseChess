@@ -205,9 +205,9 @@ public class RoundView extends View {
         android.graphics.RectF rectF = new android.graphics.RectF(5, 5, width - 5, height - 5);
         canvas.drawRoundRect(rectF, 10, 10, borderPaint);
         
-        // 计算垂直间距
-        float paddingTop = convertDpToPixel(10, getContext());
-        float lineHeight = convertDpToPixel(22, getContext());
+        // 计算垂直间距，调整为更美观的布局
+        float paddingTop = convertDpToPixel(12, getContext());
+        float lineHeight = convertDpToPixel(24, getContext());
         
         // 绘制对战模式（突出显示）
         String modeText = getGameModeName(gameMode);
@@ -370,7 +370,7 @@ public class RoundView extends View {
         shouldShowAIInfo = shouldShowAIInfo && currentDepth > 0;
         
         if (shouldShowAIInfo) {
-            float aiTextY = textY + lineHeight * 0.8f;
+            float aiTextY = textY + lineHeight;
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             
             String aiText = "";
@@ -436,7 +436,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(120, getContext()); // 调整高度，因为搜索深度显示与AI思考提示合并在同一行
+            height = (int) convertDpToPixel(130, getContext()); // 调整高度，适应更大的行间距
         }
         
         viewWidth = width;
