@@ -23,6 +23,7 @@ public class PvMActivityControls {
     private long lastSuggestClickTime = 0;
     private static final long SUGGEST_BUTTON_INTERVAL = 1200;
     private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
+    private boolean justExecutedForceVariation = false; // 标记刚刚执行了强制变着
     
     public PvMActivityControls(PvMActivity activity) {
         this.activity = activity;
@@ -590,16 +591,22 @@ public class PvMActivityControls {
         
         // 检查和棋条件
         if (activity.chessInfo.status == 1) {
-            // 检查三次重复局面，弹出强制变着提示
-            if (!isForceVariationDialogShowing && activity.chessInfo.isThreefoldRepetition()) {
-                showForceVariationDialog();
-                return;
-            }
-            
-            // 检查长将，弹出强制变着提示
-            if (!isForceVariationDialogShowing && activity.chessInfo.isPerpetualCheck()) {
-                showForceVariationDialog();
-                return;
+            // 如果刚刚执行了强制变着，跳过强制变着检查
+            if (!justExecutedForceVariation) {
+                // 检查三次重复局面，弹出强制变着提示
+                if (!isForceVariationDialogShowing && activity.chessInfo.isThreefoldRepetition()) {
+                    showForceVariationDialog();
+                    return;
+                }
+                
+                // 检查长将，弹出强制变着提示
+                if (!isForceVariationDialogShowing && activity.chessInfo.isPerpetualCheck()) {
+                    showForceVariationDialog();
+                    return;
+                }
+            } else {
+                // 重置强制变着标志，允许下次检查
+                justExecutedForceVariation = false;
             }
             
             // 检查其他和棋条件，统一显示确认对话框
@@ -671,6 +678,9 @@ public class PvMActivityControls {
             }
             // 立即检查是否需要AI移动，确保强制变着立即生效
             activity.gameManager.checkAIMove();
+            
+            // 标记刚刚执行了强制变着，跳过下次和棋检查
+            justExecutedForceVariation = true;
             
             // 对话框关闭，重置标志位
             isForceVariationDialogShowing = false;
