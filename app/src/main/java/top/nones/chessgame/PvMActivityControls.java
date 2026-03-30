@@ -22,6 +22,7 @@ public class PvMActivityControls {
     private volatile boolean isAIAnalyzing = false;
     private long lastSuggestClickTime = 0;
     private static final long SUGGEST_BUTTON_INTERVAL = 1200;
+    private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
     
     public PvMActivityControls(PvMActivity activity) {
         this.activity = activity;
@@ -375,7 +376,9 @@ public class PvMActivityControls {
                                             // 停止计时（在updateAllInfo之前调用，确保获取正确的行棋方）
                                             activity.stopTurnTimer();
 
-                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp);
+                                            // 检查是否将军
+                                            boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
+                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
 
                                             // 开始对方的回合计时
                                             activity.startTurnTimer();
@@ -408,16 +411,8 @@ public class PvMActivityControls {
                                             // 增加继续对局后的回合计数器
                                             activity.continueGameRoundCount++;
 
-                                            if (activity.chessInfo.status == 1) {
-                                                // 只有当继续对局后的回合数达到20次以上时，才会再次触发和棋提示
-                                                if (activity.continueGameRoundCount >= 20) {
-                                                    if (activity.chessInfo.peaceRound >= 60) {
-                                                        showDrawConfirmationDialog("双方60回合内未吃子，是否和棋？");
-                                                    } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
-                                                        showDrawConfirmationDialog("双方都无攻击性棋子，是否和棋？");
-                                                    }
-                                                }
-                                            }
+                                            // 检查游戏状态，包括强制变着和和棋条件
+                                            checkGameStatus(isRed);
 
                                             // 获取当前局面的评分（在后台线程中执行）
                                             if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
@@ -502,6 +497,18 @@ public class PvMActivityControls {
             activity.chessInfo.status = originalStatus;
             // 重置继续对局后的回合计数器
             activity.continueGameRoundCount = 0;
+            // 重置和棋相关计数器，避免频繁提示
+            if (activity.chessInfo.peaceRound >= 30) {
+                activity.chessInfo.peaceRound = 0;
+            }
+            // 重置重复局面计数（清除当前局面的记录）
+            String currentHash = activity.chessInfo.generatePositionHash();
+            if (activity.chessInfo.positionHistory.containsKey(currentHash)) {
+                activity.chessInfo.positionHistory.put(currentHash, 1);
+            }
+            // 重置长将计数
+            activity.chessInfo.consecutiveCheckRed = 0;
+            activity.chessInfo.consecutiveCheckBlack = 0;
             // 重新绘制界面
             if (activity.chessView != null) {
                 activity.chessView.requestDraw();
@@ -512,6 +519,7 @@ public class PvMActivityControls {
             // 检查是否需要AI移动
             activity.gameManager.checkAIMove();
         });
+        builder.setCancelable(false);
         builder.show();
     }
     
@@ -582,14 +590,115 @@ public class PvMActivityControls {
         
         // 检查和棋条件
         if (activity.chessInfo.status == 1) {
-            // 只有当继续对局后的回合数达到20次以上时，才会再次触发和棋提示
+            // 检查三次重复局面，弹出强制变着提示
+            if (!isForceVariationDialogShowing && activity.chessInfo.isThreefoldRepetition()) {
+                showForceVariationDialog();
+                return;
+            }
+            
+            // 检查长将，弹出强制变着提示
+            if (!isForceVariationDialogShowing && activity.chessInfo.isPerpetualCheck()) {
+                showForceVariationDialog();
+                return;
+            }
+            
+            // 检查其他和棋条件，统一显示确认对话框
+            String drawReason = null;
             if (activity.continueGameRoundCount >= 20) {
-                if (activity.chessInfo.peaceRound >= 60) {
-                    showDrawConfirmationDialog("双方60回合内未吃子，是否和棋？");
+                if (activity.chessInfo.peaceRound >= 30) {
+                    drawReason = "双方30回合内未吃子，是否和棋？";
                 } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
-                    showDrawConfirmationDialog("双方都无攻击性棋子，是否和棋？");
+                    drawReason = "双方都无攻击性棋子，是否和棋？";
                 }
             }
+            
+            if (drawReason != null) {
+                showDrawConfirmationDialog(drawReason);
+            }
         }
+    }
+    
+    // 显示强制变着对话框
+    private void showForceVariationDialog() {
+        // 防止重复弹出
+        if (isForceVariationDialogShowing) {
+            return;
+        }
+        
+        // 标记对话框正在显示
+        isForceVariationDialogShowing = true;
+        
+        // 暂时保存当前游戏状态
+        int originalStatus = activity.chessInfo.status;
+        // 设置游戏状态为暂停，防止AI继续移动
+        activity.chessInfo.status = 3; // 3表示暂停状态
+        
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle("强制变着");
+        
+        // 根据变着原因设置不同的提示信息
+        String message = "";
+        if (activity.chessInfo.isPerpetualCheck()) {
+            String side = activity.chessInfo.getPerpetualCheckSide();
+            message = side + "长将，请变着！\n确认后将增加AI走法的随机性。";
+        } else {
+            message = "检测到重复局面，请变着！\n确认后将增加AI走法的随机性。";
+        }
+        builder.setMessage(message);
+        builder.setPositiveButton("确认变着", (dialog, which) -> {
+            // 恢复游戏状态
+            activity.chessInfo.status = originalStatus;
+            // 启用强制变着模式
+            activity.chessInfo.forceVariation = true;
+            activity.chessInfo.variationRandomness = 3; // 设置中等随机性
+            // 重置重复局面计数
+            String currentHash = activity.chessInfo.generatePositionHash();
+            if (activity.chessInfo.positionHistory.containsKey(currentHash)) {
+                activity.chessInfo.positionHistory.put(currentHash, 1);
+            }
+            // 重置长将计数
+            activity.chessInfo.consecutiveCheckRed = 0;
+            activity.chessInfo.consecutiveCheckBlack = 0;
+            // 重置继续对局后的回合计数器
+            activity.continueGameRoundCount = 0;
+            // 无需提示，对话框已明确说明
+            // 重新绘制界面
+            if (activity.chessView != null) {
+                activity.chessView.requestDraw();
+            }
+            if (activity.roundView != null) {
+                activity.roundView.requestDraw();
+            }
+            // 检查是否需要AI移动
+            activity.gameManager.checkAIMove();
+            
+            // 对话框关闭，重置标志位
+            isForceVariationDialogShowing = false;
+        });
+        builder.setNegativeButton("和棋", (dialog, which) -> {
+            activity.chessInfo.status = 2;
+            String toastMessage = "";
+            if (activity.chessInfo.isPerpetualCheck()) {
+                String side = activity.chessInfo.getPerpetualCheckSide();
+                toastMessage = side + "长将，此乃和棋";
+            } else {
+                toastMessage = "三次重复局面，此乃和棋";
+            }
+            Toast toast = Toast.makeText(activity, toastMessage, Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+            toast.show();
+            // 游戏结束时重新绘制界面
+            if (activity.chessView != null) {
+                activity.chessView.requestDraw();
+            }
+            if (activity.roundView != null) {
+                activity.roundView.requestDraw();
+            }
+            
+            // 对话框关闭，重置标志位
+            isForceVariationDialogShowing = false;
+        });
+        builder.setCancelable(false);
+        builder.show();
     }
 }

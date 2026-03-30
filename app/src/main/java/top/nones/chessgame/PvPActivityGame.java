@@ -22,6 +22,7 @@ public class PvPActivityGame {
     private int selectedPieceID = 0;
     // 摆棋模式下选中的棋盘上的棋子位置
     private int[] selectedBoardPiecePos = {-1, -1};
+    private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
 
     public PvPActivityGame(PvPActivity activity, ChessInfo chessInfo, InfoSet infoSet, ChessView chessView) {
         this.activity = activity;
@@ -234,7 +235,9 @@ public class PvPActivityGame {
                 LogUtils.i("Move", (isRed ? "红方" : "黑方") + "走棋: " + moveString);
             }
 
-            chessInfo.updateAllInfo(chessInfo.prePos, chessInfo.curPos, chessInfo.piece[j][i], tmp);
+            // 检查是否将军
+            boolean isCheck = Rule.isKingDanger(chessInfo.piece, !isRed);
+            chessInfo.updateAllInfo(chessInfo.prePos, chessInfo.curPos, chessInfo.piece[j][i], tmp, isCheck);
 
             try {
                 if (infoSet != null) {
@@ -280,15 +283,113 @@ public class PvPActivityGame {
             Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT).show();
         }
 
-        if (chessInfo.status == 1) {
-            if (chessInfo.peaceRound >= 60) {
-                chessInfo.status = 2;
-                Toast.makeText(activity, "双方60回合内未吃子，此乃和棋", Toast.LENGTH_SHORT).show();
-            } else if (chessInfo.attackNum_B == 0 && chessInfo.attackNum_R == 0) {
-                chessInfo.status = 2;
-                Toast.makeText(activity, "双方都无攻击性棋子，此乃和棋", Toast.LENGTH_SHORT).show();
-            }
+        // 和棋判断移至showDrawConfirmationDialog中处理，统一提示用户
+        checkDrawConditions();
+    }
+    
+    // 检查和棋条件并提示用户
+    private void checkDrawConditions() {
+        if (chessInfo.status != 1) return;
+        
+        // 优先检查三次重复局面，弹出强制变着提示
+        if (!isForceVariationDialogShowing && chessInfo.isThreefoldRepetition()) {
+            showForceVariationDialog();
+            return;
         }
+        
+        // 检查长将，弹出强制变着提示
+        if (!isForceVariationDialogShowing && chessInfo.isPerpetualCheck()) {
+            showForceVariationDialog();
+            return;
+        }
+        
+        String drawReason = null;
+        if (chessInfo.peaceRound >= 30) {
+            drawReason = "双方30回合内未吃子，是否和棋？";
+        } else if (chessInfo.attackNum_B == 0 && chessInfo.attackNum_R == 0) {
+            drawReason = "双方都无攻击性棋子，是否和棋？";
+        }
+        
+        if (drawReason != null) {
+            showDrawConfirmationDialog(drawReason);
+        }
+    }
+    
+    // 显示强制变着对话框
+    private void showForceVariationDialog() {
+        // 防止重复弹出
+        if (isForceVariationDialogShowing) {
+            return;
+        }
+        
+        // 标记对话框正在显示
+        isForceVariationDialogShowing = true;
+        
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle("强制变着");
+        
+        // 根据变着原因设置不同的提示信息
+        String message = "";
+        if (chessInfo.isPerpetualCheck()) {
+            String side = chessInfo.getPerpetualCheckSide();
+            message = side + "长将，请变着！\n确认后将增加AI走法的随机性。";
+        } else {
+            message = "检测到重复局面，请变着！\n确认后将增加AI走法的随机性。";
+        }
+        builder.setMessage(message);
+        builder.setPositiveButton("确认变着", (dialog, which) -> {
+            // 启用强制变着模式
+            chessInfo.forceVariation = true;
+            chessInfo.variationRandomness = 3; // 设置中等随机性
+            // 重置重复局面计数
+            String currentHash = chessInfo.generatePositionHash();
+            if (chessInfo.positionHistory.containsKey(currentHash)) {
+                chessInfo.positionHistory.put(currentHash, 1);
+            }
+            // 重置长将计数
+            chessInfo.consecutiveCheckRed = 0;
+            chessInfo.consecutiveCheckBlack = 0;
+            // 无需提示，对话框已明确说明
+            
+            // 对话框关闭，重置标志位
+            isForceVariationDialogShowing = false;
+        });
+        builder.setNegativeButton("和棋", (dialog, which) -> {
+            chessInfo.status = 2;
+            String toastMessage = "";
+            if (chessInfo.isPerpetualCheck()) {
+                String side = chessInfo.getPerpetualCheckSide();
+                toastMessage = side + "长将，此乃和棋";
+            } else {
+                toastMessage = "三次重复局面，此乃和棋";
+            }
+            Toast.makeText(activity, toastMessage, Toast.LENGTH_SHORT).show();
+            
+            // 对话框关闭，重置标志位
+            isForceVariationDialogShowing = false;
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+    
+    // 显示和棋确认对话框
+    private void showDrawConfirmationDialog(String message) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle("和棋确认");
+        builder.setMessage(message);
+        builder.setPositiveButton("同意和棋", (dialog, which) -> {
+            chessInfo.status = 2;
+            Toast.makeText(activity, "此乃和棋", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("继续对局", (dialog, which) -> {
+            // 用户选择继续，重置相关计数器避免频繁提示
+            if (chessInfo.peaceRound >= 30) {
+                chessInfo.peaceRound = 0;
+            }
+            dialog.dismiss();
+        });
+        builder.setCancelable(false);
+        builder.show();
     }
 
     public int[] getPos(MotionEvent e) {

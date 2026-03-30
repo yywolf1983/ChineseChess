@@ -488,6 +488,27 @@ public class PikafishAI {
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             
+            // 检查是否处于强制变着模式
+            boolean wasForceVariation = false;
+            if (chessInfo != null && chessInfo.forceVariation) {
+                wasForceVariation = true;
+                // 强制变着模式：降低深度，增加随机性
+                int randomness = chessInfo.variationRandomness;
+                if (randomness <= 0) randomness = 3;
+                
+                // 根据随机性等级调整深度和时间
+                depth = Math.max(3, depth - randomness);
+                time = Math.max(500, time / randomness);
+                
+                LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
+                
+                // 设置 Contempt 值为负数，鼓励引擎接受和棋，从而寻找不同的走法
+                sendCommand("setoption name Contempt value -" + (randomness * 10));
+            } else {
+                // 正常模式：恢复默认 Contempt 值
+                sendCommand("setoption name Contempt value 20");
+            }
+            
             // 同时使用深度限制和时间限制，先达到哪个条件就停止
             sendCommand("go depth " + depth + " movetime " + time);
             
@@ -593,6 +614,14 @@ public class PikafishAI {
             if (bestMove != null) {
                 Move move = uciToMove(bestMove);
                 LogUtils.i("PikafishAI", "最佳走法: " + move + ", 评分: " + score);
+                
+                // 重置强制变着模式标志位
+                if (chessInfo != null && wasForceVariation) {
+                    chessInfo.forceVariation = false;
+                    chessInfo.variationRandomness = 0;
+                    LogUtils.i("PikafishAI", "已重置强制变着模式");
+                }
+                
                 return new MoveWithScore(move, score);
             }
             

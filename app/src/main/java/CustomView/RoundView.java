@@ -22,6 +22,10 @@ public class RoundView extends View {
     private long blackTime = 0; // 黑方行棋时间（毫秒）
     private int redSearchDepth = 0; // 红方AI搜索深度
     private int blackSearchDepth = 0; // 黑方AI搜索深度
+    private boolean isAIThinking = false; // AI是否正在思考
+    private boolean isRedTurn = false; // 当前是否是红方回合
+    private int aiThinkingProgress = 0; // AI思考动画进度
+    private boolean isSuggestMode = false; // 是否处于支招模式
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
@@ -73,24 +77,58 @@ public class RoundView extends View {
     
     // 设置搜索深度
     public void setSearchDepth(int depth, boolean isRed) {
-        if (isRed) {
-            this.redSearchDepth = depth;
+        // 只有当深度大于0时才更新深度值，这样当AI思考完成（depth=0）时，之前的深度信息会被保留
+        if (depth > 0) {
+            if (isRed) {
+                this.redSearchDepth = depth;
+            } else {
+                this.blackSearchDepth = depth;
+            }
+        }
+        this.isAIThinking = depth > 0;
+        // 只有当AI正在思考时才更新isRedTurn，这样当AI思考完成后，isRedTurn会保持为AI的颜色
+        if (this.isAIThinking) {
+            this.isRedTurn = isRed;
+            // 更新动画进度
+            this.aiThinkingProgress = (this.aiThinkingProgress + 1) % 4;
         } else {
-            this.blackSearchDepth = depth;
+            // 重置动画进度
+            this.aiThinkingProgress = 0;
+            // 不重置isRedTurn，保持为AI的颜色，这样深度信息会正确显示
         }
         invalidate();
     }
     
     // 重载方法，保持向后兼容
     public void setSearchDepth(int depth) {
-        // 默认为黑方深度
-        this.blackSearchDepth = depth;
+        // 只有当深度大于0时才更新深度值，这样当AI思考完成（depth=0）时，之前的深度信息会被保留
+        if (depth > 0) {
+            // 默认为黑方深度
+            this.blackSearchDepth = depth;
+        }
+        this.isAIThinking = depth > 0;
+        // 只有当AI正在思考时才更新isRedTurn，默认为黑方
+        if (this.isAIThinking) {
+            this.isRedTurn = false;
+            // 更新动画进度
+            this.aiThinkingProgress = (this.aiThinkingProgress + 1) % 4;
+        } else {
+            // 重置动画进度
+            this.aiThinkingProgress = 0;
+            // 不重置isRedTurn，保持为黑方，这样深度信息会正确显示
+        }
         invalidate();
     }
     
     // 设置ChessInfo对象
     public void setChessInfo(ChessInfo chessInfo) {
         this.chessInfo = chessInfo;
+        invalidate();
+    }
+    
+    // 设置支招模式
+    public void setSuggestMode(boolean isSuggestMode) {
+        this.isSuggestMode = isSuggestMode;
         invalidate();
     }
 
@@ -237,7 +275,7 @@ public class RoundView extends View {
             } else if (moveScore < 0) {
                 scoreText = "黑方:" + Math.abs(moveScore);
             } else {
-                scoreText = "0";
+                scoreText = "双方均势";
             }
         }
         float scoreX = width * 1 / 3; // 左侧
@@ -263,15 +301,13 @@ public class RoundView extends View {
         String redText = formatTime(redTime);
         canvas.drawText(redText, redCenterX, textY, redTextPaint);
         
-        // 绘制搜索深度（中间位置）
-        float depthCenterX = width * 1 / 2;
-        infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        // 只要返回层数就显示，优先显示较大的层数
-        if (redSearchDepth > 0 || blackSearchDepth > 0) {
-            int depth = Math.max(redSearchDepth, blackSearchDepth);
-            String depthText = depth + "层";
-            canvas.drawText(depthText, depthCenterX, textY, infoTextPaint);
-        }
+        // 显示当前行棋方（中间位置）
+        float turnCenterX = width * 1 / 2;
+        String turnText = chessInfo != null && chessInfo.IsRedGo ? "红方" : "黑方";
+        // 使用相应的颜色
+        Paint turnPaint = chessInfo != null && chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
+        turnPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(turnText, turnCenterX, textY, turnPaint);
         
         // 黑方时间（右半部分居中）
         float blackCenterX = width * 2 / 3;
@@ -279,6 +315,83 @@ public class RoundView extends View {
         blackTextPaint.setTextAlign(Paint.Align.CENTER);
         String blackText = formatTime(blackTime);
         canvas.drawText(blackText, blackCenterX, textY, blackTextPaint);
+        
+        // 绘制AI思考提示（在时间行下面）
+        boolean shouldShowAIInfo = false;
+        int currentDepth = 0;
+        
+        // 检查是否应该显示AI信息
+        if (isSuggestMode) {
+            // 支招模式：总是显示
+            shouldShowAIInfo = true;
+            // 支招模式下，使用当前行棋方的深度
+            currentDepth = chessInfo != null && chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
+        } else if (gameMode == 0) {
+            // 双人模式：不显示
+            shouldShowAIInfo = false;
+        } else if (gameMode == 1) {
+            // 人机对战（玩家红）：显示黑方（AI）的深度
+            shouldShowAIInfo = true;
+            // 显示黑方的深度
+            currentDepth = blackSearchDepth;
+        } else if (gameMode == 2) {
+            // 人机对战（玩家黑）：显示红方（AI）的深度
+            shouldShowAIInfo = true;
+            // 显示红方的深度
+            currentDepth = redSearchDepth;
+        } else if (gameMode == 3) {
+            // 双机对战：总是显示
+            shouldShowAIInfo = true;
+            // 双机对战下，使用AI的颜色对应的深度
+            currentDepth = isRedTurn ? redSearchDepth : blackSearchDepth;
+        }
+        
+        // 额外检查：如果有深度信息且不是双人模式，强制显示深度
+        if (!shouldShowAIInfo && gameMode != 0) {
+            // 检查是否有深度信息
+            int redDepth = redSearchDepth;
+            int blackDepth = blackSearchDepth;
+            if (redDepth > 0 || blackDepth > 0) {
+                shouldShowAIInfo = true;
+                // 根据游戏模式选择显示哪个深度
+                if (gameMode == 1) {
+                    currentDepth = blackDepth;
+                } else if (gameMode == 2) {
+                    currentDepth = redDepth;
+                } else if (gameMode == 3) {
+                    currentDepth = isRedTurn ? redDepth : blackDepth;
+                } else if (isSuggestMode) {
+                    currentDepth = chessInfo != null && chessInfo.IsRedGo ? redDepth : blackDepth;
+                }
+            }
+        }
+        
+        // 检查是否有深度信息需要显示
+        shouldShowAIInfo = shouldShowAIInfo && currentDepth > 0;
+        
+        if (shouldShowAIInfo) {
+            float aiTextY = textY + lineHeight * 0.8f;
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            
+            String aiText = "";
+            
+            // 如果AI正在思考，显示思考提示
+            if (isAIThinking) {
+                String dots = "";
+                for (int i = 0; i < aiThinkingProgress; i++) {
+                    dots += ".";
+                }
+                aiText = "AI正在思考" + dots;
+                // 添加行棋层数，用竖线分开
+                aiText += " | 深度: " + currentDepth;
+            } else {
+                // AI思考完成，只显示深度信息
+                aiText = "深度: " + currentDepth;
+            }
+            
+            // 绘制文本
+            canvas.drawText(aiText, width / 2, aiTextY, infoTextPaint);
+        }
         
         // 重置文本对齐
         infoTextPaint.setTextAlign(Paint.Align.LEFT);
@@ -323,7 +436,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(100, getContext()); // 100dp高度，使布局更加紧凑
+            height = (int) convertDpToPixel(120, getContext()); // 调整高度，因为搜索深度显示与AI思考提示合并在同一行
         }
         
         viewWidth = width;

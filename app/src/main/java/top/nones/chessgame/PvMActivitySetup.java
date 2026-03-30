@@ -465,10 +465,7 @@ public class PvMActivitySetup {
                 if (activity.roundView != null) {
                     activity.roundView.setVisibility(View.VISIBLE);
                 }
-                // 显示AI支招信息
-                if (activity.aiInfoTextView != null) {
-                    activity.aiInfoTextView.setVisibility(View.VISIBLE);
-                }
+
             } else {
                 // 开启摆棋模式
                 activity.chessInfo.IsSetupMode = true;
@@ -493,10 +490,7 @@ public class PvMActivitySetup {
                 if (activity.roundView != null) {
                     activity.roundView.setVisibility(View.GONE);
                 }
-                // 隐藏AI支招信息
-                if (activity.aiInfoTextView != null) {
-                    activity.aiInfoTextView.setVisibility(View.GONE);
-                }
+
                 // 清空原来的缓存
                 if (activity.infoSet != null) {
                     activity.infoSet.newInfo();

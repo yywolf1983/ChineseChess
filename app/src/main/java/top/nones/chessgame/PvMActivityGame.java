@@ -280,7 +280,9 @@ public class PvMActivityGame {
                                                 Utils.LogUtils.i("Move", "用户走棋: " + moveString);
                                             }
 
-                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp);
+                                            // 检查是否将军
+                                            boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
+                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
 
                                             // 保存移动后的状态到栈中
                                             try {

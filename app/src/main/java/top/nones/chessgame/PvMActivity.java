@@ -81,8 +81,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public ChessView chessView;
     public RoundView roundView;
     public SetupModeView setupModeView;
-    // AI 支招信息显示
-    public android.widget.TextView aiInfoTextView;
+
     // 按钮组ID
     private int buttonGroupId;
     // 对战模式：0-双人对战, 1-人机对战(玩家红), 2-人机对战(玩家黑), 3-双机对战
@@ -273,6 +272,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 实现走法字符串生成逻辑
         StringBuilder move = new StringBuilder();
         
+        // 参数检查
+        if (fromPos == null || toPos == null) {
+            return "未知走法";
+        }
+        
         // 获取棋子名称
         String pieceName = getPieceName(piece, isRed);
         
@@ -404,7 +408,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             case 12: return "车"; // 红车
             case 13: return "炮"; // 红炮
             case 14: return "兵"; // 红兵
-            default: return "";
+            default: return "未知";
         }
     }
     

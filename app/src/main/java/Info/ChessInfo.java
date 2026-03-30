@@ -2,7 +2,9 @@ package Info;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ChessInfo implements Cloneable, Serializable {
     private static final long serialVersionUID = -8764412462496314495L;
@@ -27,6 +29,16 @@ public class ChessInfo implements Cloneable, Serializable {
     // 支招相关字段
     public Pos suggestFromPos;
     public Pos suggestToPos;
+    
+    // 和棋判断相关字段
+    public Map<String, Integer> positionHistory; // 局面历史记录，用于检测重复局面
+    public int consecutiveCheckRed; // 红方连续将军次数
+    public int consecutiveCheckBlack; // 黑方连续将军次数
+    public boolean lastMoveWasCheck; // 上一步是否为将军
+    
+    // 强制变着相关字段
+    public boolean forceVariation; // 是否处于强制变着模式
+    public int variationRandomness; // 变着随机性等级（1-5）
 
     public ChessInfo() {
         init();
@@ -89,8 +101,21 @@ public class ChessInfo implements Cloneable, Serializable {
         suggestFromPos = null;
         suggestToPos = null;
         
+        // 初始化和棋判断相关字段
+        positionHistory = new HashMap<>();
+        consecutiveCheckRed = 0;
+        consecutiveCheckBlack = 0;
+        lastMoveWasCheck = false;
+        
+        // 初始化强制变着相关字段
+        forceVariation = false;
+        variationRandomness = 0;
+        
         // 计算初始攻击棋子数量
         calculateAttackPieces();
+        
+        // 记录初始局面
+        recordCurrentPosition();
     }
 
     public void setInfo(ChessInfo info) throws CloneNotSupportedException {
@@ -122,7 +147,7 @@ public class ChessInfo implements Cloneable, Serializable {
         this.suggestToPos = info.suggestToPos != null ? (Pos) info.suggestToPos.clone() : null;
     }
 
-    public void updateAllInfo(Pos prePos, Pos curPos, int piece, int capturedPiece) {
+    public void updateAllInfo(Pos prePos, Pos curPos, int piece, int capturedPiece, boolean isCheck) {
         // 更新走棋信息
         this.prePos = prePos;
         this.curPos = curPos;
@@ -150,8 +175,83 @@ public class ChessInfo implements Cloneable, Serializable {
             peaceRound++;
         }
         
+        // 更新长将检测
+        updateConsecutiveCheck(isCheck);
+        
         // 切换回合
         IsRedGo = !IsRedGo;
+        
+        // 记录当前局面（在切换回合后记录，确保局面哈希包含回合信息）
+        recordCurrentPosition();
+    }
+    
+    // 更新连续将军计数
+    private void updateConsecutiveCheck(boolean isCheck) {
+        lastMoveWasCheck = isCheck;
+        
+        if (isCheck) {
+            // 当前走棋方将军
+            if (!IsRedGo) {
+                // 红方走棋并将军
+                consecutiveCheckRed++;
+                consecutiveCheckBlack = 0; // 重置对方的连续将军计数
+            } else {
+                // 黑方走棋并将军
+                consecutiveCheckBlack++;
+                consecutiveCheckRed = 0; // 重置对方的连续将军计数
+            }
+        } else {
+            // 没有将军，重置当前走棋方的连续将军计数
+            if (!IsRedGo) {
+                consecutiveCheckRed = 0;
+            } else {
+                consecutiveCheckBlack = 0;
+            }
+        }
+    }
+    
+    // 记录当前局面
+    public void recordCurrentPosition() {
+        String positionHash = generatePositionHash();
+        Integer count = positionHistory.get(positionHash);
+        if (count == null) {
+            count = 0;
+        }
+        positionHistory.put(positionHash, count + 1);
+    }
+    
+    // 生成局面哈希
+    public String generatePositionHash() {
+        StringBuilder sb = new StringBuilder();
+        // 添加棋盘状态
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                sb.append(piece[i][j]);
+            }
+        }
+        // 添加当前回合（谁走棋）
+        sb.append(IsRedGo ? "R" : "B");
+        return sb.toString();
+    }
+    
+    // 检查是否三次重复局面
+    public boolean isThreefoldRepetition() {
+        String currentHash = generatePositionHash();
+        Integer count = positionHistory.get(currentHash);
+        return count != null && count >= 3;
+    }
+    
+    // 检查是否长将（连续将军超过规定次数）
+    public boolean isPerpetualCheck() {
+        // 连续将军超过6次判为长将
+        return consecutiveCheckRed >= 6 || consecutiveCheckBlack >= 6;
+    }
+    
+    // 获取长将方（用于显示）
+    public String getPerpetualCheckSide() {
+        if (consecutiveCheckRed >= 6) return "红方";
+        if (consecutiveCheckBlack >= 6) return "黑方";
+        return null;
     }
 
     @Override
@@ -183,6 +283,17 @@ public class ChessInfo implements Cloneable, Serializable {
         info.setting = this.setting;
         info.suggestFromPos = this.suggestFromPos != null ? (Pos) this.suggestFromPos.clone() : null;
         info.suggestToPos = this.suggestToPos != null ? (Pos) this.suggestToPos.clone() : null;
+        
+        // 复制和棋判断相关字段
+        info.positionHistory = new HashMap<>(this.positionHistory);
+        info.consecutiveCheckRed = this.consecutiveCheckRed;
+        info.consecutiveCheckBlack = this.consecutiveCheckBlack;
+        info.lastMoveWasCheck = this.lastMoveWasCheck;
+        
+        // 复制强制变着相关字段
+        info.forceVariation = this.forceVariation;
+        info.variationRandomness = this.variationRandomness;
+        
         return info;
     }
     
