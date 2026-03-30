@@ -26,10 +26,13 @@ android {
     // 签名配置
     signingConfigs {
         release {
-            storeFile file("${rootProject.projectDir}/${signingProperties.getProperty('storeFile')}")
-            storePassword signingProperties.getProperty('storePassword')
-            keyAlias signingProperties.getProperty('keyAlias')
-            keyPassword signingProperties.getProperty('keyPassword')
+            if (signingPropertiesFile.exists()) {
+                storeFile file("${rootProject.projectDir}/${signingProperties.getProperty('storeFile')}")
+                storePassword signingProperties.getProperty('storePassword')
+                keyAlias signingProperties.getProperty('keyAlias')
+                keyPassword signingProperties.getProperty('keyPassword')
+            }
+            // 如果没有签名配置，使用默认值（未签名）
         }
     }
 
@@ -37,7 +40,10 @@ android {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
+            if (signingPropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            // 如果没有签名配置，不设置signingConfig（未签名）
         }
         debug {
             minifyEnabled false

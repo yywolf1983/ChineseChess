@@ -669,7 +669,7 @@ public class PvMActivityControls {
             if (activity.roundView != null) {
                 activity.roundView.requestDraw();
             }
-            // 检查是否需要AI移动
+            // 立即检查是否需要AI移动，确保强制变着立即生效
             activity.gameManager.checkAIMove();
             
             // 对话框关闭，重置标志位

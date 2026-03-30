@@ -263,6 +263,12 @@ public class PvMActivityAI {
         this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
         this.activity.chessInfo.isMachine = true;
         
+        // 走棋后重置强制变着模式，因为局面已经改变
+        if (this.activity.chessInfo.forceVariation) {
+            this.activity.chessInfo.forceVariation = false;
+            this.activity.chessInfo.variationRandomness = 0;
+        }
+        
         try {
             this.activity.infoSet.pushInfo(this.activity.chessInfo);
         } catch (CloneNotSupportedException e) {

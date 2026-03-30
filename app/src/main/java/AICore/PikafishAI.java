@@ -615,12 +615,8 @@ public class PikafishAI {
                 Move move = uciToMove(bestMove);
                 LogUtils.i("PikafishAI", "最佳走法: " + move + ", 评分: " + score);
                 
-                // 重置强制变着模式标志位
-                if (chessInfo != null && wasForceVariation) {
-                    chessInfo.forceVariation = false;
-                    chessInfo.variationRandomness = 0;
-                    LogUtils.i("PikafishAI", "已重置强制变着模式");
-                }
+                // 强制变着模式在AI走棋后仍然保持，直到局面改变
+                // 不在这里重置强制变着模式标志位，让它在走棋后自然失效
                 
                 return new MoveWithScore(move, score);
             }
