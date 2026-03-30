@@ -294,133 +294,62 @@ public class Rule {
             }
         }
         
-        int num = 4;
-        int op_block_num = 10;
-        if (isRedKing == true) {
-            int x = 0, y = 0;
-            boolean flag = false;
-            for (y = 0; y <= 2; y++) {
-                for (x = 3; x <= 5; x++) {
-                    if (piece[y][x] == 8) {
-                        flag = true;
+        int kingX = -1, kingY = -1;
+        boolean foundKing = false;
+        
+        // 找到王的位置
+        if (isRedKing) {
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
+                    if (piece[y][x] == 8) { // 红帅
+                        kingX = x;
+                        kingY = y;
+                        foundKing = true;
                         break;
                     }
                 }
-                if (flag) break;
-            }
-            
-            // 如果没有找到红帅，返回 true
-            if (!flag) {
-                return true;
-            }
-
-            for (int i = 0; i < offsetX[num].length; i++) {     //马
-                int toX = x + offsetX[num][i];
-                int toY = y + offsetY[num][i];
-                int blockX = x + offsetX[op_block_num][i];
-                int blockY = y + offsetY[op_block_num][i];
-                if (InArea(toX, toY) != 0 && toX >= 0 && toX < 9 && toY >= 0 && toY < 10 && blockX >= 0 && blockX < 9 && blockY >= 0 && blockY < 10 && piece[toY][toX] == 4 && piece[blockY][blockX] == 0) {
-                    return true;
-                }
-            }
-            // 检查车和炮是否能攻击到帅
-            for (int i = 0; i < 10; i++) {
-                for (int j = 0; j < 9; j++) {
-                    int pieceId = piece[i][j];
-                    if (pieceId == 5 || pieceId == 6) { // 黑车或黑炮
-                        List<Pos> moves = PossibleMoves(piece, j, i, pieceId);
-                        Iterator<Pos> it = moves.iterator();
-                        while (it.hasNext()) {
-                            Pos pos = it.next();
-                            if (pos != null && pos.x == x && pos.y == y) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            Pos flyKingPos = flyKing(2, x, y, piece);
-            if (flyKingPos != null && flyKingPos.equals(new Pos(-1, -1)) == false) { //将
-                return true;
-            }
-            // 检查黑卒是否能攻击到帅
-            for (int i = 0; i < 10; i++) {
-                for (int j = 0; j < 9; j++) {
-                    if (piece[i][j] == 7) { // 黑卒
-                        List<Pos> moves = PossibleMoves(piece, j, i, 7);
-                        Iterator<Pos> it = moves.iterator();
-                        while (it.hasNext()) {
-                            Pos pos = it.next();
-                            if (pos != null && pos.x == x && pos.y == y) {
-                                return true;
-                            }
-                        }
-                    }
-                }
+                if (foundKing) break;
             }
         } else {
-            int x = 0, y = 0;
-            boolean flag = false;
-            for (y = 7; y <= 9; y++) {
-                for (x = 3; x <= 5; x++) {
-                    if (piece[y][x] == 1) {
-                        flag = true;
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
+                    if (piece[y][x] == 1) { // 黑将
+                        kingX = x;
+                        kingY = y;
+                        foundKing = true;
                         break;
                     }
                 }
-                if (flag) break;
+                if (foundKing) break;
             }
-            
-            // 如果没有找到黑将，返回 true
-            if (!flag) {
-                return true;
-            }
-
-            for (int i = 0; i < offsetX[num].length; i++) {     //马
-                int toX = x + offsetX[num][i];
-                int toY = y + offsetY[num][i];
-                int blockX = x + offsetX[op_block_num][i];
-                int blockY = y + offsetY[op_block_num][i];
-                if (InArea(toX, toY) != 0 && toX >= 0 && toX < 9 && toY >= 0 && toY < 10 && blockX >= 0 && blockX < 9 && blockY >= 0 && blockY < 10 && piece[toY][toX] == 11 && piece[blockY][blockX] == 0) {
-                    return true;
-                }
-            }
-            // 检查车和炮是否能攻击到将
-            for (int i = 0; i < 10; i++) {
-                for (int j = 0; j < 9; j++) {
-                    int pieceId = piece[i][j];
-                    if (pieceId == 12 || pieceId == 13) { // 红车或红炮
-                        List<Pos> moves = PossibleMoves(piece, j, i, pieceId);
-                        Iterator<Pos> it = moves.iterator();
-                        while (it.hasNext()) {
-                            Pos pos = it.next();
-                            if (pos != null && pos.x == x && pos.y == y) {
-                                return true;
-                            }
-                        }
-                    }
-                }
-            }
-            Pos flyKingPos = flyKing(1, x, y, piece);
-            if (flyKingPos != null && flyKingPos.equals(new Pos(-1, -1)) == false) { //将
-                return true;
-            }
-            // 检查红兵是否能攻击到将
-            for (int i = 0; i < 10; i++) {
-                for (int j = 0; j < 9; j++) {
-                    if (piece[i][j] == 14) { // 红兵
-                        List<Pos> moves = PossibleMoves(piece, j, i, 14);
-                        Iterator<Pos> it = moves.iterator();
-                        while (it.hasNext()) {
-                            Pos pos = it.next();
-                            if (pos != null && pos.x == x && pos.y == y) {
-                                return true;
-                            }
+        }
+        
+        if (!foundKing) {
+            return true; // 王不存在，视为被将军
+        }
+        
+        // 检查所有对方棋子的攻击
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int pieceId = piece[y][x];
+                if (pieceId == 0) continue;
+                
+                // 检查是否是对方的棋子
+                boolean isEnemy = isRedKing ? (pieceId >= 1 && pieceId <= 7) : (pieceId >= 8 && pieceId <= 14);
+                if (!isEnemy) continue;
+                
+                // 检查该棋子是否能攻击到王
+                List<Pos> moves = PossibleMoves(piece, x, y, pieceId);
+                if (moves != null) {
+                    for (Pos move : moves) {
+                        if (move.x == kingX && move.y == kingY) {
+                            return true;
                         }
                     }
                 }
             }
         }
+        
         return false;
     }
 

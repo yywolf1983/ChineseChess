@@ -148,8 +148,9 @@ public class PvMActivityAI {
             
             // 验证棋子颜色是否正确，防止AI走对方的棋子
             boolean pieceIsRed = piece >= 8 && piece <= 14;
+            boolean currentIsRed = this.activity.chessInfo.IsRedGo;
             
-            if (pieceIsRed != isRed) {
+            if (pieceIsRed != currentIsRed) {
                 return null;
             }
             
@@ -256,6 +257,25 @@ public class PvMActivityAI {
             return false;
         }
         
+        // 检查移动前是否被将军，如果是，必须解将
+        if (Rule.isKingDanger(this.activity.chessInfo.piece, isRed)) {
+            // 模拟移动
+            int temp = this.activity.chessInfo.piece[toPos.y][toPos.x];
+            this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
+            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
+            
+            // 检查移动后是否还被将军
+            boolean stillInCheck = Rule.isKingDanger(this.activity.chessInfo.piece, isRed);
+            
+            // 撤销移动
+            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
+            this.activity.chessInfo.piece[toPos.y][toPos.x] = temp;
+            
+            if (stillInCheck) {
+                return false; // 不能做出导致自己被将军的移动
+            }
+        }
+        
         // 执行移动
         this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
         this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
@@ -328,8 +348,15 @@ public class PvMActivityAI {
         
         // 双机对战模式下，自动触发下一次AI移动
         if (this.activity.gameMode == 3 && this.activity.chessInfo.status == 1) {
-            // 直接触发下一次AI移动
-            checkAIMove();
+            // 延迟触发下一次AI移动，确保当前AI线程已经完全结束
+            this.activity.chessView.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    if (activity != null && activity.chessInfo != null && activity.chessInfo.status == 1) {
+                        checkAIMove();
+                    }
+                }
+            }, 100); // 延迟100毫秒
         }
         
         return true;

@@ -229,6 +229,27 @@ public class PvMActivityGame {
                                         int piece = activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x];
                                         boolean isRed = piece >= 8 && piece <= 14;
 
+                                        // 检查移动前是否被将军，如果是，必须解将
+                                        if (Rule.isKingDanger(activity.chessInfo.piece, isRed)) {
+                                            // 模拟移动
+                                            activity.chessInfo.piece[targetY][targetX] = piece;
+                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
+                                            
+                                            // 检查移动后是否还被将军
+                                            boolean stillInCheck = Rule.isKingDanger(activity.chessInfo.piece, isRed);
+                                            
+                                            // 撤销移动
+                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
+                                            activity.chessInfo.piece[targetY][targetX] = tmp;
+                                            
+                                            if (stillInCheck) {
+                                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "必须解将", android.widget.Toast.LENGTH_SHORT);
+                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                                toast.show();
+                                                return false;
+                                            }
+                                        }
+
                                         activity.chessInfo.piece[targetY][targetX] = piece;
                                         activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
 
