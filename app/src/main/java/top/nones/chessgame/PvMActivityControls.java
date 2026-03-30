@@ -15,6 +15,7 @@ import Info.Pos;
 import ChessMove.Rule;
 import CustomView.ChessView;
 import CustomView.RoundView;
+import Utils.LogUtils;
 
 public class PvMActivityControls {
     private PvMActivity activity;
@@ -24,6 +25,7 @@ public class PvMActivityControls {
     private static final long SUGGEST_BUTTON_INTERVAL = 1200;
     private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
     private boolean justExecutedForceVariation = false; // 标记刚刚执行了强制变着
+    private int forceVariationCooldown = 0; // 强制变着后冷却回合数，三回合内不再提示
     
     public PvMActivityControls(PvMActivity activity) {
         this.activity = activity;
@@ -591,22 +593,28 @@ public class PvMActivityControls {
         
         // 检查和棋条件
         if (activity.chessInfo.status == 1) {
-            // 如果刚刚执行了强制变着，跳过强制变着检查
-            if (!justExecutedForceVariation) {
-                // 检查三次重复局面，弹出强制变着提示
-                if (!isForceVariationDialogShowing && activity.chessInfo.isThreefoldRepetition()) {
-                    showForceVariationDialog();
-                    return;
-                }
-                
-                // 检查长将，弹出强制变着提示
-                if (!isForceVariationDialogShowing && activity.chessInfo.isPerpetualCheck()) {
-                    showForceVariationDialog();
-                    return;
-                }
+            // 检查冷却回合数
+            if (forceVariationCooldown > 0) {
+                forceVariationCooldown--;
+                LogUtils.i("PvMActivityControls", "强制变着冷却中，剩余回合: " + forceVariationCooldown);
             } else {
-                // 重置强制变着标志，允许下次检查
-                justExecutedForceVariation = false;
+                // 如果刚刚执行了强制变着，跳过强制变着检查
+                if (!justExecutedForceVariation) {
+                    // 检查三次重复局面，弹出强制变着提示
+                    if (!isForceVariationDialogShowing && activity.chessInfo.isThreefoldRepetition()) {
+                        showForceVariationDialog();
+                        return;
+                    }
+                    
+                    // 检查长将，弹出强制变着提示
+                    if (!isForceVariationDialogShowing && activity.chessInfo.isPerpetualCheck()) {
+                        showForceVariationDialog();
+                        return;
+                    }
+                } else {
+                    // 重置强制变着标志，允许下次检查
+                    justExecutedForceVariation = false;
+                }
             }
             
             // 检查其他和棋条件，统一显示确认对话框
@@ -668,6 +676,9 @@ public class PvMActivityControls {
             activity.chessInfo.consecutiveCheckBlack = 0;
             // 重置继续对局后的回合计数器
             activity.continueGameRoundCount = 0;
+            // 设置强制变着冷却回合数为3，三回合内不再提示
+            forceVariationCooldown = 3;
+            LogUtils.i("PvMActivityControls", "设置强制变着冷却，3回合内不再提示");
             // 无需提示，对话框已明确说明
             // 重新绘制界面
             if (activity.chessView != null) {

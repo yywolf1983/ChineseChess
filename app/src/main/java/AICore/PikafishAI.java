@@ -183,6 +183,7 @@ public class PikafishAI {
                 // 3. 获取设置值
                 int skillLevel = 20; // 默认最高级别
                 int multiPV = 1; // 默认单主变
+                int contempt = 20; // 默认值
                 try {
                     // 尝试获取Setting中的值
                     Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
@@ -190,6 +191,13 @@ public class PikafishAI {
                     if (settingObj != null) {
                         skillLevel = (int) settingObj.getClass().getField("skillLevel").get(settingObj);
                         multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
+                        // 尝试获取Contempt设置，如果存在的话
+                        try {
+                            contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
+                        } catch (NoSuchFieldException e) {
+                            // 如果没有Contempt设置，使用默认值
+                            LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
+                        }
                     }
                 } catch (Exception e) {
                     LogUtils.e("PikafishAI", "获取设置值失败: " + e.getMessage());
@@ -206,8 +214,8 @@ public class PikafishAI {
                 LogUtils.i("PikafishAI", "设置技能级别: " + skillLevel);
                 
                 // 6. 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
-                sendCommand("setoption name Contempt value 20");
-                LogUtils.i("PikafishAI", "设置Contempt值: 20");
+                sendCommand("setoption name Contempt value " + contempt);
+                LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
                 
                 // 等待参数设置完成
                 sendCommand("isready");
@@ -504,9 +512,40 @@ public class PikafishAI {
                 
                 // 设置 Contempt 值为负数，鼓励引擎接受和棋，从而寻找不同的走法
                 sendCommand("setoption name Contempt value -" + (randomness * 10));
+                
+                // 强制变着模式：确保 MultiPV 至少为 3，让引擎考虑更多可能的走法
+                sendCommand("setoption name MultiPV value 3");
+                LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=3");
             } else {
-                // 正常模式：恢复默认 Contempt 值
-                sendCommand("setoption name Contempt value 20");
+                // 正常模式：使用用户设置的参数
+                int multiPV = 1;
+                int contempt = 20; // 默认值
+                try {
+                    // 尝试获取Setting中的值
+                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                    Object settingObj = pvmaClass.getField("setting").get(null);
+                    if (settingObj != null) {
+                        // 获取MultiPV设置
+                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
+                        // 尝试获取Contempt设置，如果存在的话
+                        try {
+                            contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
+                        } catch (NoSuchFieldException e) {
+                            // 如果没有Contempt设置，使用默认值
+                            LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
+                        }
+                    }
+                } catch (Exception e) {
+                    LogUtils.e("PikafishAI", "获取设置值失败: " + e.getMessage());
+                }
+                // 确保 MultiPV 至少为 2
+                multiPV = Math.max(2, multiPV);
+                // 设置 MultiPV
+                sendCommand("setoption name MultiPV value " + multiPV);
+                LogUtils.i("PikafishAI", "正常模式：设置MultiPV=" + multiPV);
+                // 设置 Contempt 值
+                sendCommand("setoption name Contempt value " + contempt);
+                LogUtils.i("PikafishAI", "正常模式：设置Contempt=" + contempt);
             }
             
             // 同时使用深度限制和时间限制，先达到哪个条件就停止
@@ -780,9 +819,25 @@ public class PikafishAI {
             sendCommand("setoption name Skill Level value " + skillLevel);
             LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
             
-            // 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
-            sendCommand("setoption name Contempt value 20");
-            LogUtils.i("PikafishAI", "设置Contempt值: 20");
+            // 尝试获取Contempt设置
+            int contempt = 20; // 默认值
+            try {
+                Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                Object settingObj = pvmaClass.getField("setting").get(null);
+                if (settingObj != null) {
+                    try {
+                        contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
+                    } catch (NoSuchFieldException e) {
+                        LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
+                    }
+                }
+            } catch (Exception e) {
+                LogUtils.e("PikafishAI", "获取Contempt设置失败: " + e.getMessage());
+            }
+            
+            // 设置 Contempt 值
+            sendCommand("setoption name Contempt value " + contempt);
+            LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
             
             // 等待参数设置完成
             sendCommand("isready");
@@ -802,9 +857,25 @@ public class PikafishAI {
             sendCommand("setoption name Skill Level value " + skillLevel);
             LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
             
-            // 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
-            sendCommand("setoption name Contempt value 20");
-            LogUtils.i("PikafishAI", "设置Contempt值: 20");
+            // 尝试获取Contempt设置
+            int contempt = 20; // 默认值
+            try {
+                Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                Object settingObj = pvmaClass.getField("setting").get(null);
+                if (settingObj != null) {
+                    try {
+                        contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
+                    } catch (NoSuchFieldException e) {
+                        LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
+                    }
+                }
+            } catch (Exception e) {
+                LogUtils.e("PikafishAI", "获取Contempt设置失败: " + e.getMessage());
+            }
+            
+            // 设置 Contempt 值
+            sendCommand("setoption name Contempt value " + contempt);
+            LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
             
             // 等待参数设置完成
             sendCommand("isready");
