@@ -24,6 +24,15 @@ public class BoardStateGenerator {
                 // 从FEN初始化棋盘状态
                 FENHandler fenHandler = new FENHandler();
                 initialInfo = fenHandler.fenToChessInfo(fen);
+                // 更新setupFEN为当前棋谱的FEN，清除之前的残留信息
+                if (activity.notationManager != null) {
+                    activity.notationManager.setSetupFEN(fen);
+                }
+            } else {
+                // 如果没有FEN信息，清除setupFEN
+                if (activity.notationManager != null) {
+                    activity.notationManager.setSetupFEN(null);
+                }
             }
             
             // 根据当前步数生成棋盘状态

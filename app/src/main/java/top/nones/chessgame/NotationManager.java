@@ -159,6 +159,8 @@ public class NotationManager {
                     }
                     currentMoveIndex = 0;
                     activity.continueGameRoundCount = 0;
+                    // 更新setupFEN为加载的棋谱的FEN，清除之前的残留信息
+                    setupFEN = notation.getFen();
                     
                     // 生成棋盘状态
                     BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);

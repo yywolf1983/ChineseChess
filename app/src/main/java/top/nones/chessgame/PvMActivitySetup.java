@@ -496,9 +496,16 @@ public class PvMActivitySetup {
                     activity.roundView.setVisibility(View.GONE);
                 }
 
-                // 清空原来的缓存
-                if (activity.infoSet != null) {
-                    activity.infoSet.newInfo();
+                // 不需要清空缓存，保持当前局面
+                // 更新视图中的chessInfo引用
+                if (activity.chessView != null) {
+                    activity.chessView.setChessInfo(activity.chessInfo);
+                }
+                if (activity.setupModeView != null) {
+                    activity.setupModeView.setChessInfo(activity.chessInfo);
+                }
+                if (activity.roundView != null) {
+                    activity.roundView.setChessInfo(activity.chessInfo);
                 }
                 // 重新绘制界面
                 if (activity.chessView != null) {
