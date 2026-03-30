@@ -231,12 +231,13 @@ public class RoundView extends View {
                 postInvalidateDelayed(50);
             }
             
+            // 显示绝对值并添加红方或黑方前缀
             if (moveScore > 0) {
-                scoreText = "红方领先: " + moveScore;
+                scoreText = "红方:" + moveScore;
             } else if (moveScore < 0) {
-                scoreText = "黑方领先: " + Math.abs(moveScore);
+                scoreText = "黑方:" + Math.abs(moveScore);
             } else {
-                scoreText = "双方均势";
+                scoreText = "0";
             }
         }
         float scoreX = width * 1 / 3; // 左侧

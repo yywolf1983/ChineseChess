@@ -286,11 +286,11 @@ public class Rule {
     public static boolean isKingDanger(int[][] piece, boolean isRedKing) {
         // 参数验证
         if (piece == null || piece.length != 10) {
-            return true;
+            return false;
         }
         for (int i = 0; i < 10; i++) {
             if (piece[i] == null || piece[i].length != 9) {
-                return true;
+                return false;
             }
         }
         
@@ -427,11 +427,11 @@ public class Rule {
     public static boolean isDead(int[][] piece, boolean isRedKing) {
         // 参数验证
         if (piece == null || piece.length != 10) {
-            return true;
+            return false;
         }
         for (int i = 0; i < 10; i++) {
             if (piece[i] == null || piece[i].length != 9) {
-                return true;
+                return false;
             }
         }
         
