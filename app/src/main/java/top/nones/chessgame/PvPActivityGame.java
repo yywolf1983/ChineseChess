@@ -345,8 +345,6 @@ public class PvPActivityGame {
             drawReason = "双方30回合内未吃子，是否和棋？";
         } else if (chessInfo.attackNum_B == 0 && chessInfo.attackNum_R == 0) {
             drawReason = "双方都无攻击性棋子，是否和棋？";
-        } else if (chessInfo.isBothSidesIdle()) {
-            drawReason = "双方均闲着（无攻击意图），是否和棋？";
         }
         
         if (drawReason != null) {
