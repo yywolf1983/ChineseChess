@@ -620,7 +620,7 @@ public class PvMActivityControls {
             }
         }
         
-        // 检查和棋条件，无论是否在摆棋模式下
+            // 检查和棋条件，无论是否在摆棋模式下
         if (activity.chessInfo.status == 1) {
             // 检查冷却回合数
             if (forceVariationCooldown > 0) {
@@ -640,6 +640,12 @@ public class PvMActivityControls {
                         handleForceVariation();
                         return;
                     }
+                    
+                    // 检查长捉，后台强制变着并显示浮窗提示
+                    if (activity.chessInfo.getPerpetualAttackSide() != null) {
+                        handleForceVariation();
+                        return;
+                    }
                 } else {
                     // 重置强制变着标志，允许下次检查
                     justExecutedForceVariation = false;
@@ -653,6 +659,8 @@ public class PvMActivityControls {
                     drawReason = "双方30回合内未吃子，是否和棋？";
                 } else if (activity.chessInfo.attackNum_B == 0 && activity.chessInfo.attackNum_R == 0) {
                     drawReason = "双方都无攻击性棋子，是否和棋？";
+                } else if (activity.chessInfo.isBothSidesIdle()) {
+                    drawReason = "双方均闲着（无攻击意图），是否和棋？";
                 }
             }
             
@@ -680,6 +688,11 @@ public class PvMActivityControls {
         // 重置长将计数
         activity.chessInfo.consecutiveCheckRed = 0;
         activity.chessInfo.consecutiveCheckBlack = 0;
+        // 重置长捉计数
+        activity.chessInfo.consecutiveAttackRed = 0;
+        activity.chessInfo.consecutiveAttackBlack = 0;
+        activity.chessInfo.lastAttackedPiecePos = null;
+        activity.chessInfo.lastAttackedPieceType = 0;
         // 重置继续对局后的回合计数器
         activity.continueGameRoundCount = 0;
         // 设置强制变着冷却回合数为3，三回合内不再检查
@@ -788,6 +801,9 @@ public class PvMActivityControls {
         if (activity.chessInfo.isPerpetualCheck()) {
             String side = activity.chessInfo.getPerpetualCheckSide();
             message = side + "长将，已强制变着";
+        } else if (activity.chessInfo.getPerpetualAttackSide() != null) {
+            String side = activity.chessInfo.getPerpetualAttackSide();
+            message = side + "长捉，已强制变着";
         } else {
             message = "检测到重复局面，已强制变着";
         }

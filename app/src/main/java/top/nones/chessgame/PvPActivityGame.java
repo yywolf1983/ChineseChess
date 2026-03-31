@@ -327,8 +327,15 @@ public class PvPActivityGame {
             return;
         }
         
-        // 检查长将，后台强制变着并显示浮窗提示
+        // 检查长将，根据规则类型处理
         if (chessInfo.isPerpetualCheck()) {
+            handleForceVariation();
+            return;
+        }
+        
+        // 检查长捉，根据规则类型处理
+        String perpetualAttackSide = chessInfo.getPerpetualAttackSide();
+        if (perpetualAttackSide != null) {
             handleForceVariation();
             return;
         }
@@ -338,6 +345,8 @@ public class PvPActivityGame {
             drawReason = "双方30回合内未吃子，是否和棋？";
         } else if (chessInfo.attackNum_B == 0 && chessInfo.attackNum_R == 0) {
             drawReason = "双方都无攻击性棋子，是否和棋？";
+        } else if (chessInfo.isBothSidesIdle()) {
+            drawReason = "双方均闲着（无攻击意图），是否和棋？";
         }
         
         if (drawReason != null) {
@@ -347,14 +356,121 @@ public class PvPActivityGame {
     
     // 处理强制变着逻辑
     private void handleForceVariation() {
+        // 根据规则类型决定处理方式
+        String ruleType = getViolatedRuleType();
+        
+        if (ruleType.equals("ONE_SIDE_PERPETUAL_CHECK") || ruleType.equals("ONE_SIDE_PERPETUAL_ATTACK")) {
+            // 单方长将或单方长捉：必须变着
+            handleOneSideForcedVariation(ruleType);
+        } else if (ruleType.equals("BOTH_SIDES_PERPETUAL_CHECK") || ruleType.equals("BOTH_SIDES_PERPETUAL_ATTACK")) {
+            // 双方长将或双方长捉：询问是否和棋
+            handleBothSidesDrawConfirmation(ruleType);
+        } else if (ruleType.equals("ONE_FORBIDDEN_ONE_ALLOWED")) {
+            // 一方禁止一方允许：禁止方必须变着
+            handleForbiddenSideVariation();
+        } else {
+            // 其他情况（三次重复局面等）：默认处理
+            handleDefaultForceVariation();
+        }
+    }
+    
+    // 获取违反的规则类型
+    private String getViolatedRuleType() {
+        if (chessInfo.isOneSidePerpetualCheck()) {
+            return "ONE_SIDE_PERPETUAL_CHECK";
+        } else if (chessInfo.isOneSidePerpetualAttack()) {
+            return "ONE_SIDE_PERPETUAL_ATTACK";
+        } else if (chessInfo.isBothSidesPerpetualCheck()) {
+            return "BOTH_SIDES_PERPETUAL_CHECK";
+        } else if (chessInfo.isBothSidesPerpetualAttack()) {
+            return "BOTH_SIDES_PERPETUAL_ATTACK";
+        } else if (chessInfo.isOneForbiddenOneAllowed()) {
+            return "ONE_FORBIDDEN_ONE_ALLOWED";
+        } else if (chessInfo.isPerpetualCheck()) {
+            return "PERPETUAL_CHECK"; // 默认长将
+        } else if (chessInfo.getPerpetualAttackSide() != null) {
+            return "PERPETUAL_ATTACK"; // 默认长捉
+        } else if (chessInfo.isThreefoldRepetition()) {
+            return "THREEFOLD_REPETITION";
+        }
+        return "UNKNOWN";
+    }
+    
+    // 处理单方长将或长捉的强制变着
+    private void handleOneSideForcedVariation(String ruleType) {
         // 检查是否会立即输棋
         boolean willLose = checkWillLoseAfterForceVariation();
         if (willLose) {
             // 提示用户是否认输
-            showLoseConfirmationDialog();
+            showLoseConfirmationDialog(ruleType);
             return;
         }
         
+        resetForbiddenCounters();
+        
+        // 显示浮窗提示
+        if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
+            showForceVariationHint(ruleType);
+            forceVariationHintRound = chessInfo.totalMoves;
+        }
+    }
+    
+    // 处理双方长将或长捉的和棋确认
+    private void handleBothSidesDrawConfirmation(String ruleType) {
+        String message = "";
+        if (ruleType.equals("BOTH_SIDES_PERPETUAL_CHECK")) {
+            message = "双方长将，双方不变作和，是否和棋？";
+        } else {
+            message = "双方长捉，双方不变作和，是否和棋？";
+        }
+        
+        showBothSidesDrawDialog(message, ruleType);
+    }
+    
+    // 处理一方禁止一方允许的情况
+    private void handleForbiddenSideVariation() {
+        String forbiddenSide = chessInfo.getForbiddenSide();
+        if (forbiddenSide == null) return;
+        
+        // 检查禁止方是否会立即输棋
+        boolean willLose = checkWillLoseAfterForceVariation();
+        if (willLose) {
+            // 提示禁止方是否认输
+            showLoseConfirmationDialog("ONE_FORBIDDEN_ONE_ALLOWED");
+            return;
+        }
+        
+        // 显示浮窗提示，要求禁止方变着
+        if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
+            String message = forbiddenSide + "禁止着法，必须变着，不变判负";
+            showForceVariationHint("ONE_FORBIDDEN_ONE_ALLOWED", message);
+            forceVariationHintRound = chessInfo.totalMoves;
+        }
+        
+        resetForbiddenCounters();
+    }
+    
+    // 处理默认强制变着
+    private void handleDefaultForceVariation() {
+        // 检查是否会立即输棋
+        boolean willLose = checkWillLoseAfterForceVariation();
+        if (willLose) {
+            // 提示用户是否认输
+            showLoseConfirmationDialog("DEFAULT");
+            return;
+        }
+        
+        resetForbiddenCounters();
+        
+        // 显示浮窗提示
+        if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
+            showForceVariationHint("DEFAULT");
+            forceVariationHintRound = chessInfo.totalMoves;
+        }
+    }
+    
+    // 重置禁止着法计数器
+    private void resetForbiddenCounters() {
         // 重置重复局面计数
         String currentHash = chessInfo.generatePositionHash();
         if (chessInfo.positionHistory.containsKey(currentHash)) {
@@ -363,12 +479,11 @@ public class PvPActivityGame {
         // 重置长将计数
         chessInfo.consecutiveCheckRed = 0;
         chessInfo.consecutiveCheckBlack = 0;
-        
-        // 检查是否需要显示浮窗提示（十回合内只提示一次）
-        if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
-            showForceVariationHint();
-            forceVariationHintRound = chessInfo.totalMoves;
-        }
+        // 重置长捉计数
+        chessInfo.consecutiveAttackRed = 0;
+        chessInfo.consecutiveAttackBlack = 0;
+        chessInfo.lastAttackedPiecePos = null;
+        chessInfo.lastAttackedPieceType = 0;
     }
     
     // 检查强制变着后是否会立即输棋
@@ -379,28 +494,38 @@ public class PvPActivityGame {
     }
     
     // 显示输棋确认对话框
-    private void showLoseConfirmationDialog() {
+    private void showLoseConfirmationDialog(String ruleType) {
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
         builder.setTitle("认输确认");
-        builder.setMessage("强制变着后您将立即输棋，是否认输？");
+        
+        String message = "";
+        if (ruleType.equals("ONE_SIDE_PERPETUAL_CHECK")) {
+            message = "长将必须变着，变着后您将立即输棋，是否认输？";
+        } else if (ruleType.equals("ONE_SIDE_PERPETUAL_ATTACK")) {
+            message = "长捉必须变着，变着后您将立即输棋，是否认输？";
+        } else if (ruleType.equals("ONE_FORBIDDEN_ONE_ALLOWED")) {
+            String forbiddenSide = chessInfo.getForbiddenSide();
+            if (forbiddenSide != null) {
+                message = forbiddenSide + "禁止着法必须变着，变着后您将立即输棋，是否认输？";
+            } else {
+                message = "禁止着法必须变着，变着后您将立即输棋，是否认输？";
+            }
+        } else {
+            message = "强制变着后您将立即输棋，是否认输？";
+        }
+        
+        builder.setMessage(message);
         builder.setPositiveButton("认输", (dialog, which) -> {
             chessInfo.status = 2;
             Toast.makeText(activity, chessInfo.IsRedGo ? "黑方获得胜利" : "红方获得胜利", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("继续变着", (dialog, which) -> {
             // 继续强制变着
-            // 重置重复局面计数
-            String currentHash = chessInfo.generatePositionHash();
-            if (chessInfo.positionHistory.containsKey(currentHash)) {
-                chessInfo.positionHistory.put(currentHash, 1);
-            }
-            // 重置长将计数
-            chessInfo.consecutiveCheckRed = 0;
-            chessInfo.consecutiveCheckBlack = 0;
+            resetForbiddenCounters();
             
             // 显示强制变着提示
             if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
-                showForceVariationHint();
+                showForceVariationHint(ruleType);
                 forceVariationHintRound = chessInfo.totalMoves;
             }
         });
@@ -408,14 +533,62 @@ public class PvPActivityGame {
         builder.show();
     }
     
+    // 显示双方长将/长捉的和棋对话框
+    private void showBothSidesDrawDialog(String message, String ruleType) {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle("和棋确认");
+        builder.setMessage(message);
+        builder.setPositiveButton("同意和棋", (dialog, which) -> {
+            chessInfo.status = 2;
+            String toastMessage = "";
+            if (ruleType.equals("BOTH_SIDES_PERPETUAL_CHECK")) {
+                toastMessage = "双方长将，此乃和棋";
+            } else {
+                toastMessage = "双方长捉，此乃和棋";
+            }
+            Toast.makeText(activity, toastMessage, Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("继续对局", (dialog, which) -> {
+            // 用户选择继续，重置相关计数器
+            resetForbiddenCounters();
+            dialog.dismiss();
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+    
     // 显示强制变着浮窗提示
-    private void showForceVariationHint() {
-        String message = "";
-        if (chessInfo.isPerpetualCheck()) {
-            String side = chessInfo.getPerpetualCheckSide();
-            message = side + "长将，已强制变着";
-        } else {
-            message = "检测到重复局面，已强制变着";
+    private void showForceVariationHint(String ruleType) {
+        showForceVariationHint(ruleType, "");
+    }
+    
+    // 显示强制变着浮窗提示（重载方法）
+    private void showForceVariationHint(String ruleType, String customMessage) {
+        String message = customMessage;
+        
+        if (message.isEmpty()) {
+            if (ruleType.equals("ONE_SIDE_PERPETUAL_CHECK")) {
+                String side = chessInfo.getPerpetualCheckSide();
+                message = side + "长将，必须变着";
+            } else if (ruleType.equals("ONE_SIDE_PERPETUAL_ATTACK")) {
+                String side = chessInfo.getPerpetualAttackSide();
+                message = side + "长捉，必须变着";
+            } else if (ruleType.equals("BOTH_SIDES_PERPETUAL_CHECK")) {
+                message = "双方长将，双方不变作和";
+            } else if (ruleType.equals("BOTH_SIDES_PERPETUAL_ATTACK")) {
+                message = "双方长捉，双方不变作和";
+            } else if (ruleType.equals("ONE_FORBIDDEN_ONE_ALLOWED")) {
+                String forbiddenSide = chessInfo.getForbiddenSide();
+                if (forbiddenSide != null) {
+                    message = forbiddenSide + "禁止着法，必须变着，不变判负";
+                } else {
+                    message = "禁止着法，必须变着";
+                }
+            } else if (ruleType.equals("THREEFOLD_REPETITION")) {
+                message = "三次重复局面，请变着";
+            } else {
+                message = "检测到禁止着法，已强制变着";
+            }
         }
         
         // 创建浮窗提示

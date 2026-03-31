@@ -28,7 +28,11 @@ public class PvMActivityAI {
     
     public PvMActivityAI(PvMActivity activity) {
         this.activity = activity;
+        this.aiMoveHistory = new java.util.ArrayList<>();
     }
+    
+    // 记录AI着法历史
+    private java.util.List<String> aiMoveHistory;
     
     public Move calculateAIMove() {
         return calculateAIMoveWithDepthUpdate();
@@ -44,7 +48,8 @@ public class PvMActivityAI {
             
             // 检查是否需要强制变着
             if (this.activity.chessInfo != null && this.activity.chessInfo.status == 1) {
-                if (this.activity.chessInfo.isThreefoldRepetition() || this.activity.chessInfo.isPerpetualCheck()) {
+                if (this.activity.chessInfo.isThreefoldRepetition() || this.activity.chessInfo.isPerpetualCheck() || 
+                    this.activity.chessInfo.getPerpetualAttackSide() != null) {
                     // 启用强制变着模式
                     this.activity.chessInfo.forceVariation = true;
                     this.activity.chessInfo.variationRandomness = 3; // 设置中等随机性
@@ -56,6 +61,11 @@ public class PvMActivityAI {
                     // 重置长将计数
                     this.activity.chessInfo.consecutiveCheckRed = 0;
                     this.activity.chessInfo.consecutiveCheckBlack = 0;
+                    // 重置长捉计数
+                    this.activity.chessInfo.consecutiveAttackRed = 0;
+                    this.activity.chessInfo.consecutiveAttackBlack = 0;
+                    this.activity.chessInfo.lastAttackedPiecePos = null;
+                    this.activity.chessInfo.lastAttackedPieceType = 0;
                 }
             }
         }
@@ -120,43 +130,136 @@ public class PvMActivityAI {
             return null;
         }
         
-        PikafishAI.MoveWithScore moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
-        if (moveWithScore == null) {
-            return null;
+        // 获取AI着法，并检查是否会导致重复局面
+        Move move = null;
+        int maxRetryCount = 10; // 增加最大重试次数
+        int retryCount = 0;
+        java.util.Set<String> triedMoves = new java.util.HashSet<>(); // 记录已尝试的着法
+        java.util.List<Move> allPossibleMoves = new java.util.ArrayList<>(); // 存储所有可能的着法
+        
+        // 如果是强制变着模式，收集所有合法着法以供选择
+        if (this.activity.chessInfo.forceVariation) {
+            collectAllPossibleMoves(allPossibleMoves);
         }
-        Move move = moveWithScore.move;
-        int score = moveWithScore.score;
         
-        boolean isRedTurn = this.activity.chessInfo.IsRedGo;
-        score = PvMActivity.normalizeScore(score, isRedTurn);
-        
-        this.currentAIScore = score;
-        
-        if (move != null) {
+        while (retryCount < maxRetryCount) {
+            PikafishAI.MoveWithScore moveWithScore;
+            
+            // 如果是强制变着模式且有收集到着法，从列表中选择
+            if (this.activity.chessInfo.forceVariation && !allPossibleMoves.isEmpty() && retryCount > 0) {
+                // 尝试从所有可能着法中选择一个不同的
+                move = selectDifferentMove(allPossibleMoves, triedMoves);
+                if (move != null) {
+                    // 模拟获取分数
+                    moveWithScore = new PikafishAI.MoveWithScore(move, 0);
+                } else {
+                    // 如果没有不同的着法，使用正常AI计算
+                    moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                }
+            } else {
+                // 正常AI计算
+                moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+            }
+            
+            if (moveWithScore == null) {
+                break;
+            }
+            
+            move = moveWithScore.move;
+            int score = moveWithScore.score;
+            
+            boolean isRedTurn = this.activity.chessInfo.IsRedGo;
+            score = PvMActivity.normalizeScore(score, isRedTurn);
+            
+            this.currentAIScore = score;
+            
+            if (move == null) {
+                break;
+            }
+            
             Pos fromPos = move.fromPos;
             Pos toPos = move.toPos;
             if (fromPos == null || toPos == null) {
-                return null;
+                break;
             }
             if (fromPos.x < 0 || fromPos.x >= 9 || fromPos.y < 0 || fromPos.y >= 10 || toPos.x < 0 || toPos.x >= 9 || toPos.y < 0 || toPos.y >= 10) {
-                return null;
+                break;
             }
             
             int piece = this.activity.chessInfo.piece[fromPos.y][fromPos.x];
             if (piece == 0) {
-                return null;
+                break;
             }
             
             boolean pieceIsRed = piece >= 8 && piece <= 14;
             boolean currentIsRed = this.activity.chessInfo.IsRedGo;
             
             if (pieceIsRed != currentIsRed) {
-                return null;
+                break;
             }
             
             List<Pos> possibleMoves = Rule.PossibleMoves(this.activity.chessInfo.piece, fromPos.x, fromPos.y, piece);
             if (!possibleMoves.contains(toPos)) {
-                return null;
+                break;
+            }
+            
+            // 检查这个着法是否会导致重复局面
+            boolean leadsToRepetition = checkIfMoveLeadsToRepetition(move);
+            String moveKey = fromPos.x + "," + fromPos.y + "->" + toPos.x + "," + toPos.y;
+            
+            // 如果这个着法已经尝试过，或者会导致重复局面，则重新计算
+            if (!triedMoves.contains(moveKey) && !leadsToRepetition) {
+                // 这个着法不会导致重复局面，可以使用
+                triedMoves.add(moveKey);
+                
+                // 如果是强制变着模式，检查是否与历史着法相同
+                if (this.activity.chessInfo.forceVariation && !aiMoveHistory.isEmpty()) {
+                    // 检查这个着法是否与最近的历史着法相同
+                    String lastMove = aiMoveHistory.isEmpty() ? "" : aiMoveHistory.get(aiMoveHistory.size() - 1);
+                    if (moveKey.equals(lastMove)) {
+                        // 与历史着法相同，需要重新计算
+                        retryCount++;
+                        if (retryCount >= maxRetryCount) {
+                            // 如果达到最大重试次数，强制选择一个不同的着法
+                            move = forceSelectDifferentMove(allPossibleMoves, triedMoves);
+                            if (move != null) {
+                                break;
+                            }
+                        }
+                        continue;
+                    }
+                }
+                break;
+            } else {
+                // 这个着法会导致重复局面或已经尝试过，需要重新计算
+                triedMoves.add(moveKey);
+                retryCount++;
+                
+                // 如果是强制变着模式，增加随机性
+                if (this.activity.chessInfo.forceVariation) {
+                    this.activity.chessInfo.variationRandomness = Math.min(5, this.activity.chessInfo.variationRandomness + 1);
+                }
+                
+                // 如果达到最大重试次数，强制选择一个不同的着法
+                if (retryCount >= maxRetryCount && this.activity.chessInfo.forceVariation) {
+                    move = forceSelectDifferentMove(allPossibleMoves, triedMoves);
+                    if (move != null) {
+                        break;
+                    }
+                }
+                
+                // 短暂延迟后重新计算
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                // 重新开始AI搜索
+                if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
+                    this.activity.pikafishAI.interrupt();
+                    startAISearch(isRedTurn);
+                }
             }
         }
         
@@ -169,9 +272,66 @@ public class PvMActivityAI {
         return move;
     }
     
+    // 检查着法是否会导致重复局面
+    private boolean checkIfMoveLeadsToRepetition(Move move) {
+        if (this.activity == null || this.activity.chessInfo == null || move == null || 
+            move.fromPos == null || move.toPos == null) {
+            return false;
+        }
+        
+        // 模拟执行这个着法
+        int[][] simulatedBoard = new int[10][9];
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                simulatedBoard[i][j] = this.activity.chessInfo.piece[i][j];
+            }
+        }
+        
+        int piece = simulatedBoard[move.fromPos.y][move.fromPos.x];
+        int capturedPiece = simulatedBoard[move.toPos.y][move.toPos.x];
+        
+        // 执行移动
+        simulatedBoard[move.toPos.y][move.toPos.x] = piece;
+        simulatedBoard[move.fromPos.y][move.fromPos.x] = 0;
+        
+        // 切换回合
+        boolean simulatedIsRedGo = !this.activity.chessInfo.IsRedGo;
+        
+        // 生成模拟局面的哈希
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                sb.append(simulatedBoard[i][j]);
+            }
+        }
+        sb.append(simulatedIsRedGo ? "R" : "B");
+        String simulatedHash = sb.toString();
+        
+        // 检查这个局面是否已经在历史中出现过
+        Integer count = this.activity.chessInfo.positionHistory.get(simulatedHash);
+        return count != null && count >= 2; // 如果已经出现过2次，再出现就会导致3次重复
+    }
+    
     public boolean executeAIMove(Move move) {
         if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.piece == null) {
             return false;
+        }
+        
+        // 检查当前局面是否已经是重复局面，如果是则强制AI变着
+        if (this.activity.chessInfo.isThreefoldRepetition()) {
+            // 启用强制变着模式
+            this.activity.chessInfo.forceVariation = true;
+            this.activity.chessInfo.variationRandomness = 5; // 设置高随机性
+            
+            // 通知用户需要重新计算
+            if (this.activity != null) {
+                this.activity.runOnUiThread(() -> {
+                    Toast.makeText(this.activity, "重复局面，AI重新计算着法...", Toast.LENGTH_SHORT).show();
+                });
+            }
+            
+            // 重新触发AI计算
+            return triggerAIRecalculation();
         }
         
         boolean redKingExists = false;
@@ -280,10 +440,43 @@ public class PvMActivityAI {
         this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
         this.activity.chessInfo.isMachine = true;
         
+        // 记录AI着法历史
+        String moveKey = fromPos.x + "," + fromPos.y + "->" + toPos.x + "," + toPos.y;
+        aiMoveHistory.add(moveKey);
+        // 只保留最近10个着法
+        if (aiMoveHistory.size() > 10) {
+            aiMoveHistory.remove(0);
+        }
+        
         // 走棋后重置强制变着模式，因为局面已经改变
         if (this.activity.chessInfo.forceVariation) {
             this.activity.chessInfo.forceVariation = false;
             this.activity.chessInfo.variationRandomness = 0;
+        }
+        
+        // 检查AI走棋后是否导致重复局面
+        if (checkIfMoveLeadsToRepetition(move)) {
+            // 撤销这个着法，因为它会导致重复局面
+            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
+            this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
+            
+            // 重新触发AI计算
+            new Thread(() -> {
+                try {
+                    Thread.sleep(100); // 短暂延迟
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                
+                // 在UI线程中重新触发AI计算
+                if (this.activity != null) {
+                    this.activity.runOnUiThread(() -> {
+                        checkAIMove();
+                    });
+                }
+            }).start();
+            
+            return false;
         }
         
         try {
@@ -333,6 +526,39 @@ public class PvMActivityAI {
             final PvMActivityAI aiInstance = this;
             this.activity.chessView.postDelayed(new DoubleAIMoveRunnable(aiInstance), 100);
         }
+        
+        return true;
+    }
+    
+    // 重新触发AI计算
+    private boolean triggerAIRecalculation() {
+        if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.status != 1) {
+            return false;
+        }
+        
+        // 重置重复局面计数
+        String currentHash = this.activity.chessInfo.generatePositionHash();
+        if (this.activity.chessInfo.positionHistory.containsKey(currentHash)) {
+            this.activity.chessInfo.positionHistory.put(currentHash, 1);
+        }
+        
+        // 增加随机性
+        this.activity.chessInfo.variationRandomness = 5;
+        
+        // 重新触发AI计算
+        new Thread(() -> {
+            try {
+                Thread.sleep(200); // 短暂延迟让用户看到提示
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            
+            if (this.activity != null) {
+                this.activity.runOnUiThread(() -> {
+                    checkAIMove();
+                });
+            }
+        }).start();
         
         return true;
     }
@@ -693,6 +919,60 @@ public class PvMActivityAI {
             this.depthUpdateFuture.cancel(true);
             this.depthUpdateFuture = null;
         }
+    }
+    
+    // 收集所有可能的合法着法
+    private void collectAllPossibleMoves(java.util.List<Move> allPossibleMoves) {
+        if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.piece == null) {
+            return;
+        }
+        
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                int piece = this.activity.chessInfo.piece[i][j];
+                if (piece != 0) {
+                    boolean pieceIsRed = piece >= 8 && piece <= 14;
+                    boolean currentIsRed = this.activity.chessInfo.IsRedGo;
+                    
+                    // 只收集当前回合方的着法
+                    if ((pieceIsRed && currentIsRed) || (!pieceIsRed && !currentIsRed)) {
+                        List<Pos> possibleMoves = Rule.PossibleMoves(this.activity.chessInfo.piece, j, i, piece);
+                        for (Pos toPos : possibleMoves) {
+                            Move move = new Move(new Pos(j, i), toPos);
+                            allPossibleMoves.add(move);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 选择不同于已尝试过的着法
+    private Move selectDifferentMove(java.util.List<Move> allPossibleMoves, java.util.Set<String> triedMoves) {
+        for (Move move : allPossibleMoves) {
+            String moveKey = move.fromPos.x + "," + move.fromPos.y + "->" + move.toPos.x + "," + move.toPos.y;
+            if (!triedMoves.contains(moveKey)) {
+                return move;
+            }
+        }
+        return null; // 如果没有不同的着法，返回null
+    }
+    
+    // 强制选择一个不同的着法（即使不是最佳着法）
+    private Move forceSelectDifferentMove(java.util.List<Move> allPossibleMoves, java.util.Set<String> triedMoves) {
+        // 首先尝试选择一个不同的着法
+        Move move = selectDifferentMove(allPossibleMoves, triedMoves);
+        if (move != null) {
+            return move;
+        }
+        
+        // 如果没有不同的着法，随机选择一个着法
+        if (!allPossibleMoves.isEmpty()) {
+            int randomIndex = (int) (Math.random() * allPossibleMoves.size());
+            return allPossibleMoves.get(randomIndex);
+        }
+        
+        return null;
     }
     
     public void shutdown() {
