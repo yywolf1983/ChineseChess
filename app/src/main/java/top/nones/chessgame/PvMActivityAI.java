@@ -41,6 +41,23 @@ public class PvMActivityAI {
         
         if (this.activity != null) {
             this.activity.startTurnTimer();
+            
+            // 检查是否需要强制变着
+            if (this.activity.chessInfo != null && this.activity.chessInfo.status == 1) {
+                if (this.activity.chessInfo.isThreefoldRepetition() || this.activity.chessInfo.isPerpetualCheck()) {
+                    // 启用强制变着模式
+                    this.activity.chessInfo.forceVariation = true;
+                    this.activity.chessInfo.variationRandomness = 3; // 设置中等随机性
+                    // 重置重复局面计数
+                    String currentHash = this.activity.chessInfo.generatePositionHash();
+                    if (this.activity.chessInfo.positionHistory.containsKey(currentHash)) {
+                        this.activity.chessInfo.positionHistory.put(currentHash, 1);
+                    }
+                    // 重置长将计数
+                    this.activity.chessInfo.consecutiveCheckRed = 0;
+                    this.activity.chessInfo.consecutiveCheckBlack = 0;
+                }
+            }
         }
         
         startAISearch(isRed);

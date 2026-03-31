@@ -84,6 +84,11 @@ public class PvMActivitySetup {
             }
             
             // 不再自动检查摆棋完成，由用户点击摆棋按钮结束
+            
+            // 检查和棋条件，确保摆棋模式下也能提示和棋
+            if (activity.controlsManager != null && activity.chessInfo != null && activity.chessInfo.status == 1) {
+                activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
+            }
         }
     }
     

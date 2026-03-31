@@ -93,9 +93,25 @@ public class BoardStateGenerator {
                         activity.chessInfo.setInfo(currentInfo);
                         // 更新 totalMoves，使其与当前的 moveCount 一致
                         activity.chessInfo.totalMoves = moveCount;
+                        // 确保游戏状态为进行中
+                        activity.chessInfo.status = 1;
+                        // 初始化和棋检测所需的字段
+                        if (activity.chessInfo.positionHistory == null) {
+                            activity.chessInfo.positionHistory = new java.util.HashMap<>();
+                        }
+                        // 生成当前局面的哈希并添加到历史记录
+                        String currentHash = activity.chessInfo.generatePositionHash();
+                        activity.chessInfo.positionHistory.put(currentHash, 1);
+                        // 重置连续将军计数
+                        activity.chessInfo.consecutiveCheckRed = 0;
+                        activity.chessInfo.consecutiveCheckBlack = 0;
+                        activity.chessInfo.lastMoveWasCheck = false;
+                        
                         activity.infoSet.curInfo.setInfo(currentInfo);
                         // 更新 infoSet.curInfo 的 totalMoves
                         activity.infoSet.curInfo.totalMoves = moveCount;
+                        // 确保 infoSet.curInfo 的游戏状态为进行中
+                        activity.infoSet.curInfo.status = 1;
                         // 更新 ChessView 中的 chessInfo 对象
                         if (activity.chessView != null) {
                             activity.chessView.setChessInfo(activity.chessInfo);
@@ -133,7 +149,14 @@ public class BoardStateGenerator {
                         activity.roundView.invalidate();
                         activity.roundView.postInvalidate();
                     }
+                    
+                    // 检查游戏状态，确保加载棋谱时也能提示和棋和将军
+                    if (activity.controlsManager != null) {
+                        activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
+                    }
+                    
                     System.out.println("PvMActivity: 界面重新绘制完成");
+
                 }
             } else {
                 System.out.println("PvMActivity: 没有走法记录，使用初始棋盘状态");
@@ -144,9 +167,25 @@ public class BoardStateGenerator {
                         activity.chessInfo.setInfo(initialInfo);
                         // 重置 totalMoves 为 0
                         activity.chessInfo.totalMoves = 0;
+                        // 确保游戏状态为进行中
+                        activity.chessInfo.status = 1;
+                        // 初始化和棋检测所需的字段
+                        if (activity.chessInfo.positionHistory == null) {
+                            activity.chessInfo.positionHistory = new java.util.HashMap<>();
+                        }
+                        // 生成当前局面的哈希并添加到历史记录
+                        String currentHash = activity.chessInfo.generatePositionHash();
+                        activity.chessInfo.positionHistory.put(currentHash, 1);
+                        // 重置连续将军计数
+                        activity.chessInfo.consecutiveCheckRed = 0;
+                        activity.chessInfo.consecutiveCheckBlack = 0;
+                        activity.chessInfo.lastMoveWasCheck = false;
+                        
                         activity.infoSet.curInfo.setInfo(initialInfo);
                         // 重置 infoSet.curInfo 的 totalMoves 为 0
                         activity.infoSet.curInfo.totalMoves = 0;
+                        // 确保 infoSet.curInfo 的游戏状态为进行中
+                        activity.infoSet.curInfo.status = 1;
                         // 更新 ChessView 中的 chessInfo 对象
                         if (activity.chessView != null) {
                             activity.chessView.setChessInfo(activity.chessInfo);
@@ -171,6 +210,12 @@ public class BoardStateGenerator {
                         activity.roundView.invalidate();
                         activity.roundView.postInvalidate();
                     }
+                    
+                    // 检查游戏状态，确保加载棋谱时也能提示和棋和将军
+                    if (activity.controlsManager != null) {
+                        activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
+                    }
+
                 }
             }
         } else {

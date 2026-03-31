@@ -2,6 +2,7 @@ package top.nones.chessgame;
 
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import ChessMove.Rule;
@@ -23,6 +24,8 @@ public class PvPActivityGame {
     // 摆棋模式下选中的棋盘上的棋子位置
     private int[] selectedBoardPiecePos = {-1, -1};
     private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
+    private int forceVariationHintRound = 0; // 记录上次浮窗提示的回合数
+    private long lastCheckHintTime = 0; // 记录上次将军提示的时间戳
 
     public PvPActivityGame(PvPActivity activity, ChessInfo chessInfo, InfoSet infoSet, ChessView chessView) {
         this.activity = activity;
@@ -271,10 +274,37 @@ public class PvPActivityGame {
             key = 2;
         }
         if (key == 1) {
-            if (PvPActivityInit.getCheckMusic() != null) {
-                PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
+            long currentTime = System.currentTimeMillis();
+            // 确保一次将军只提示一次，通过时间戳控制
+            if (currentTime - lastCheckHintTime > 1000) { // 1秒内只提示一次
+                if (PvPActivityInit.getCheckMusic() != null) {
+                    PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
+                }
+                Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
+                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                // 设置文本颜色为红色
+                try {
+                    View view = toast.getView();
+                    if (view != null) {
+                        TextView textView = view.findViewById(android.R.id.message);
+                        if (textView != null) {
+                            textView.setTextColor(android.graphics.Color.RED);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                toast.show();
+                // 设置500毫秒后取消提示
+                activity.getWindow().getDecorView().postDelayed(() -> {
+                    try {
+                        toast.cancel();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }, 500);
+                lastCheckHintTime = currentTime;
             }
-            Toast.makeText(activity, "将军", Toast.LENGTH_SHORT).show();
         } else if (key == 2) {
             if (PvPActivityInit.getWinMusic() != null) {
                 PvPActivityInit.playEffect(PvPActivityInit.getWinMusic());
@@ -291,15 +321,15 @@ public class PvPActivityGame {
     private void checkDrawConditions() {
         if (chessInfo.status != 1) return;
         
-        // 优先检查三次重复局面，弹出强制变着提示
-        if (!isForceVariationDialogShowing && chessInfo.isThreefoldRepetition()) {
-            showForceVariationDialog();
+        // 优先检查三次重复局面，后台强制变着并显示浮窗提示
+        if (chessInfo.isThreefoldRepetition()) {
+            handleForceVariation();
             return;
         }
         
-        // 检查长将，弹出强制变着提示
-        if (!isForceVariationDialogShowing && chessInfo.isPerpetualCheck()) {
-            showForceVariationDialog();
+        // 检查长将，后台强制变着并显示浮窗提示
+        if (chessInfo.isPerpetualCheck()) {
+            handleForceVariation();
             return;
         }
         
@@ -313,6 +343,85 @@ public class PvPActivityGame {
         if (drawReason != null) {
             showDrawConfirmationDialog(drawReason);
         }
+    }
+    
+    // 处理强制变着逻辑
+    private void handleForceVariation() {
+        // 检查是否会立即输棋
+        boolean willLose = checkWillLoseAfterForceVariation();
+        if (willLose) {
+            // 提示用户是否认输
+            showLoseConfirmationDialog();
+            return;
+        }
+        
+        // 重置重复局面计数
+        String currentHash = chessInfo.generatePositionHash();
+        if (chessInfo.positionHistory.containsKey(currentHash)) {
+            chessInfo.positionHistory.put(currentHash, 1);
+        }
+        // 重置长将计数
+        chessInfo.consecutiveCheckRed = 0;
+        chessInfo.consecutiveCheckBlack = 0;
+        
+        // 检查是否需要显示浮窗提示（十回合内只提示一次）
+        if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
+            showForceVariationHint();
+            forceVariationHintRound = chessInfo.totalMoves;
+        }
+    }
+    
+    // 检查强制变着后是否会立即输棋
+    private boolean checkWillLoseAfterForceVariation() {
+        // 检查当前行棋方是否被将死
+        boolean currentPlayerIsRed = chessInfo.IsRedGo;
+        return Rule.isDead(chessInfo.piece, currentPlayerIsRed);
+    }
+    
+    // 显示输棋确认对话框
+    private void showLoseConfirmationDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle("认输确认");
+        builder.setMessage("强制变着后您将立即输棋，是否认输？");
+        builder.setPositiveButton("认输", (dialog, which) -> {
+            chessInfo.status = 2;
+            Toast.makeText(activity, chessInfo.IsRedGo ? "黑方获得胜利" : "红方获得胜利", Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton("继续变着", (dialog, which) -> {
+            // 继续强制变着
+            // 重置重复局面计数
+            String currentHash = chessInfo.generatePositionHash();
+            if (chessInfo.positionHistory.containsKey(currentHash)) {
+                chessInfo.positionHistory.put(currentHash, 1);
+            }
+            // 重置长将计数
+            chessInfo.consecutiveCheckRed = 0;
+            chessInfo.consecutiveCheckBlack = 0;
+            
+            // 显示强制变着提示
+            if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
+                showForceVariationHint();
+                forceVariationHintRound = chessInfo.totalMoves;
+            }
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+    
+    // 显示强制变着浮窗提示
+    private void showForceVariationHint() {
+        String message = "";
+        if (chessInfo.isPerpetualCheck()) {
+            String side = chessInfo.getPerpetualCheckSide();
+            message = side + "长将，已强制变着";
+        } else {
+            message = "检测到重复局面，已强制变着";
+        }
+        
+        // 创建浮窗提示
+        Toast toast = Toast.makeText(activity, message, Toast.LENGTH_SHORT);
+        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 100);
+        toast.show();
     }
     
     // 显示强制变着对话框
@@ -453,6 +562,9 @@ public class PvPActivityGame {
             if (chessView != null) {
                 chessView.requestDraw();
             }
+            
+            // 检查和棋条件，确保摆棋模式下也能提示和棋
+            checkDrawConditions();
         }
     }
     

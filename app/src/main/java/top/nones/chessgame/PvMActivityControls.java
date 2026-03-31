@@ -7,6 +7,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import Info.ChessInfo;
@@ -26,6 +27,8 @@ public class PvMActivityControls {
     private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
     private boolean justExecutedForceVariation = false; // 标记刚刚执行了强制变着
     private int forceVariationCooldown = 0; // 强制变着后冷却回合数，三回合内不再提示
+    private int forceVariationHintRound = 0; // 记录上次浮窗提示的回合数
+    private long lastCheckHintTime = 0; // 记录上次将军提示的时间戳
     
     public PvMActivityControls(PvMActivity activity) {
         this.activity = activity;
@@ -575,9 +578,34 @@ public class PvMActivityControls {
         }
         
         if (key == 1) {
-            Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
+            long currentTime = System.currentTimeMillis();
+            // 确保一次将军只提示一次，通过时间戳控制
+            if (currentTime - lastCheckHintTime > 1000) { // 1秒内只提示一次
+                Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
+                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                // 设置文本颜色为红色
+                try {
+                    View view = toast.getView();
+                    if (view != null) {
+                        TextView textView = view.findViewById(android.R.id.message);
+                        if (textView != null) {
+                            textView.setTextColor(android.graphics.Color.RED);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                toast.show();
+                // 设置500毫秒后取消提示
+                activity.getWindow().getDecorView().postDelayed(() -> {
+                    try {
+                        toast.cancel();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }, 500);
+                lastCheckHintTime = currentTime;
+            }
         } else if (key == 2) {
             activity.chessInfo.status = 2;
             Toast toast = Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT);
@@ -592,7 +620,7 @@ public class PvMActivityControls {
             }
         }
         
-        // 检查和棋条件
+        // 检查和棋条件，无论是否在摆棋模式下
         if (activity.chessInfo.status == 1) {
             // 检查冷却回合数
             if (forceVariationCooldown > 0) {
@@ -601,15 +629,15 @@ public class PvMActivityControls {
             } else {
                 // 如果刚刚执行了强制变着，跳过强制变着检查
                 if (!justExecutedForceVariation) {
-                    // 检查三次重复局面，弹出强制变着提示
-                    if (!isForceVariationDialogShowing && activity.chessInfo.isThreefoldRepetition()) {
-                        showForceVariationDialog();
+                    // 检查三次重复局面，后台强制变着并显示浮窗提示
+                    if (activity.chessInfo.isThreefoldRepetition()) {
+                        handleForceVariation();
                         return;
                     }
                     
-                    // 检查长将，弹出强制变着提示
-                    if (!isForceVariationDialogShowing && activity.chessInfo.isPerpetualCheck()) {
-                        showForceVariationDialog();
+                    // 检查长将，后台强制变着并显示浮窗提示
+                    if (activity.chessInfo.isPerpetualCheck()) {
+                        handleForceVariation();
                         return;
                     }
                 } else {
@@ -632,6 +660,142 @@ public class PvMActivityControls {
                 showDrawConfirmationDialog(drawReason);
             }
         }
+    }
+    
+    // 处理强制变着逻辑
+    private void handleForceVariation() {
+        // 检查是否会立即输棋
+        boolean willLose = checkWillLoseAfterForceVariation();
+        if (willLose) {
+            // 提示用户是否认输
+            showLoseConfirmationDialog();
+            return;
+        }
+        
+        // 重置重复局面计数
+        String currentHash = activity.chessInfo.generatePositionHash();
+        if (activity.chessInfo.positionHistory.containsKey(currentHash)) {
+            activity.chessInfo.positionHistory.put(currentHash, 1);
+        }
+        // 重置长将计数
+        activity.chessInfo.consecutiveCheckRed = 0;
+        activity.chessInfo.consecutiveCheckBlack = 0;
+        // 重置继续对局后的回合计数器
+        activity.continueGameRoundCount = 0;
+        // 设置强制变着冷却回合数为3，三回合内不再检查
+        forceVariationCooldown = 3;
+        LogUtils.i("PvMActivityControls", "设置强制变着冷却，3回合内不再检查");
+        
+        // 检查是否需要显示浮窗提示（十回合内只提示一次）
+        if (activity.chessInfo.totalMoves - forceVariationHintRound >= 10) {
+            showForceVariationHint();
+            forceVariationHintRound = activity.chessInfo.totalMoves;
+        }
+        
+        // 重新绘制界面
+        if (activity.chessView != null) {
+            activity.chessView.requestDraw();
+        }
+        if (activity.roundView != null) {
+            activity.roundView.requestDraw();
+        }
+        
+        // 只有在非用户模式（人机对战或双机对战）下才启用强制变着模式
+        if (activity.gameMode != 0) {
+            // 启用强制变着模式
+            activity.chessInfo.forceVariation = true;
+            activity.chessInfo.variationRandomness = 3; // 设置中等随机性
+            // 不立即检查AI移动，让AI在自己的回合正常行棋
+            // activity.gameManager.checkAIMove();
+        }
+        
+        // 标记刚刚执行了强制变着，跳过下次和棋检查
+        justExecutedForceVariation = true;
+    }
+    
+    // 检查强制变着后是否会立即输棋
+    private boolean checkWillLoseAfterForceVariation() {
+        // 检查当前行棋方是否被将死
+        boolean currentPlayerIsRed = activity.chessInfo.IsRedGo;
+        return Rule.isDead(activity.chessInfo.piece, currentPlayerIsRed);
+    }
+    
+    // 显示输棋确认对话框
+    private void showLoseConfirmationDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle("认输确认");
+        builder.setMessage("强制变着后您将立即输棋，是否认输？");
+        builder.setPositiveButton("认输", (dialog, which) -> {
+            activity.chessInfo.status = 2;
+            Toast toast = Toast.makeText(activity, activity.chessInfo.IsRedGo ? "黑方获得胜利" : "红方获得胜利", Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+            toast.show();
+            // 游戏结束时重新绘制界面
+            if (activity.chessView != null) {
+                activity.chessView.requestDraw();
+            }
+            if (activity.roundView != null) {
+                activity.roundView.requestDraw();
+            }
+        });
+        builder.setNegativeButton("继续变着", (dialog, which) -> {
+            // 继续强制变着
+            // 重置重复局面计数
+            String currentHash = activity.chessInfo.generatePositionHash();
+            if (activity.chessInfo.positionHistory.containsKey(currentHash)) {
+                activity.chessInfo.positionHistory.put(currentHash, 1);
+            }
+            // 重置长将计数
+            activity.chessInfo.consecutiveCheckRed = 0;
+            activity.chessInfo.consecutiveCheckBlack = 0;
+            // 重置继续对局后的回合计数器
+            activity.continueGameRoundCount = 0;
+            // 设置强制变着冷却回合数为3，三回合内不再检查
+            forceVariationCooldown = 3;
+            LogUtils.i("PvMActivityControls", "设置强制变着冷却，3回合内不再检查");
+            
+            // 显示强制变着提示
+            if (activity.chessInfo.totalMoves - forceVariationHintRound >= 10) {
+                showForceVariationHint();
+                forceVariationHintRound = activity.chessInfo.totalMoves;
+            }
+            
+            // 重新绘制界面
+            if (activity.chessView != null) {
+                activity.chessView.requestDraw();
+            }
+            if (activity.roundView != null) {
+                activity.roundView.requestDraw();
+            }
+            
+            // 只有在非用户模式（人机对战或双机对战）下才启用强制变着模式
+            if (activity.gameMode != 0) {
+                // 启用强制变着模式
+                activity.chessInfo.forceVariation = true;
+                activity.chessInfo.variationRandomness = 3; // 设置中等随机性
+            }
+            
+            // 标记刚刚执行了强制变着，跳过下次和棋检查
+            justExecutedForceVariation = true;
+        });
+        builder.setCancelable(false);
+        builder.show();
+    }
+    
+    // 显示强制变着浮窗提示
+    private void showForceVariationHint() {
+        String message = "";
+        if (activity.chessInfo.isPerpetualCheck()) {
+            String side = activity.chessInfo.getPerpetualCheckSide();
+            message = side + "长将，已强制变着";
+        } else {
+            message = "检测到重复局面，已强制变着";
+        }
+        
+        // 创建浮窗提示
+        Toast toast = Toast.makeText(activity, message, Toast.LENGTH_SHORT);
+        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 100);
+        toast.show();
     }
     
     // 显示强制变着对话框
