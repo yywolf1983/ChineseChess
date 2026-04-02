@@ -37,16 +37,21 @@ public class PvMActivityAI {
     
     // 初始化线程池
     private void initExecutorService() {
-        // 初始化线程池：核心线程数1，最大线程数1，有界队列容量1
-        // 使用CallerRunsPolicy拒绝策略，当队列满时由调用线程执行任务
+        // 优化线程池配置，根据CPU核心数动态调整
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
+        int corePoolSize = Math.max(2, Math.min(availableProcessors - 2, 4)); // 保留2-4个核心给系统
+        int maximumPoolSize = Math.max(4, Math.min(availableProcessors - 1, 8)); // 最大线程数
+        long keepAliveTime = 60L;
+        
+        // 初始化线程池
         executorService = new java.util.concurrent.ThreadPoolExecutor(
-            1, 1, 0L, TimeUnit.MILLISECONDS,
-            new java.util.concurrent.ArrayBlockingQueue<>(1),
+            corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
+            new java.util.concurrent.ArrayBlockingQueue<>(10),
             java.util.concurrent.Executors.defaultThreadFactory(),
-            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
+            new java.util.concurrent.ThreadPoolExecutor.DiscardOldestPolicy()
         );
         // 允许核心线程超时，避免空闲时占用资源
-        executorService.allowCoreThreadTimeOut(false);
+        executorService.allowCoreThreadTimeOut(true);
     }
     
     // 记录AI着法历史
@@ -161,7 +166,20 @@ public class PvMActivityAI {
         }
         
         while (retryCount < maxRetryCount) {
-            PikafishAI.MoveWithScore moveWithScore;
+            // 空值检查
+            if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized() || this.executorService == null) {
+                LogUtils.e("PvMActivityAI", "空值检查失败，activity或chessInfo或pikafishAI或executorService为null");
+                break;
+            }
+            
+            PikafishAI.MoveWithScore moveWithScore = null;
+            
+            // 计算超时时间：设置的时间 + 缓冲时间
+            int thinkingTime = 10; // 默认10秒
+            if (this.activity.chessInfo.setting != null) {
+                thinkingTime = this.activity.chessInfo.setting.mLevel;
+            }
+            long aiTimeoutMs = thinkingTime * 1000 + AI_TIMEOUT_BUFFER_MS;
             
             // 如果是强制变着模式且有收集到着法，从列表中选择
             if (this.activity.chessInfo.forceVariation && !allPossibleMoves.isEmpty() && retryCount > 0) {
@@ -171,12 +189,42 @@ public class PvMActivityAI {
                     // 模拟获取分数
                     moveWithScore = new PikafishAI.MoveWithScore(move, 0);
                 } else {
-                    // 如果没有不同的着法，使用正常AI计算
-                    moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                    // 如果没有不同的着法，使用正常AI计算（带超时机制）
+                    try {
+                        java.util.concurrent.Future<PikafishAI.MoveWithScore> future = executorService.submit(() -> {
+                            if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized()) {
+                                return null;
+                            }
+                            return this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                        });
+                        moveWithScore = future.get(aiTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                    } catch (java.util.concurrent.TimeoutException e) {
+                        LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
+                        break;
+                    } catch (Exception e) {
+                        LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
+                        e.printStackTrace();
+                        break;
+                    }
                 }
             } else {
-                // 正常AI计算
-                moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                // 正常AI计算（带超时机制）
+                try {
+                    java.util.concurrent.Future<PikafishAI.MoveWithScore> future = executorService.submit(() -> {
+                        if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized()) {
+                            return null;
+                        }
+                        return this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                    });
+                    moveWithScore = future.get(aiTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+                } catch (java.util.concurrent.TimeoutException e) {
+                    LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
+                    break;
+                } catch (Exception e) {
+                    LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
+                    e.printStackTrace();
+                    break;
+                }
             }
             
             if (moveWithScore == null) {
@@ -266,12 +314,8 @@ public class PvMActivityAI {
                     }
                 }
                 
-                // 短暂延迟后重新计算
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+                // 移除延迟，直接重新计算
+                // 不再使用Thread.sleep，避免不必要的延迟
                 
                 // 重新开始AI搜索
                 if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
@@ -503,18 +547,9 @@ public class PvMActivityAI {
             e.printStackTrace();
         }
         
-        if (this.activity.roundView != null && this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
-            try {
-                PikafishAI.MoveWithScore moveWithScore = this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
-                if (moveWithScore != null) {
-                    int score = moveWithScore.score;
-                    boolean isRedTurn = this.activity.chessInfo.IsRedGo;
-                    score = PvMActivity.normalizeScore(score, isRedTurn);
-                    this.activity.roundView.setMoveScore(score);
-                }
-            } catch (Exception e) {
-                this.activity.roundView.setMoveScore(this.currentAIScore);
-            }
+        if (this.activity.roundView != null) {
+            // 直接使用当前分数，避免再次触发AI搜索
+            this.activity.roundView.setMoveScore(this.currentAIScore);
         }
         
         if (this.activity.chessView != null) {
@@ -554,7 +589,8 @@ public class PvMActivityAI {
         
         if (this.activity.gameMode == 3 && this.activity.chessInfo.status == 1 && this.activity.chessView != null) {
             final PvMActivityAI aiInstance = this;
-            this.activity.chessView.postDelayed(new DoubleAIMoveRunnable(aiInstance), 100);
+            // 移除延迟，直接触发下一次AI计算
+            this.activity.chessView.post(new DoubleAIMoveRunnable(aiInstance));
         }
         
         return true;
@@ -604,6 +640,7 @@ public class PvMActivityAI {
         @Override
         public void run() {
             if (aiInstance != null && aiInstance.activity != null && aiInstance.activity.chessInfo != null && aiInstance.activity.chessInfo.status == 1) {
+                // 移除延迟，直接开始AI计算
                 aiInstance.checkAIMove();
             }
         }
@@ -755,16 +792,19 @@ public class PvMActivityAI {
                 LogUtils.i("PvMActivityAI", "AI计算超时时间: " + aiTimeoutMs + "ms (设置时间: " + (thinkingTime * 1000) + "ms + 缓冲: " + AI_TIMEOUT_BUFFER_MS + "ms)");
                 
                 try {
-                    if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
+                    if (activity.pikafishAI != null && activity.pikafishAI.isInitialized() && activity.chessInfo != null && aiInstance.executorService != null) {
                         // 在单独的线程中执行AI计算
                         future = aiInstance.executorService.submit(() -> {
+                            if (activity == null || activity.chessInfo == null || activity.pikafishAI == null || !activity.pikafishAI.isInitialized()) {
+                                return null;
+                            }
                             return activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
                         });
                         
                         try {
                             // 等待AI计算结果，设置超时（根据设置动态计算）
                             PikafishAI.MoveWithScore moveWithScore = future.get(aiTimeoutMs, TimeUnit.MILLISECONDS);
-                            if (moveWithScore != null) {
+                            if (moveWithScore != null && activity.chessInfo != null) {
                                 move = moveWithScore.move;
                                 score = moveWithScore.score;
                                 score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
@@ -775,8 +815,12 @@ public class PvMActivityAI {
                         } catch (java.util.concurrent.TimeoutException e) {
                             // 超时处理
                             LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
-                            future.cancel(true);
-                            activity.pikafishAI.interrupt();
+                            if (future != null) {
+                                future.cancel(true);
+                            }
+                            if (activity.pikafishAI != null) {
+                                activity.pikafishAI.interrupt();
+                            }
                             
                             // 在UI线程显示超时提示
                             if (activity != null) {
@@ -788,6 +832,8 @@ public class PvMActivityAI {
                             LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
                             e.printStackTrace();
                         }
+                    } else {
+                        LogUtils.e("PvMActivityAI", "空值检查失败，activity.chessInfo或activity.pikafishAI为null");
                     }
                 } catch (Exception e) {
                     LogUtils.e("PvMActivityAI", "AI线程异常: " + e.getMessage());
@@ -1092,7 +1138,8 @@ public class PvMActivityAI {
             if (this.depthUpdateFuture != null) {
                 this.depthUpdateFuture.cancel(true);
             }
-            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 500, TimeUnit.MILLISECONDS);
+            // 减少深度更新频率，从500ms改为1000ms，避免频繁更新UI
+            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 1000, TimeUnit.MILLISECONDS);
         }
     }
     
@@ -1168,6 +1215,7 @@ public class PvMActivityAI {
                 executorService.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+            executorService = null; // 清空引用，下次使用时会重新初始化
         }
         
         if (scheduledExecutorService != null && !scheduledExecutorService.isShutdown()) {
@@ -1180,6 +1228,7 @@ public class PvMActivityAI {
                 scheduledExecutorService.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+            scheduledExecutorService = null; // 清空引用，下次使用时会重新初始化
         }
     }
 }

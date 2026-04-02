@@ -34,7 +34,10 @@ public class PikafishAI {
     
     public PikafishAI(Context context) {
         this.context = context;
-        initialize();
+        // 在后台线程中初始化，避免阻塞主线程
+        new Thread(() -> {
+            initialize();
+        }).start();
     }
     
     private void initialize() {
@@ -527,27 +530,10 @@ public class PikafishAI {
                 sendCommand("setoption name MultiPV value 3");
                 LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=3");
             } else {
-                // 正常模式：使用用户设置的参数
-                int multiPV = 1;
+                // 正常模式：使用默认参数
+                int multiPV = 2; // 默认值
                 int contempt = 20; // 默认值
-                try {
-                    // 尝试获取Setting中的值
-                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                    Object settingObj = pvmaClass.getField("setting").get(null);
-                    if (settingObj != null) {
-                        // 获取MultiPV设置
-                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
-                        // 尝试获取Contempt设置，如果存在的话
-                        try {
-                            contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
-                        } catch (NoSuchFieldException e) {
-                            // 如果没有Contempt设置，使用默认值
-                            LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
-                        }
-                    }
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "获取设置值失败: " + e.getMessage());
-                }
+                LogUtils.i("PikafishAI", "正常模式：使用默认参数 - MultiPV=" + multiPV + ", Contempt=" + contempt);
                 // 确保 MultiPV 至少为 2
                 multiPV = Math.max(2, multiPV);
                 // 设置 MultiPV
@@ -599,90 +585,110 @@ public class PikafishAI {
                 // 启动超时检查线程
                 timeoutThread.start();
                 
-                // 使用非阻塞方式读取输入
-                while (!Thread.currentThread().isInterrupted()) {
-                    if (reader.ready()) {
-                        String line = reader.readLine();
-                        if (line == null) {
-                            break;
+                // 使用非阻塞方式读取输入，设置最大循环次数
+                int maxLoopCount = (int) (maxSearchTime / 5) + 500; // 减少休眠时间，增加循环次数
+                int loopCount = 0;
+                
+                while (!Thread.currentThread().isInterrupted() && loopCount < maxLoopCount) {
+                    loopCount++;
+                    
+                    // 检查是否超时（使用设置的时间 + 缓冲时间）
+                    long elapsedTime = System.currentTimeMillis() - startTime;
+                    if (elapsedTime > maxSearchTime) {
+                        LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + elapsedTime + "ms, 限制: " + maxSearchTime + "ms)");
+                        sendCommand("stop");
+                        // 如果已经超时且还没有bestmove，使用当前最佳走法
+                        if (bestMoveHolder[0] == null) {
+                            // 尝试从info行中提取ponder move作为备选
+                            LogUtils.w("PikafishAI", "超时未收到bestmove，使用默认走法");
                         }
-                        
-                        LogUtils.d("PikafishAI", "响应: " + line);
-                        
-                        // 检查是否超时（使用设置的时间 + 缓冲时间）
-                        long elapsedTime = System.currentTimeMillis() - startTime;
-                        if (elapsedTime > maxSearchTime) {
-                            LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + elapsedTime + "ms, 限制: " + maxSearchTime + "ms)");
-                            sendCommand("stop");
-                            // 如果已经超时且还没有bestmove，使用当前最佳走法
-                            if (bestMoveHolder[0] == null) {
-                                // 尝试从info行中提取ponder move作为备选
-                                LogUtils.w("PikafishAI", "超时未收到bestmove，使用默认走法");
+                        break;
+                    }
+                    
+                    try {
+                        // 使用 BufferedReader 的 ready() 方法检查是否有数据可读
+                        if (reader.ready()) {
+                            String line = reader.readLine();
+                            if (line == null) {
+                                LogUtils.w("PikafishAI", "读取到null，结束读取");
+                                break;
                             }
-                            break;
-                        }
-                        
-                        if (line.startsWith("info")) {
-                            // 解析评分信息
-                            String[] parts = line.split(" ");
-                            for (int i = 0; i < parts.length; i++) {
-                                if (parts[i].equals("score") && i + 2 < parts.length) {
-                                    if (parts[i + 1].equals("cp")) {
+                            
+                            // 减少详细日志输出，提高性能
+                            if (line.startsWith("info")) {
+                                // 只在深度变化时输出日志
+                                String[] parts = line.split(" ");
+                                for (int i = 0; i < parts.length; i++) {
+                                    if (parts[i].equals("depth") && i + 1 < parts.length) {
                                         try {
-                                            score = Integer.parseInt(parts[i + 2]);
+                                            int newDepth = Integer.parseInt(parts[i + 1]);
+                                            if (newDepth > currentDepth) {
+                                                currentDepth = newDepth;
+                                                LogUtils.i("PikafishAI", "当前搜索深度: " + currentDepth);
+                                            }
                                         } catch (NumberFormatException e) {
                                             // 忽略解析错误
                                         }
+                                    } else if (parts[i].equals("score") && i + 2 < parts.length) {
+                                        if (parts[i + 1].equals("cp")) {
+                                            try {
+                                                score = Integer.parseInt(parts[i + 2]);
+                                            } catch (NumberFormatException e) {
+                                                // 忽略解析错误
+                                            }
+                                        }
+                                    } else if (parts[i].equals("nodes") && i + 1 < parts.length) {
+                                        try {
+                                            nodes = Integer.parseInt(parts[i + 1]);
+                                        } catch (NumberFormatException e) {
+                                            // 忽略解析错误
+                                        }
+                                    } else if (parts[i].equals("nps") && i + 1 < parts.length) {
+                                        try {
+                                            nps = Integer.parseInt(parts[i + 1]);
+                                        } catch (NumberFormatException e) {
+                                            // 忽略解析错误
+                                        }
+                                    } else if (parts[i].equals("time") && i + 1 < parts.length) {
+                                        try {
+                                            searchTime = Integer.parseInt(parts[i + 1]);
+                                        } catch (NumberFormatException e) {
+                                            // 忽略解析错误
+                                        }
+                                    } else if (parts[i].equals("pv") && i + 1 < parts.length && bestMoveHolder[0] == null) {
+                                        // 提取pv中的第一个走法作为备选
+                                        bestMoveHolder[0] = parts[i + 1];
                                     }
-                                } else if (parts[i].equals("depth") && i + 1 < parts.length) {
-                                    try {
-                                        currentDepth = Integer.parseInt(parts[i + 1]);
-                                        LogUtils.i("PikafishAI", "当前搜索深度: " + currentDepth);
-                                    } catch (NumberFormatException e) {
-                                        // 忽略解析错误
-                                    }
-                                } else if (parts[i].equals("nodes") && i + 1 < parts.length) {
-                                    try {
-                                        nodes = Integer.parseInt(parts[i + 1]);
-                                    } catch (NumberFormatException e) {
-                                        // 忽略解析错误
-                                    }
-                                } else if (parts[i].equals("nps") && i + 1 < parts.length) {
-                                    try {
-                                        nps = Integer.parseInt(parts[i + 1]);
-                                    } catch (NumberFormatException e) {
-                                        // 忽略解析错误
-                                    }
-                                } else if (parts[i].equals("time") && i + 1 < parts.length) {
-                                    try {
-                                        searchTime = Integer.parseInt(parts[i + 1]);
-                                    } catch (NumberFormatException e) {
-                                        // 忽略解析错误
-                                    }
-                                } else if (parts[i].equals("pv") && i + 1 < parts.length && bestMoveHolder[0] == null) {
-                                    // 提取pv中的第一个走法作为备选
-                                    bestMoveHolder[0] = parts[i + 1];
                                 }
+                            } else if (line.startsWith("bestmove")) {
+                                String[] parts = line.split(" ");
+                                if (parts.length > 1) {
+                                    bestMoveHolder[0] = parts[1];
+                                }
+                                break;
                             }
-                        } else if (line.startsWith("bestmove")) {
-                            String[] parts = line.split(" ");
-                            if (parts.length > 1) {
-                                bestMoveHolder[0] = parts[1];
+                            
+                            // 如果需要停止，发送stop命令并继续等待bestmove
+                            if (shouldStop && bestMoveHolder[0] == null) {
+                                LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
+                                sendCommand("stop");
                             }
-                            break;
+                        } else {
+                            // 短暂休眠，避免CPU占用过高，根据循环次数调整休眠时间
+                            int sleepTime = loopCount < 100 ? 5 : 10; // 前100次循环使用更短的休眠时间
+                            Thread.sleep(sleepTime);
                         }
-                        
-                        // 如果需要停止，发送stop命令并继续等待bestmove
-                        if (shouldStop && bestMoveHolder[0] == null) {
-                            LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
-                            sendCommand("stop");
-                        }
-                    } else {
-                        // 短暂休眠，避免CPU占用过高
-                        Thread.sleep(50);
+                    } catch (IOException e) {
+                        LogUtils.e("PikafishAI", "读取输入流异常: " + e.getMessage());
+                        break;
                     }
                 }
-            } catch (IOException e) {
+                
+                if (loopCount >= maxLoopCount) {
+                    LogUtils.e("PikafishAI", "读取循环达到最大次数，强制退出");
+                    sendCommand("stop");
+                }
+            } catch (Exception e) {
                 LogUtils.e("PikafishAI", "读取响应失败，可能进程已崩溃: " + e.getMessage());
                 // 尝试重新初始化
                 close();

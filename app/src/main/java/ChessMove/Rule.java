@@ -48,236 +48,176 @@ public class Rule {
     };
 
     public static List<Pos> PossibleMoves(int[][] piece, int fromX, int fromY, int PieceID) {
-        List<Pos> ret = new ArrayList<Pos>();
+        List<Pos> ret = new ArrayList<Pos>(10); // 预分配容量，减少扩容
         
         // 参数验证
-        if (piece == null || piece.length != 10) {
-            return ret;
-        }
-        for (int i = 0; i < 10; i++) {
-            if (piece[i] == null || piece[i].length != 9) {
-                return ret;
-            }
-        }
-        
-        // 位置验证
-        if (fromX < 0 || fromX >= 9 || fromY < 0 || fromY >= 10) {
+        if (piece == null || piece.length != 10 || fromX < 0 || fromX >= 9 || fromY < 0 || fromY >= 10) {
             return ret;
         }
         
-        int num;
+        // 方向数组
+        int[][] directions = {{0, 1}, {0, -1}, {1, 0}, {-1, 0}}; // 上下左右
+        
         switch (PieceID) {
-            case 1://黑将
-                num = 0;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    if (InArea(toX, toY) == 2 && IsSameSide(PieceID, piece[toY][toX]) == false) {
+            case 1: // 黑将
+            case 8: // 红帅
+                int area = PieceID == 1 ? 2 : 4;
+                // 王的移动（上下左右）
+                for (int[] dir : directions) {
+                    int toX = fromX + dir[0];
+                    int toY = fromY + dir[1];
+                    if (InArea(toX, toY) == area && !IsSameSide(PieceID, piece[toY][toX])) {
                         ret.add(new Pos(toX, toY));
                     }
                 }
-                Pos eatPos1 = flyKing(1, fromX, fromY, piece);
-                if (eatPos1.equals(new Pos(-1, -1)) == false) {
-                    ret.add(eatPos1);
+                // 飞将检查
+                Pos eatPos = flyKing(PieceID == 1 ? 1 : 2, fromX, fromY, piece);
+                if (!eatPos.equals(new Pos(-1, -1))) {
+                    ret.add(eatPos);
                 }
                 break;
-            case 2://黑士
-                num = 1;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    if (InArea(toX, toY) == 2 && IsSameSide(PieceID, piece[toY][toX]) == false) {
-                        ret.add(new Pos(toX, toY));
-                    }
-                }
-                break;
-            case 3://黑象
-                num = 2;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    int blockX = fromX + offsetX[num + 1][i];
-                    int blockY = fromY + offsetY[num + 1][i];
-                    if (InArea(toX, toY) >= 1 && InArea(toX, toY) <= 2 && IsSameSide(PieceID, piece[toY][toX]) == false && piece[blockY][blockX] == 0) {
+                
+            case 2: // 黑士
+            case 9: // 红士
+                area = PieceID == 2 ? 2 : 4;
+                // 士的移动（斜着走）
+                int[][] advisorMoves = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                for (int[] move : advisorMoves) {
+                    int toX = fromX + move[0];
+                    int toY = fromY + move[1];
+                    if (InArea(toX, toY) == area && !IsSameSide(PieceID, piece[toY][toX])) {
                         ret.add(new Pos(toX, toY));
                     }
                 }
                 break;
-            case 4://黑马
-            case 11://红马
-                num = 4;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    int blockX = fromX + offsetX[num + 1][i];
-                    int blockY = fromY + offsetY[num + 1][i];
-                    // 检查目标位置是否在棋盘内
-                    if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10) {
-                        // 检查是否蹩马腿
-                        if (blockX >= 0 && blockX < 9 && blockY >= 0 && blockY < 10 && piece[blockY][blockX] == 0) {
-                            // 检查目标位置是否有己方棋子
-                            if (!IsSameSide(PieceID, piece[toY][toX])) {
-                                ret.add(new Pos(toX, toY));
+                
+            case 3: // 黑象
+            case 10: // 红相
+                int minArea = PieceID == 3 ? 1 : 3;
+                int maxArea = PieceID == 3 ? 2 : 4;
+                // 象的移动（田字）
+                int[][] elephantMoves = {{2, 2}, {2, -2}, {-2, 2}, {-2, -2}};
+                int[][] elephantLegs = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+                for (int i = 0; i < elephantMoves.length; i++) {
+                    int[] move = elephantMoves[i];
+                    int[] leg = elephantLegs[i];
+                    int toX = fromX + move[0];
+                    int toY = fromY + move[1];
+                    int legX = fromX + leg[0];
+                    int legY = fromY + leg[1];
+                    if (InArea(toX, toY) >= minArea && InArea(toX, toY) <= maxArea && 
+                        !IsSameSide(PieceID, piece[toY][toX]) && piece[legY][legX] == 0) {
+                        ret.add(new Pos(toX, toY));
+                    }
+                }
+                break;
+                
+            case 4: // 黑马
+            case 11: // 红马
+                // 马的移动（日字）
+                int[][] knightMoves = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1}};
+                int[][] knightLegs = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}, {1, 0}, {1, 0}, {-1, 0}, {-1, 0}};
+                for (int i = 0; i < knightMoves.length; i++) {
+                    int[] move = knightMoves[i];
+                    int[] leg = knightLegs[i];
+                    int toX = fromX + move[0];
+                    int toY = fromY + move[1];
+                    int legX = fromX + leg[0];
+                    int legY = fromY + leg[1];
+                    if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10 && 
+                        legX >= 0 && legX < 9 && legY >= 0 && legY < 10 && 
+                        piece[legY][legX] == 0 && !IsSameSide(PieceID, piece[toY][toX])) {
+                        ret.add(new Pos(toX, toY));
+                    }
+                }
+                break;
+                
+            case 5: // 黑车
+            case 12: // 红车
+                // 车的移动（直线）
+                for (int[] dir : directions) {
+                    int x = fromX + dir[0];
+                    int y = fromY + dir[1];
+                    while (x >= 0 && x < 9 && y >= 0 && y < 10) {
+                        if (piece[y][x] == 0) {
+                            ret.add(new Pos(x, y));
+                        } else {
+                            if (!IsSameSide(PieceID, piece[y][x])) {
+                                ret.add(new Pos(x, y));
                             }
+                            break;
+                        }
+                        x += dir[0];
+                        y += dir[1];
+                    }
+                }
+                break;
+                
+            case 6: // 黑炮
+            case 13: // 红炮
+                // 炮的移动（直线，需要炮架）
+                for (int[] dir : directions) {
+                    int x = fromX + dir[0];
+                    int y = fromY + dir[1];
+                    int obstacleCount = 0;
+                    while (x >= 0 && x < 9 && y >= 0 && y < 10) {
+                        if (piece[y][x] == 0) {
+                            if (obstacleCount == 0) {
+                                ret.add(new Pos(x, y));
+                            }
+                        } else {
+                            obstacleCount++;
+                            if (obstacleCount == 1 && !IsSameSide(PieceID, piece[y][x])) {
+                                ret.add(new Pos(x, y));
+                            }
+                            if (obstacleCount >= 2) {
+                                break;
+                            }
+                        }
+                        x += dir[0];
+                        y += dir[1];
+                    }
+                }
+                break;
+                
+            case 7: // 黑卒
+                if (fromY >= 5) {
+                    // 未过河，只能向下移动
+                    int toY = fromY - 1;
+                    if (toY >= 0 && !IsSameSide(PieceID, piece[toY][fromX])) {
+                        ret.add(new Pos(fromX, toY));
+                    }
+                } else {
+                    // 已过河，可以向下和横向移动
+                    int[][] pawnMoves = {{0, -1}, {1, 0}, {-1, 0}};
+                    for (int[] move : pawnMoves) {
+                        int toX = fromX + move[0];
+                        int toY = fromY + move[1];
+                        if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10 && !IsSameSide(PieceID, piece[toY][toX])) {
+                            ret.add(new Pos(toX, toY));
                         }
                     }
                 }
                 break;
-            case 5://黑车
-            case 12: //红车
-                for (int i = fromY + 1; i < 10; i++) {//向下走
-                    if (CanMove(1, fromX, fromY, fromX, i, piece)) { //可以走时
-                        ret.add(new Pos(fromX, i));
-                    } else {//不可以走时直接 break
-                        break;
-                    }
-                }
-                for (int i = fromY - 1; i > -1; i--) {//向上走
-                    if (CanMove(1, fromX, fromY, fromX, i, piece)) {//可以走时
-                        ret.add(new Pos(fromX, i));
-                    } else {//不可以走时
-                        break;
-                    }
-                }
-                for (int j = fromX - 1; j > -1; j--) {//向走走
-                    if (CanMove(1, fromX, fromY, j, fromY, piece)) {//可以走时
-                        ret.add(new Pos(j, fromY));
-                    } else {//不可以走时
-                        break;
-                    }
-                }
-                for (int j = fromX + 1; j < 9; j++) {//向右走
-                    if (CanMove(1, fromX, fromY, j, fromY, piece)) {//可以走时
-                        ret.add(new Pos(j, fromY));
-                    } else {//不可以走时
-                        break;
-                    }
-                }
-                break;
-            case 6://黑炮
-            case 13://红炮
-                for (int i = fromY + 1; i < 10; i++) {//向下走
-                    if (CanMove(2, fromX, fromY, fromX, i, piece)) { //可以走时
-                        ret.add(new Pos(fromX, i));
-                    }
-                }
-                for (int i = fromY - 1; i > -1; i--) {//向上走
-                    if (CanMove(2, fromX, fromY, fromX, i, piece)) {//可以走时
-                        ret.add(new Pos(fromX, i));
-                    }
-                }
-                for (int j = fromX - 1; j > -1; j--) {//向走走
-                    if (CanMove(2, fromX, fromY, j, fromY, piece)) {//可以走时
-                        ret.add(new Pos(j, fromY));
-                    }
-                }
-                for (int j = fromX + 1; j < 9; j++) {//向右走
-                    if (CanMove(2, fromX, fromY, j, fromY, piece)) {//可以走时
-                        ret.add(new Pos(j, fromY));
-                    }
-                }
-                break;
-            case 7://黑卒
-                // 黑卒未过河（在己方区域，整体反转后在上方，y值较大）
+                
+            case 14: // 红兵
                 if (fromY >= 5) {
-                    // 黑卒未过河，只能向下移动（向红方方向，y值减小）
-                    num = 6;
-                    for (int i = 0; i < offsetX[num].length; i++) {
-                        int toX = fromX + offsetX[num][i];
-                        int toY = fromY + offsetY[num][i];
-                        // 检查目标位置是否在棋盘内
-                        if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10) {
-                            // 检查目标位置是否有己方棋子
-                            if (!IsSameSide(PieceID, piece[toY][toX])) {
-                                ret.add(new Pos(toX, toY));
-                            }
+                    // 已过河，可以向下和横向移动
+                    int[][] pawnMoves = {{0, 1}, {1, 0}, {-1, 0}};
+                    for (int[] move : pawnMoves) {
+                        int toX = fromX + move[0];
+                        int toY = fromY + move[1];
+                        if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10 && !IsSameSide(PieceID, piece[toY][toX])) {
+                            ret.add(new Pos(toX, toY));
                         }
                     }
                 } else {
-                    // 黑卒已过河，可以向下和横向移动
-                    num = 7;
-                    for (int i = 0; i < offsetX[num].length; i++) {
-                        int toX = fromX + offsetX[num][i];
-                        int toY = fromY + offsetY[num][i];
-                        // 检查目标位置是否在棋盘内
-                        if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10) {
-                            // 检查目标位置是否有己方棋子
-                            if (!IsSameSide(PieceID, piece[toY][toX])) {
-                                ret.add(new Pos(toX, toY));
-                            }
-                        }
+                    // 未过河，只能向上移动
+                    int toY = fromY + 1;
+                    if (toY < 10 && !IsSameSide(PieceID, piece[toY][fromX])) {
+                        ret.add(new Pos(fromX, toY));
                     }
                 }
-                break;
-            case 8://红帅
-                num = 0;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    if (InArea(toX, toY) == 4 && IsSameSide(PieceID, piece[toY][toX]) == false) {
-                        ret.add(new Pos(toX, toY));
-                    }
-                }
-                Pos eatPos2 = flyKing(2, fromX, fromY, piece);
-                if (eatPos2.equals(new Pos(-1, -1)) == false) {
-                    ret.add(eatPos2);
-                }
-                break;
-            case 9://红士
-                num = 1;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    if (InArea(toX, toY) == 4 && IsSameSide(PieceID, piece[toY][toX]) == false) {
-                        ret.add(new Pos(toX, toY));
-                    }
-                }
-                break;
-            case 10://红象
-                num = 2;
-                for (int i = 0; i < offsetX[num].length; i++) {
-                    int toX = fromX + offsetX[num][i];
-                    int toY = fromY + offsetY[num][i];
-                    int blockX = fromX + offsetX[num + 1][i];
-                    int blockY = fromY + offsetY[num + 1][i];
-                    if (InArea(toX, toY) >= 3 && InArea(toX, toY) <= 4 && IsSameSide(PieceID, piece[toY][toX]) == false && piece[blockY][blockX] == 0) {
-                        ret.add(new Pos(toX, toY));
-                    }
-                }
-                break;
-            case 14://红兵
-                // 红兵未过河（在己方区域，整体反转后在上方）
-                if (fromY >= 5) {
-                    // 红兵已过河
-                    num = 9;
-                    for (int i = 0; i < offsetX[num].length; i++) {
-                        int toX = fromX + offsetX[num][i];
-                        int toY = fromY + offsetY[num][i];
-                        // 检查目标位置是否在棋盘内
-                        if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10) {
-                            // 检查目标位置是否有己方棋子
-                            if (!IsSameSide(PieceID, piece[toY][toX])) {
-                                ret.add(new Pos(toX, toY));
-                            }
-                        }
-                    }
-                } else {
-                    // 红兵未过河
-                    num = 8;
-                    for (int i = 0; i < offsetX[num].length; i++) {
-                        int toX = fromX + offsetX[num][i];
-                        int toY = fromY + offsetY[num][i];
-                        // 检查目标位置是否在棋盘内
-                        if (toX >= 0 && toX < 9 && toY >= 0 && toY < 10) {
-                            // 检查目标位置是否有己方棋子
-                            if (!IsSameSide(PieceID, piece[toY][toX])) {
-                                ret.add(new Pos(toX, toY));
-                            }
-                        }
-                    }
-                }
-                break;
-            default:
                 break;
         }
         return ret;
@@ -297,10 +237,11 @@ public class Rule {
         int kingX = -1, kingY = -1;
         boolean foundKing = false;
         
-        // 找到王的位置
+        // 快速找到王的位置 - 只在九宫格内搜索
         if (isRedKing) {
-            for (int y = 0; y < 10; y++) {
-                for (int x = 0; x < 9; x++) {
+            // 红帅只能在九宫格内 (x:3-5, y:0-2)
+            for (int y = 0; y <= 2; y++) {
+                for (int x = 3; x <= 5; x++) {
                     if (piece[y][x] == 8) { // 红帅
                         kingX = x;
                         kingY = y;
@@ -311,8 +252,9 @@ public class Rule {
                 if (foundKing) break;
             }
         } else {
-            for (int y = 0; y < 10; y++) {
-                for (int x = 0; x < 9; x++) {
+            // 黑将只能在九宫格内 (x:3-5, y:7-9)
+            for (int y = 7; y <= 9; y++) {
+                for (int x = 3; x <= 5; x++) {
                     if (piece[y][x] == 1) { // 黑将
                         kingX = x;
                         kingY = y;
@@ -328,24 +270,119 @@ public class Rule {
             return true; // 王不存在，视为被将军
         }
         
-        // 检查所有对方棋子的攻击
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
+        // 优化：只检查可能攻击到王的对方棋子
+        // 定义攻击方向
+        int[][] attackDirections = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // 车、炮的直线方向
+        int[][] knightMoves = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1}}; // 马的走法
+        
+        // 1. 检查车和炮的直线攻击
+        for (int[] dir : attackDirections) {
+            int x = kingX + dir[0];
+            int y = kingY + dir[1];
+            int obstacleCount = 0;
+            
+            while (x >= 0 && x < 9 && y >= 0 && y < 10) {
                 int pieceId = piece[y][x];
-                if (pieceId == 0) continue;
-                
-                // 检查是否是对方的棋子
-                boolean isEnemy = isRedKing ? (pieceId >= 1 && pieceId <= 7) : (pieceId >= 8 && pieceId <= 14);
-                if (!isEnemy) continue;
-                
-                // 检查该棋子是否能攻击到王
-                List<Pos> moves = PossibleMoves(piece, x, y, pieceId);
-                if (moves != null) {
-                    for (Pos move : moves) {
-                        if (move.x == kingX && move.y == kingY) {
+                if (pieceId != 0) {
+                    // 检查是否是对方的车或炮
+                    boolean isEnemy = isRedKing ? (pieceId >= 1 && pieceId <= 7) : (pieceId >= 8 && pieceId <= 14);
+                    if (isEnemy) {
+                        if (pieceId == 5 || pieceId == 12) { // 车
                             return true;
+                        } else if (pieceId == 6 || pieceId == 13) { // 炮
+                            if (obstacleCount == 1) {
+                                return true;
+                            }
                         }
+                        break;
+                    } else {
+                        obstacleCount++;
                     }
+                }
+                x += dir[0];
+                y += dir[1];
+            }
+        }
+        
+        // 2. 检查马的攻击
+        for (int[] move : knightMoves) {
+            int x = kingX + move[0];
+            int y = kingY + move[1];
+            
+            if (x >= 0 && x < 9 && y >= 0 && y < 10) {
+                // 检查马腿
+                int legX = kingX + move[0] / 2;
+                int legY = kingY + move[1] / 2;
+                if (legX >= 0 && legX < 9 && legY >= 0 && legY < 10 && piece[legY][legX] == 0) {
+                    int pieceId = piece[y][x];
+                    boolean isEnemy = isRedKing ? (pieceId == 4) : (pieceId == 11);
+                    if (isEnemy) {
+                        return true;
+                    }
+                }
+            }
+        }
+        
+        // 3. 检查兵/卒的攻击
+        int[][] pawnMoves;
+        if (isRedKing) {
+            pawnMoves = new int[][]{{0, 1}, {1, 0}, {-1, 0}}; // 黑卒的可能攻击方向
+        } else {
+            pawnMoves = new int[][]{{0, -1}, {1, 0}, {-1, 0}}; // 红兵的可能攻击方向
+        }
+        
+        for (int[] move : pawnMoves) {
+            int x = kingX + move[0];
+            int y = kingY + move[1];
+            
+            if (x >= 0 && x < 9 && y >= 0 && y < 10) {
+                int pieceId = piece[y][x];
+                boolean isEnemy = isRedKing ? (pieceId == 7) : (pieceId == 14);
+                if (isEnemy) {
+                    return true;
+                }
+            }
+        }
+        
+        // 4. 检查将/帅的对面攻击
+        if (kingX >= 3 && kingX <= 5) {
+            boolean pathClear = true;
+            int startY = isRedKing ? kingY + 1 : kingY - 1;
+            int endY = isRedKing ? 9 : 0;
+            int step = isRedKing ? 1 : -1;
+            
+            for (int y = startY; y != endY; y += step) {
+                if (piece[y][kingX] != 0) {
+                    pathClear = false;
+                    break;
+                }
+            }
+            
+            if (pathClear) {
+                int enemyKingId = isRedKing ? 1 : 8;
+                int enemyKingY = isRedKing ? 9 : 0;
+                if (piece[enemyKingY][kingX] == enemyKingId) {
+                    return true;
+                }
+            }
+        }
+        
+        // 5. 检查士的攻击（士只能在九宫格内斜着走）
+        int[][] advisorMoves = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
+        for (int[] move : advisorMoves) {
+            int x = kingX + move[0];
+            int y = kingY + move[1];
+            
+            // 检查是否在九宫格内
+            boolean inPalace = isRedKing ? 
+                (x >= 3 && x <= 5 && y >= 0 && y <= 2) : 
+                (x >= 3 && x <= 5 && y >= 7 && y <= 9);
+            
+            if (inPalace) {
+                int pieceId = piece[y][x];
+                boolean isEnemy = isRedKing ? (pieceId == 2) : (pieceId == 9);
+                if (isEnemy) {
+                    return true;
                 }
             }
         }

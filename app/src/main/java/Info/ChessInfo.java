@@ -216,14 +216,27 @@ public class ChessInfo implements Cloneable, Serializable {
         // 更新长将检测
         updateConsecutiveCheck(isCheck);
         
-        // 更新长捉检测
-        updateConsecutiveAttack(prePos, curPos, capturedPiece);
+        // 只有当移动的是攻击性棋子时才更新长捉检测
+        int movingPieceType = this.piece[prePos.y][prePos.x];
+        if (isAttackingPiece(movingPieceType)) {
+            // 更新长捉检测
+            updateConsecutiveAttack(prePos, curPos, movingPieceType, capturedPiece);
+        } else {
+            // 非攻击性移动，重置连续攻击计数
+            resetConsecutiveAttack();
+        }
         
         // 切换回合
         IsRedGo = !IsRedGo;
         
         // 记录当前局面（在切换回合后记录，确保局面哈希包含回合信息）
         recordCurrentPosition();
+    }
+    
+    // 检查是否是攻击性棋子
+    private boolean isAttackingPiece(int pieceType) {
+        return pieceType == 4 || pieceType == 5 || pieceType == 6 || pieceType == 7 ||  // 黑方攻击性棋子
+               pieceType == 11 || pieceType == 12 || pieceType == 13 || pieceType == 14; // 红方攻击性棋子
     }
     
     // 更新连续将军计数
@@ -252,33 +265,27 @@ public class ChessInfo implements Cloneable, Serializable {
     }
     
     // 更新连续攻击（长捉）计数
-    private void updateConsecutiveAttack(Pos fromPos, Pos toPos, int capturedPiece) {
+    private void updateConsecutiveAttack(Pos fromPos, Pos toPos, int movingPieceType, int capturedPiece) {
         // 检查是否是攻击性移动（移动后位置有棋子被吃，或者移动的棋子是攻击性棋子）
         boolean isAttackMove = false;
-        int movingPieceType = piece[fromPos.y][fromPos.x];
-        
-        // 检查是否是攻击性棋子：车、马、炮、兵/卒
-        boolean isAttackingPiece = false;
-        if (movingPieceType == 4 || movingPieceType == 5 || movingPieceType == 6 || movingPieceType == 7 ||  // 黑方攻击性棋子
-            movingPieceType == 11 || movingPieceType == 12 || movingPieceType == 13 || movingPieceType == 14) { // 红方攻击性棋子
-            isAttackingPiece = true;
-        }
         
         // 如果是攻击性棋子且有吃子，或者攻击性棋子移动到可以攻击对方棋子的位置
-        if (capturedPiece != 0 && isAttackingPiece) {
+        if (capturedPiece != 0) {
             isAttackMove = true;
-        } else if (isAttackingPiece) {
+        } else {
             // 检查移动后是否可以攻击对方棋子
             List<Pos> possibleAttacks = Rule.PossibleMoves(piece, toPos.x, toPos.y, movingPieceType);
-            for (Pos attackPos : possibleAttacks) {
-                int targetPiece = piece[attackPos.y][attackPos.x];
-                if (targetPiece != 0) {
-                    // 检查是否是对方棋子
-                    boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
-                    boolean targetPieceIsRed = targetPiece >= 8 && targetPiece <= 14;
-                    if (movingPieceIsRed != targetPieceIsRed) {
-                        isAttackMove = true;
-                        break;
+            if (!possibleAttacks.isEmpty()) {
+                for (Pos attackPos : possibleAttacks) {
+                    int targetPiece = piece[attackPos.y][attackPos.x];
+                    if (targetPiece != 0) {
+                        // 检查是否是对方棋子
+                        boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
+                        boolean targetPieceIsRed = targetPiece >= 8 && targetPiece <= 14;
+                        if (movingPieceIsRed != targetPieceIsRed) {
+                            isAttackMove = true;
+                            break;
+                        }
                     }
                 }
             }
@@ -369,17 +376,19 @@ public class ChessInfo implements Cloneable, Serializable {
         positionHistory.put(positionHash, count + 1);
     }
     
-    // 生成局面哈希
+    // 生成局面哈希（优化版本）
     public String generatePositionHash() {
-        StringBuilder sb = new StringBuilder();
+        // 使用StringBuilder的预分配容量，减少扩容
+        StringBuilder sb = new StringBuilder(90 + 1); // 10x9 + 1 for turn
         // 添加棋盘状态
         for (int i = 0; i < 10; i++) {
             for (int j = 0; j < 9; j++) {
-                sb.append(piece[i][j]);
+                // 使用数字字符而不是字符串连接，提高性能
+                sb.append((char)('0' + piece[i][j]));
             }
         }
         // 添加当前回合（谁走棋）
-        sb.append(IsRedGo ? "R" : "B");
+        sb.append(IsRedGo ? 'R' : 'B');
         return sb.toString();
     }
     

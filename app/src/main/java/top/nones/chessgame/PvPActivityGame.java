@@ -227,15 +227,24 @@ public class PvPActivityGame {
     }
 
     private void executeMove(int i, int j, boolean isRed) {
+        // 快速检查：只检查己方是否被将军
         int tmp = chessInfo.piece[j][i];
         chessInfo.piece[j][i] = chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x];
         chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = 0;
         
-        if (Rule.isKingDanger(chessInfo.piece, isRed)) {
+        // 快速检查：只检查己方是否被将军
+        boolean isKingInDanger = Rule.isKingDanger(chessInfo.piece, isRed);
+        if (isKingInDanger) {
+            // 回退移动
             chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = chessInfo.piece[j][i];
             chessInfo.piece[j][i] = tmp;
             Toast.makeText(activity, isRed ? "帅被将军" : "将被将军", Toast.LENGTH_SHORT).show();
-        } else {
+            return;
+        }
+        
+        // 其他逻辑在后台线程执行
+        new Thread(() -> {
+            // 执行其他操作
             chessInfo.IsChecked = false;
             chessInfo.IsRedGo = !isRed;
             chessInfo.curPos = new Pos(i, j);
@@ -259,81 +268,87 @@ public class PvPActivityGame {
                 e.printStackTrace();
             }
 
-            if (PvPActivityInit.getClickMusic() != null) {
-                PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
-            }
-
-            checkGameStatus(!isRed);
-
-            if (chessView != null) {
-                chessView.requestDraw();
-            }
-            if (roundView != null) {
-                roundView.requestDraw();
-            }
-            
-            // 落子后清除支招信息（只有获得支招的一方落子后才清除）
-            if (roundView != null && suggestForRed != null) {
-                // 判断当前落子方是否是获得支招的一方
-                // isRed 是落子方的颜色，suggestForRed 是获得支招的一方的颜色
-                if (isRed == suggestForRed) {
-                    roundView.setSuggestMoveText("");
-                    suggestForRed = null; // 清除记录
+            // 在主线程中执行UI操作
+            activity.runOnUiThread(() -> {
+                if (PvPActivityInit.getClickMusic() != null) {
+                    PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
                 }
-            }
-        }
+
+                checkGameStatus(!isRed);
+
+                if (chessView != null) {
+                    chessView.requestDraw();
+                }
+                if (roundView != null) {
+                    roundView.requestDraw();
+                }
+                
+                // 清除支招信息
+                if (roundView != null && suggestForRed != null && isRed == suggestForRed) {
+                    roundView.setSuggestMoveText("");
+                    suggestForRed = null;
+                }
+            });
+        }).start();
     }
 
-    private void checkGameStatus(boolean isRed) {
-        int key = 0;
-        if (Rule.isKingDanger(chessInfo.piece, !isRed)) {
-            key = 1;
-        }
-        if (Rule.isDead(chessInfo.piece, !isRed)) {
-            key = 2;
-        }
-        if (key == 1) {
-            long currentTime = System.currentTimeMillis();
-            // 确保一次将军只提示一次，通过时间戳控制
-            if (currentTime - lastCheckHintTime > 1000) { // 1秒内只提示一次
-                if (PvPActivityInit.getCheckMusic() != null) {
-                    PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
-                }
-                Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
-                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                // 设置文本颜色为红色
-                try {
-                    View view = toast.getView();
-                    if (view != null) {
-                        TextView textView = view.findViewById(android.R.id.message);
-                        if (textView != null) {
-                            textView.setTextColor(android.graphics.Color.RED);
+    private void checkGameStatus(final boolean isRed) {
+        // 快速检查：只在主线程中检查将军和胜负
+        new Thread(() -> {
+            int key = 0;
+            if (Rule.isKingDanger(chessInfo.piece, !isRed)) {
+                key = 1;
+            }
+            if (Rule.isDead(chessInfo.piece, !isRed)) {
+                key = 2;
+            }
+            
+            final int finalKey = key;
+            activity.runOnUiThread(() -> {
+                if (finalKey == 1) {
+                    long currentTime = System.currentTimeMillis();
+                    // 确保一次将军只提示一次，通过时间戳控制
+                    if (currentTime - lastCheckHintTime > 1000) { // 1秒内只提示一次
+                        if (PvPActivityInit.getCheckMusic() != null) {
+                            PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
                         }
+                        Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
+                        toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                        // 设置文本颜色为红色
+                        try {
+                            View view = toast.getView();
+                            if (view != null) {
+                                TextView textView = view.findViewById(android.R.id.message);
+                                if (textView != null) {
+                                    textView.setTextColor(android.graphics.Color.RED);
+                                }
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        toast.show();
+                        // 设置500毫秒后取消提示
+                        activity.getWindow().getDecorView().postDelayed(() -> {
+                            try {
+                                toast.cancel();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }, 500);
+                        lastCheckHintTime = currentTime;
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
+                } else if (finalKey == 2) {
+                    if (PvPActivityInit.getWinMusic() != null) {
+                        PvPActivityInit.playEffect(PvPActivityInit.getWinMusic());
+                    }
+                    chessInfo.status = 2;
+                    Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT).show();
                 }
-                toast.show();
-                // 设置500毫秒后取消提示
-                activity.getWindow().getDecorView().postDelayed(() -> {
-                    try {
-                        toast.cancel();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }, 500);
-                lastCheckHintTime = currentTime;
-            }
-        } else if (key == 2) {
-            if (PvPActivityInit.getWinMusic() != null) {
-                PvPActivityInit.playEffect(PvPActivityInit.getWinMusic());
-            }
-            chessInfo.status = 2;
-            Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT).show();
-        }
+            });
 
-        // 和棋判断移至showDrawConfirmationDialog中处理，统一提示用户
-        checkDrawConditions();
+            // 将耗时的和棋判断移到后台线程执行
+            checkDrawConditions();
+        }).start();
     }
     
     // 检查和棋条件并提示用户
@@ -367,7 +382,11 @@ public class PvPActivityGame {
         }
         
         if (drawReason != null) {
-            showDrawConfirmationDialog(drawReason);
+            // 在主线程中显示和棋确认对话框
+            final String finalDrawReason = drawReason;
+            activity.runOnUiThread(() -> {
+                showDrawConfirmationDialog(finalDrawReason);
+            });
         }
     }
     
@@ -381,7 +400,9 @@ public class PvPActivityGame {
             handleOneSideForcedVariation(ruleType);
         } else if (ruleType.equals("BOTH_SIDES_PERPETUAL_CHECK") || ruleType.equals("BOTH_SIDES_PERPETUAL_ATTACK")) {
             // 双方长将或双方长捉：询问是否和棋
-            handleBothSidesDrawConfirmation(ruleType);
+            activity.runOnUiThread(() -> {
+                handleBothSidesDrawConfirmation(ruleType);
+            });
         } else if (ruleType.equals("ONE_FORBIDDEN_ONE_ALLOWED")) {
             // 一方禁止一方允许：禁止方必须变着
             handleForbiddenSideVariation();
@@ -419,7 +440,9 @@ public class PvPActivityGame {
         boolean willLose = checkWillLoseAfterForceVariation();
         if (willLose) {
             // 提示用户是否认输
-            showLoseConfirmationDialog(ruleType);
+            activity.runOnUiThread(() -> {
+                showLoseConfirmationDialog(ruleType);
+            });
             return;
         }
         
@@ -427,8 +450,10 @@ public class PvPActivityGame {
         
         // 显示浮窗提示
         if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
-            showForceVariationHint(ruleType);
-            forceVariationHintRound = chessInfo.totalMoves;
+            activity.runOnUiThread(() -> {
+                showForceVariationHint(ruleType);
+                forceVariationHintRound = chessInfo.totalMoves;
+            });
         }
     }
     
@@ -453,15 +478,19 @@ public class PvPActivityGame {
         boolean willLose = checkWillLoseAfterForceVariation();
         if (willLose) {
             // 提示禁止方是否认输
-            showLoseConfirmationDialog("ONE_FORBIDDEN_ONE_ALLOWED");
+            activity.runOnUiThread(() -> {
+                showLoseConfirmationDialog("ONE_FORBIDDEN_ONE_ALLOWED");
+            });
             return;
         }
         
         // 显示浮窗提示，要求禁止方变着
         if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
-            String message = forbiddenSide + "禁止着法，必须变着，不变判负";
-            showForceVariationHint("ONE_FORBIDDEN_ONE_ALLOWED", message);
-            forceVariationHintRound = chessInfo.totalMoves;
+            final String message = forbiddenSide + "禁止着法，必须变着，不变判负";
+            activity.runOnUiThread(() -> {
+                showForceVariationHint("ONE_FORBIDDEN_ONE_ALLOWED", message);
+                forceVariationHintRound = chessInfo.totalMoves;
+            });
         }
         
         resetForbiddenCounters();
@@ -473,7 +502,9 @@ public class PvPActivityGame {
         boolean willLose = checkWillLoseAfterForceVariation();
         if (willLose) {
             // 提示用户是否认输
-            showLoseConfirmationDialog("DEFAULT");
+            activity.runOnUiThread(() -> {
+                showLoseConfirmationDialog("DEFAULT");
+            });
             return;
         }
         
@@ -481,8 +512,10 @@ public class PvPActivityGame {
         
         // 显示浮窗提示
         if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
-            showForceVariationHint("DEFAULT");
-            forceVariationHintRound = chessInfo.totalMoves;
+            activity.runOnUiThread(() -> {
+                showForceVariationHint("DEFAULT");
+                forceVariationHintRound = chessInfo.totalMoves;
+            });
         }
     }
     
