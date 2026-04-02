@@ -452,20 +452,7 @@ public class PvMActivityAI {
             return false;
         }
         
-        if (Rule.isKingDanger(this.activity.chessInfo.piece, isRed)) {
-            int temp = this.activity.chessInfo.piece[toPos.y][toPos.x];
-            this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
-            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
-            
-            boolean stillInCheck = Rule.isKingDanger(this.activity.chessInfo.piece, isRed);
-            
-            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
-            this.activity.chessInfo.piece[toPos.y][toPos.x] = temp;
-            
-            if (stillInCheck) {
-                return false;
-            }
-        }
+
         
         this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
         this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;

@@ -78,6 +78,8 @@ public class PvMActivityControls {
             // 重置棋谱相关变量
             activity.notationManager.setCurrentNotation(null);
             activity.notationManager.setCurrentMoveIndex(0);
+            // 重置setupFEN，确保新局使用标准初始局面
+            activity.notationManager.setSetupFEN(null);
             // 重置继续对局后的回合计数器
             activity.continueGameRoundCount = 0;
             // 重置时间
@@ -302,35 +304,8 @@ public class PvMActivityControls {
                                             activity.chessInfo.IsChecked = true;
                                             java.util.List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             
-                                            // 检查是否被将军，如果是，只保留可以解将的移动
-                                            if (Rule.isKingDanger(activity.chessInfo.piece, isRedPiece)) {
-                                                java.util.List<Pos> validMoves = new java.util.ArrayList<>();
-                                                for (Pos pos : possibleMoves) {
-                                                    // 模拟移动
-                                                    int tmp = activity.chessInfo.piece[pos.y][pos.x];
-                                                    activity.chessInfo.piece[pos.y][pos.x] = pieceID;
-                                                    activity.chessInfo.piece[j][i] = 0;
-                                                    
-                                                    // 检查移动后是否还被将军
-                                                    if (!Rule.isKingDanger(activity.chessInfo.piece, isRedPiece)) {
-                                                        validMoves.add(pos);
-                                                    }
-                                                    
-                                                    // 撤销移动
-                                                    activity.chessInfo.piece[j][i] = pieceID;
-                                                    activity.chessInfo.piece[pos.y][pos.x] = tmp;
-                                                }
-                                                activity.chessInfo.ret = validMoves;
-                                                
-                                                // 如果没有可解将的移动，提示将死
-                                                if (validMoves.isEmpty()) {
-                                                    Toast toast = Toast.makeText(activity, isRedPiece ? "红方被将死！黑方胜利" : "黑方被将死！红方胜利", Toast.LENGTH_SHORT);
-                                                    toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                    toast.show();
-                                                }
-                                            } else {
-                                                activity.chessInfo.ret = possibleMoves;
-                                            }
+                                            // 取消将军不能行棋的判断，允许所有可能的移动
+                                            activity.chessInfo.ret = possibleMoves;
                                             
                                             // 重新绘制界面，显示选中效果
                                             if (activity.chessView != null) {
@@ -352,16 +327,8 @@ public class PvMActivityControls {
                                         activity.chessInfo.piece[targetY][targetX] = piece;
                                         activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
 
-                                        // 检查移动后是否被将军
-                                        if (Rule.isKingDanger(activity.chessInfo.piece, isRed)) {
-                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
-                                            activity.chessInfo.piece[targetY][targetX] = tmp;
-                                            Toast toast = Toast.makeText(activity, isRed ? "帅被将军" : "将被将军", Toast.LENGTH_SHORT);
-                                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                            toast.show();
-                                        } 
                                         // 检查移动后是否出现双方老将见面的情况
-                                        else if (isKingFaceToFace(activity.chessInfo.piece)) {
+                                        if (isKingFaceToFace(activity.chessInfo.piece)) {
                                             activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                                             activity.chessInfo.piece[targetY][targetX] = tmp;
                                             Toast toast = Toast.makeText(activity, "双方老将不能见面", Toast.LENGTH_SHORT);
@@ -400,16 +367,8 @@ public class PvMActivityControls {
                                             if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
                                                 key = 1;
                                             }
-                                            if (Rule.isDead(activity.chessInfo.piece, !isRed)) {
-                                                key = 2;
-                                            }
                                             if (key == 1) {
                                                 Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
-                                            } else if (key == 2) {
-                                                activity.chessInfo.status = 2;
-                                                Toast toast = Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT);
                                                 toast.setGravity(android.view.Gravity.CENTER, 0, 0);
                                                 toast.show();
                                             }
@@ -580,9 +539,10 @@ public class PvMActivityControls {
         if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
             key = 1;
         }
-        if (Rule.isDead(activity.chessInfo.piece, !isRed)) {
-            key = 2;
-        }
+        // 取消被将死的判断
+        // if (Rule.isDead(activity.chessInfo.piece, !isRed)) {
+        //     key = 2;
+        // }
         
         if (key == 1) {
             long currentTime = System.currentTimeMillis();
@@ -612,18 +572,6 @@ public class PvMActivityControls {
                     }
                 }, 500);
                 lastCheckHintTime = currentTime;
-            }
-        } else if (key == 2) {
-            activity.chessInfo.status = 2;
-            Toast toast = Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
-            // 游戏结束时重新绘制界面
-            if (activity.chessView != null) {
-                activity.chessView.requestDraw();
-            }
-            if (activity.roundView != null) {
-                activity.roundView.requestDraw();
             }
         }
         
@@ -677,13 +625,6 @@ public class PvMActivityControls {
     
     // 处理强制变着逻辑
     private void handleForceVariation() {
-        // 检查是否会立即输棋
-        boolean willLose = checkWillLoseAfterForceVariation();
-        if (willLose) {
-            // 提示用户是否认输
-            showLoseConfirmationDialog();
-            return;
-        }
         
         // 重置重复局面计数
         String currentHash = activity.chessInfo.generatePositionHash();
@@ -731,12 +672,7 @@ public class PvMActivityControls {
         justExecutedForceVariation = true;
     }
     
-    // 检查强制变着后是否会立即输棋
-    private boolean checkWillLoseAfterForceVariation() {
-        // 检查当前行棋方是否被将死
-        boolean currentPlayerIsRed = activity.chessInfo.IsRedGo;
-        return Rule.isDead(activity.chessInfo.piece, currentPlayerIsRed);
-    }
+
     
     // 显示输棋确认对话框
     private void showLoseConfirmationDialog() {

@@ -160,13 +160,13 @@ public class FENHandler {
             return generateFEN(chessInfo);
         }
         
-        // 检查是否有FEN信息在currentNotation中
+        // 检查是否有FEN信息在currentNotation中（加载的棋局）
         if (currentNotation != null && currentNotation.getFen() != null && !currentNotation.getFen().isEmpty()) {
-            // 使用棋谱中已有的FEN作为初始状态
+            // 使用棋谱中已有的FEN作为初始状态，保持FEN不变
             return currentNotation.getFen();
         }
         
-        // 使用标准初始状态
+        // 使用标准初始状态（新局）
         ChessInfo initialInfo = new ChessInfo();
         return generateFEN(initialInfo);
     }

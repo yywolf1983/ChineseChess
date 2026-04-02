@@ -251,24 +251,10 @@ public class RoundView extends View {
             }
         }
         
-        // 检查是否被将死
-        boolean redDead = false;
-        boolean blackDead = false;
-        try {
-            redDead = ChessMove.Rule.isDead(chessInfo.piece, true);
-            blackDead = ChessMove.Rule.isDead(chessInfo.piece, false);
-        } catch (Exception e) {
-            // 忽略异常
-        }
-        
-        // 优先显示将死或王被吃掉的情况
+        // 优先显示王被吃掉的情况
         if (!redKingExists) {
             scoreText = "黑方胜利！";
         } else if (!blackKingExists) {
-            scoreText = "红方胜利！";
-        } else if (redDead) {
-            scoreText = "黑方胜利！";
-        } else if (blackDead) {
             scoreText = "红方胜利！";
         } else {
             // 评分平滑过渡处理

@@ -91,6 +91,8 @@ public class BoardStateGenerator {
                     try {
                         // 清空现有棋盘并设置新状态
                         activity.chessInfo.setInfo(currentInfo);
+                        // 确保设置了setting属性，使用最新的设置
+                        activity.chessInfo.setting = activity.setting;
                         // 更新 totalMoves，使其与当前的 moveCount 一致
                         activity.chessInfo.totalMoves = moveCount;
                         // 确保游戏状态为进行中
@@ -165,6 +167,8 @@ public class BoardStateGenerator {
                     try {
                         // 清空现有棋盘并设置新状态
                         activity.chessInfo.setInfo(initialInfo);
+                        // 确保设置了setting属性，使用最新的设置
+                        activity.chessInfo.setting = activity.setting;
                         // 重置 totalMoves 为 0
                         activity.chessInfo.totalMoves = 0;
                         // 确保游戏状态为进行中

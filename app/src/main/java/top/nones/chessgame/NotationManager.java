@@ -318,6 +318,36 @@ public class NotationManager {
             return;
         }
         
+        // 首先添加原始棋谱中到currentMoveIndex的走法
+        if (currentNotation != null) {
+            java.util.List<ChessNotation.MoveRecord> originalMoves = currentNotation.getMoveRecords();
+            if (originalMoves != null && !originalMoves.isEmpty()) {
+                int moveCount = 0;
+                for (ChessNotation.MoveRecord record : originalMoves) {
+                    if (moveCount >= currentMoveIndex) {
+                        break;
+                    }
+                    
+                    // 处理红方走法
+                    if (!record.redMove.isEmpty() && moveCount < currentMoveIndex) {
+                        notation.addMoveRecord(record.redMove, "");
+                        moveCount++;
+                    }
+                    
+                    // 处理黑方走法
+                    if (!record.blackMove.isEmpty() && moveCount < currentMoveIndex) {
+                        if (!notation.getMoveRecords().isEmpty()) {
+                            ChessNotation.MoveRecord lastRecord = notation.getMoveRecords().get(notation.getMoveRecords().size() - 1);
+                            lastRecord.blackMove = record.blackMove;
+                        } else {
+                            notation.addMoveRecord("", record.blackMove);
+                        }
+                        moveCount++;
+                    }
+                }
+            }
+        }
+        
         // 创建一个临时列表来存储所有ChessInfo对象，而不修改原栈
         java.util.List<ChessInfo> tempList = new java.util.ArrayList<>();
         java.util.Stack<ChessInfo> originalStack = new java.util.Stack<>();
@@ -334,8 +364,7 @@ public class NotationManager {
             activity.infoSet.preInfo.push(originalStack.pop());
         }
         
-        // 按照临时列表的顺序处理，保证走法记录顺序正确
-        // 从索引1开始，跳过初始位置（setup position）
+        // 按照临时列表的顺序处理，添加用户后续的走法
         for (int i = tempList.size() - 1; i >= 0; i--) {
             ChessInfo info = tempList.get(i);
             // 只有当prePos和curPos都不为null时，才添加到走法记录

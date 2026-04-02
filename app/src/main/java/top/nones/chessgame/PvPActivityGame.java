@@ -227,20 +227,8 @@ public class PvPActivityGame {
     }
 
     private void executeMove(int i, int j, boolean isRed) {
-        // 快速检查：只检查己方是否被将军
+        // 记录目标位置原来的棋子
         int tmp = chessInfo.piece[j][i];
-        chessInfo.piece[j][i] = chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x];
-        chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = 0;
-        
-        // 快速检查：只检查己方是否被将军
-        boolean isKingInDanger = Rule.isKingDanger(chessInfo.piece, isRed);
-        if (isKingInDanger) {
-            // 回退移动
-            chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = chessInfo.piece[j][i];
-            chessInfo.piece[j][i] = tmp;
-            Toast.makeText(activity, isRed ? "帅被将军" : "将被将军", Toast.LENGTH_SHORT).show();
-            return;
-        }
         
         // 其他逻辑在后台线程执行
         new Thread(() -> {

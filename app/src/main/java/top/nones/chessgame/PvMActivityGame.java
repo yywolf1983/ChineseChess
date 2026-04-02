@@ -209,35 +209,8 @@ public class PvMActivityGame {
                                             activity.chessInfo.IsChecked = true;
                                             List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             
-                                            // 检查是否被将军，如果是，只保留可以解将的移动
-                                            if (Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
-                                                List<Pos> validMoves = new java.util.ArrayList<>();
-                                                for (Pos pos : possibleMoves) {
-                                                    // 模拟移动
-                                                    int tmp = activity.chessInfo.piece[pos.y][pos.x];
-                                                    activity.chessInfo.piece[pos.y][pos.x] = pieceID;
-                                                    activity.chessInfo.piece[j][i] = 0;
-                                                    
-                                                    // 检查移动后是否还被将军
-                                                    if (!Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
-                                                        validMoves.add(pos);
-                                                    }
-                                                    
-                                                    // 撤销移动
-                                                    activity.chessInfo.piece[j][i] = pieceID;
-                                                    activity.chessInfo.piece[pos.y][pos.x] = tmp;
-                                                }
-                                                activity.chessInfo.ret = validMoves;
-                                                
-                                                // 如果没有可解将的移动，提示将死
-                                                if (validMoves.isEmpty()) {
-                                                    android.widget.Toast toast = android.widget.Toast.makeText(activity, activity.chessInfo.IsRedGo ? "红方被将死！黑方胜利" : "黑方被将死！红方胜利", android.widget.Toast.LENGTH_SHORT);
-                                                    toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                    toast.show();
-                                                }
-                                            } else {
-                                                activity.chessInfo.ret = possibleMoves;
-                                            }
+                                            // 取消将军不能行棋的判断，允许所有可能的移动
+                                            activity.chessInfo.ret = possibleMoves;
                                             
                                             // 重新绘制界面，显示选中效果
                                             if (activity.chessView != null) {
@@ -259,78 +232,77 @@ public class PvMActivityGame {
                                         // 不需要再次检查，因为在选择棋子时已经检查过了
 
                                         activity.chessInfo.piece[targetY][targetX] = piece;
-                                        activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
+                        activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
 
-                                        // 不需要再次检查，因为在选择棋子时已经检查过了 
-                                        // 检查移动后是否出现双方老将见面的情况
-                                        if (isKingFaceToFace(activity.chessInfo.piece)) {
-                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
-                                            activity.chessInfo.piece[targetY][targetX] = tmp;
-                                            android.widget.Toast toast = android.widget.Toast.makeText(activity, "双方老将不能见面", android.widget.Toast.LENGTH_SHORT);
-                                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                            toast.show();
-                                        } else {
-                                            activity.chessInfo.IsChecked = false;
-                                            activity.chessInfo.curPos = new Pos(targetX, targetY);
-                                            activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
-                                            activity.chessInfo.ret.clear(); // 清空可移动位置
+                        // 检查移动后是否出现双方老将见面的情况
+                        if (isKingFaceToFace(activity.chessInfo.piece)) {
+                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
+                            activity.chessInfo.piece[targetY][targetX] = tmp;
+                            android.widget.Toast toast = android.widget.Toast.makeText(activity, "双方老将不能见面", android.widget.Toast.LENGTH_SHORT);
+                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                            toast.show();
+                        } else {
+                            activity.chessInfo.IsChecked = false;
+                            activity.chessInfo.curPos = new Pos(targetX, targetY);
+                            activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
+                            activity.chessInfo.ret.clear(); // 清空可移动位置
 
-                                            // 生成并记录标准象棋记谱走法
-                                            String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
-                                            if (moveString != null) {
-                                                Utils.LogUtils.i("Move", "用户走棋: " + moveString);
-                                            }
+                            // 生成并记录标准象棋记谱走法
+                            String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
+                            if (moveString != null) {
+                                Utils.LogUtils.i("Move", "用户走棋: " + moveString);
+                            }
 
-                                            // 检查是否将军
-                                            boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
-                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
+                            // 检查是否将军
+                            boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
+                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
 
-                                            // 保存移动后的状态到栈中
-                                            try {
-                                                activity.infoSet.pushInfo(activity.chessInfo);
-                                            } catch (CloneNotSupportedException e) {
-                                                e.printStackTrace();
-                                            }
+                            // 保存移动后的状态到栈中
+                            try {
+                                activity.infoSet.pushInfo(activity.chessInfo);
+                            } catch (CloneNotSupportedException e) {
+                                e.printStackTrace();
+                            }
 
-                                            int key = 0;
-                                            if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
-                                                key = 1;
-                                            }
-                                            if (key == 1) {
-                                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "将军", android.widget.Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
-                                            }
+                            int key = 0;
+                            if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
+                                key = 1;
+                            }
+                            if (key == 1) {
+                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "将军", android.widget.Toast.LENGTH_SHORT);
+                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                toast.show();
+                            }
 
-                                            // 增加继续对局后的回合计数器
-                                            activity.continueGameRoundCount++;
+                            // 增加继续对局后的回合计数器
+                            activity.continueGameRoundCount++;
 
-                                            // 获取当前局面的评分（在后台线程中执行）
-                                            if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
-                                                new Thread(() -> {
-                                                    AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
-                                                    final int score = moveWithScore.score;
-                                                    
-                                                    // 更新评分显示
-                                                    activity.runOnUiThread(() -> {
-                                                        if (activity.roundView != null) {
-                                                            activity.roundView.setMoveScore(score);
-                                                        }
-                                                    });
-                                                }).start();
-                                            }
-                                            
-                                            // 重新绘制界面
-                                                if (activity.chessView != null) {
-                                                    activity.chessView.requestDraw();
-                                                }
-                                                if (activity.roundView != null) {
-                                                    activity.roundView.requestDraw();
-                                                }
-                                                
-                                                // 检查是否需要AI移动
-                                                activity.aiManager.checkAIMove();
+                            // 获取当前局面的评分（在后台线程中执行）
+                            if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
+                                new Thread(() -> {
+                                    AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
+                                    final int score = moveWithScore.score;
+                                    
+                                    // 更新评分显示
+                                    activity.runOnUiThread(() -> {
+                                        if (activity.roundView != null) {
+                                            activity.roundView.setMoveScore(score);
                                         }
+                                    });
+                                }).start();
+                            }
+                            
+                            // 重新绘制界面
+                                if (activity.chessView != null) {
+                                    activity.chessView.requestDraw();
+                                }
+                                if (activity.roundView != null) {
+                                    activity.roundView.requestDraw();
+                                }
+                                
+                                // 检查是否需要AI移动
+                                activity.aiManager.checkAIMove();
+                        }
                                     } else if (pieceID != 0) {
                                         // 只有当点击的位置有棋子时，才检查是否可以选择新棋子
                                         // 检查是否是当前回合的颜色的棋子
@@ -366,14 +338,6 @@ public class PvMActivityGame {
         // 检查是否被将军
         if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
             android.widget.Toast toast = android.widget.Toast.makeText(activity, "将军", android.widget.Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
-        }
-        
-        // 检查是否被将死
-        if (Rule.isDead(activity.chessInfo.piece, !isRed)) {
-            activity.chessInfo.status = 2;
-            android.widget.Toast toast = android.widget.Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", android.widget.Toast.LENGTH_SHORT);
             toast.setGravity(android.view.Gravity.CENTER, 0, 0);
             toast.show();
         }
