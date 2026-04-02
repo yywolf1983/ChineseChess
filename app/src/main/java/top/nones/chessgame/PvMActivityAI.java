@@ -16,19 +16,37 @@ import AICore.PikafishAI;
 import CustomView.ChessView;
 import CustomView.RoundView;
 import top.nones.chessgame.R;
+import Utils.LogUtils;
 
 public class PvMActivityAI {
     private PvMActivity activity;
     private int aiRetryCount = 0;
     private final Object aiAnalysisLock = new Object();
     private volatile boolean isAIAnalyzing = false;
-    private ExecutorService executorService = Executors.newSingleThreadExecutor();
+    // 使用有界队列和自定义拒绝策略，避免线程堆积
+    private java.util.concurrent.ThreadPoolExecutor executorService;
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     private java.util.concurrent.ScheduledFuture<?> depthUpdateFuture;
+    private static final long AI_TIMEOUT_BUFFER_MS = 5000; // AI计算超时缓冲时间5秒
     
     public PvMActivityAI(PvMActivity activity) {
         this.activity = activity;
         this.aiMoveHistory = new java.util.ArrayList<>();
+        initExecutorService();
+    }
+    
+    // 初始化线程池
+    private void initExecutorService() {
+        // 初始化线程池：核心线程数1，最大线程数1，有界队列容量1
+        // 使用CallerRunsPolicy拒绝策略，当队列满时由调用线程执行任务
+        executorService = new java.util.concurrent.ThreadPoolExecutor(
+            1, 1, 0L, TimeUnit.MILLISECONDS,
+            new java.util.concurrent.ArrayBlockingQueue<>(1),
+            java.util.concurrent.Executors.defaultThreadFactory(),
+            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
+        );
+        // 允许核心线程超时，避免空闲时占用资源
+        executorService.allowCoreThreadTimeOut(false);
     }
     
     // 记录AI着法历史
@@ -725,19 +743,54 @@ public class PvMActivityAI {
                 int score = 0;
                 int currentDepth = 0;
                 
+                // 使用Future和超时机制来避免长时间阻塞
+                java.util.concurrent.Future<PikafishAI.MoveWithScore> future = null;
+                
+                // 计算超时时间：设置的时间 + 缓冲时间
+                int thinkingTime = 10; // 默认10秒
+                if (activity.chessInfo != null && activity.chessInfo.setting != null) {
+                    thinkingTime = activity.chessInfo.setting.mLevel;
+                }
+                long aiTimeoutMs = thinkingTime * 1000 + AI_TIMEOUT_BUFFER_MS;
+                LogUtils.i("PvMActivityAI", "AI计算超时时间: " + aiTimeoutMs + "ms (设置时间: " + (thinkingTime * 1000) + "ms + 缓冲: " + AI_TIMEOUT_BUFFER_MS + "ms)");
+                
                 try {
                     if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
-                        PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
-                        if (moveWithScore != null) {
-                            move = moveWithScore.move;
-                            score = moveWithScore.score;
-                            score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
-                            aiInstance.currentAIScore = score;
+                        // 在单独的线程中执行AI计算
+                        future = aiInstance.executorService.submit(() -> {
+                            return activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
+                        });
+                        
+                        try {
+                            // 等待AI计算结果，设置超时（根据设置动态计算）
+                            PikafishAI.MoveWithScore moveWithScore = future.get(aiTimeoutMs, TimeUnit.MILLISECONDS);
+                            if (moveWithScore != null) {
+                                move = moveWithScore.move;
+                                score = moveWithScore.score;
+                                score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
+                                aiInstance.currentAIScore = score;
+                            }
+                            // 获取最终的搜索深度
+                            currentDepth = activity.pikafishAI.getCurrentDepth();
+                        } catch (java.util.concurrent.TimeoutException e) {
+                            // 超时处理
+                            LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
+                            future.cancel(true);
+                            activity.pikafishAI.interrupt();
+                            
+                            // 在UI线程显示超时提示
+                            if (activity != null) {
+                                activity.runOnUiThread(() -> {
+                                    Toast.makeText(activity, "AI计算超时，请重试", Toast.LENGTH_SHORT).show();
+                                });
+                            }
+                        } catch (Exception e) {
+                            LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
+                            e.printStackTrace();
                         }
-                        // 获取最终的搜索深度
-                        currentDepth = activity.pikafishAI.getCurrentDepth();
                     }
                 } catch (Exception e) {
+                    LogUtils.e("PvMActivityAI", "AI线程异常: " + e.getMessage());
                     e.printStackTrace();
                 } finally {
                     // 停止深度更新任务

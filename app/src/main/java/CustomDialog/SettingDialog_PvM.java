@@ -157,48 +157,82 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         public void onClick(View v) {
             int id = v.getId();
             if (id == R.id.posBtn) {
-                // 保存设置到PvMActivity.setting
-                if (PvMActivity.setting != null) {
-                    PvMActivity.setting.isMusicPlay = isMusicPlay;
-                    PvMActivity.setting.isEffectPlay = isEffectPlay;
-                    // 直接保存思考时间，不再转换为mLevel
-                    // 由于PikafishAI现在直接使用思考时间，我们不需要转换
-                    PvMActivity.setting.mLevel = thinkingTime;
-                    PvMActivity.setting.depth = searchDepth;
-                    PvMActivity.setting.skillLevel = skillLevel;
-                    PvMActivity.setting.multiPV = multiPV;
-                    // 立即生效：更新音乐播放状态
-                    if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
-                        PvMActivity.backMusic.start();
-                    } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
-                        PvMActivity.backMusic.pause();
-                    }
-                    // 保存设置到SharedPreferences
-                    PvMActivity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
-                    
-                    // 同时更新chessInfo.setting，确保AI使用最新设置
-                    try {
-                        PvMActivity activity = PvMActivity.getInstance();
-                        if (activity != null) {
-                            if (activity.chessInfo != null) {
-                                activity.chessInfo.setting = PvMActivity.setting;
+                // 当思考时间超过15秒时，显示提示弹窗
+                if (thinkingTime > 15) {
+                    new android.app.AlertDialog.Builder(getContext())
+                        .setTitle("提示")
+                        .setMessage("时间过长可能造成手机卡死，请斟酌手机性能设置")
+                        .setPositiveButton("设置到10秒以下", (dialog, which) -> {
+                            // 设置思考时间为10秒
+                            thinkingTime = 10;
+                            timeSeekBar.setProgress(10);
+                            timeValue.setText("10秒");
+                            // 保存设置
+                            saveSettings();
+                            if (onClickBottomListener != null) {
+                                onClickBottomListener.onPositiveClick();
                             }
-                            
-                            // 更新PikafishAI的设置
-                            if (activity.pikafishAI != null) {
-                                activity.pikafishAI.updateSettings(skillLevel, multiPV);
+                            dismiss();
+                        })
+                        .setNegativeButton("确认设置", (dialog, which) -> {
+                            // 确认保存设置
+                            saveSettings();
+                            if (onClickBottomListener != null) {
+                                onClickBottomListener.onPositiveClick();
                             }
-                        }
-                    } catch (Exception e) {
-                        LogUtils.e("SettingDialog_PvM", "更新设置失败: " + e.getMessage());
+                            dismiss();
+                        })
+                        .show();
+                } else {
+                    // 直接保存设置
+                    saveSettings();
+                    if (onClickBottomListener != null) {
+                        onClickBottomListener.onPositiveClick();
                     }
-                }
-                if (onClickBottomListener != null) {
-                    onClickBottomListener.onPositiveClick();
                 }
             } else if (id == R.id.negBtn) {
                 if (onClickBottomListener != null) {
                     onClickBottomListener.onNegtiveClick();
+                }
+            }
+        }
+        
+        // 保存设置的方法
+        private void saveSettings() {
+            // 保存设置到PvMActivity.setting
+            if (PvMActivity.setting != null) {
+                PvMActivity.setting.isMusicPlay = isMusicPlay;
+                PvMActivity.setting.isEffectPlay = isEffectPlay;
+                // 直接保存思考时间，不再转换为mLevel
+                // 由于PikafishAI现在直接使用思考时间，我们不需要转换
+                PvMActivity.setting.mLevel = thinkingTime;
+                PvMActivity.setting.depth = searchDepth;
+                PvMActivity.setting.skillLevel = skillLevel;
+                PvMActivity.setting.multiPV = multiPV;
+                // 立即生效：更新音乐播放状态
+                if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
+                    PvMActivity.backMusic.start();
+                } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
+                    PvMActivity.backMusic.pause();
+                }
+                // 保存设置到SharedPreferences
+                PvMActivity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
+                
+                // 同时更新chessInfo.setting，确保AI使用最新设置
+                try {
+                    PvMActivity activity = PvMActivity.getInstance();
+                    if (activity != null) {
+                        if (activity.chessInfo != null) {
+                            activity.chessInfo.setting = PvMActivity.setting;
+                        }
+                        
+                        // 更新PikafishAI的设置
+                        if (activity.pikafishAI != null) {
+                            activity.pikafishAI.updateSettings(skillLevel, multiPV);
+                        }
+                    }
+                } catch (Exception e) {
+                    LogUtils.e("SettingDialog_PvM", "更新设置失败: " + e.getMessage());
                 }
             }
         }
