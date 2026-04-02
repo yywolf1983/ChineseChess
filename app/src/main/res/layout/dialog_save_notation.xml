@@ -169,7 +169,29 @@
                 android:layout_marginTop="4dp" />
         </LinearLayout>
 
-
+        <!-- 文件名 -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginBottom="12dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="文件名"
+                android:textSize="16sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="4dp" />
+            <EditText
+                android:id="@+id/file_name_edit"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:inputType="text"
+                android:hint="请输入文件名（不需要包含.pgn）"
+                android:background="@android:drawable/editbox_background"
+                android:padding="8dp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
 
     </LinearLayout>
 

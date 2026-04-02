@@ -70,16 +70,24 @@ public class NotationManager {
         final android.widget.EditText locationEditText = dialogView.findViewById(R.id.location_edit);
         final android.widget.EditText eventEditText = dialogView.findViewById(R.id.event_edit);
         final android.widget.EditText roundEditText = dialogView.findViewById(R.id.round_edit);
+        final android.widget.EditText fileNameEditText = dialogView.findViewById(R.id.file_name_edit);
         
         // 设置默认值
         dateEditText.setText(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()));
+        // 为文件名输入框设置默认值，不包含.pgn扩展名
+        String defaultFileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+        fileNameEditText.setText(defaultFileName);
         
         android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
         builder.setTitle("保存棋谱");
         builder.setView(dialogView);
         builder.setPositiveButton("保存", (dialog, which) -> {
-            // 生成默认文件名，不包含.pgn扩展名
-            String fileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+            // 获取用户输入的文件名，不包含.pgn扩展名
+            String fileName = fileNameEditText.getText().toString().trim();
+            if (fileName.isEmpty()) {
+                // 如果用户没有输入文件名，使用默认文件名
+                fileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
+            }
             
             String redPlayer = redPlayerEditText.getText().toString().trim();
             String blackPlayer = blackPlayerEditText.getText().toString().trim();
@@ -88,7 +96,7 @@ public class NotationManager {
             String event = eventEditText.getText().toString().trim();
             String round = roundEditText.getText().toString().trim();
             
-            // 保存信息到成员变量
+            // 保存信息到成员变量，不包含.pgn扩展名
             pendingSaveFileName = fileName;
             pendingSaveRedPlayer = redPlayer;
             pendingSaveBlackPlayer = blackPlayer;
@@ -97,11 +105,17 @@ public class NotationManager {
             pendingSaveEvent = event;
             pendingSaveRound = round;
             
+            // 为Intent添加.pgn扩展名，确保保存的文件有正确的后缀名
+            String intentFileName = fileName;
+            if (!intentFileName.toLowerCase().endsWith(".pgn")) {
+                intentFileName += ".pgn";
+            }
+            
             // 使用SAF打开文件保存选择器
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("*/*");
-            intent.putExtra(Intent.EXTRA_TITLE, fileName);
+            intent.putExtra(Intent.EXTRA_TITLE, intentFileName);
             activity.startActivityForResult(intent, 1003);
         });
         builder.setNegativeButton("取消", null);
