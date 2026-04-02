@@ -167,8 +167,21 @@ public class Rule {
                             }
                         } else {
                             obstacleCount++;
-                            if (obstacleCount == 1 && !IsSameSide(PieceID, piece[y][x])) {
-                                ret.add(new Pos(x, y));
+                            if (obstacleCount == 1) {
+                                // 找到第一个炮架，继续前进寻找吃子目标
+                                int nextX = x + dir[0];
+                                int nextY = y + dir[1];
+                                while (nextX >= 0 && nextX < 9 && nextY >= 0 && nextY < 10) {
+                                    if (piece[nextY][nextX] != 0) {
+                                        if (!IsSameSide(PieceID, piece[nextY][nextX])) {
+                                            ret.add(new Pos(nextX, nextY));
+                                        }
+                                        break;
+                                    }
+                                    nextX += dir[0];
+                                    nextY += dir[1];
+                                }
+                                break;
                             }
                             if (obstacleCount >= 2) {
                                 break;
@@ -280,6 +293,7 @@ public class Rule {
             int x = kingX + dir[0];
             int y = kingY + dir[1];
             int obstacleCount = 0;
+            boolean foundEnemy = false;
             
             while (x >= 0 && x < 9 && y >= 0 && y < 10) {
                 int pieceId = piece[y][x];
@@ -290,10 +304,12 @@ public class Rule {
                         if (pieceId == 5 || pieceId == 12) { // 车
                             return true;
                         } else if (pieceId == 6 || pieceId == 13) { // 炮
+                            // 炮需要有一个炮架才能攻击
                             if (obstacleCount == 1) {
                                 return true;
                             }
                         }
+                        foundEnemy = true;
                         break;
                     } else {
                         obstacleCount++;

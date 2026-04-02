@@ -21,6 +21,8 @@ public class PvMActivityGame {
     // 设置支招信息，并记录是给哪一方的
     public void setSuggestMove(String moveText, boolean forRed) {
         if (activity.roundView != null) {
+            // 清空步数信息，只显示支招内容
+            activity.roundView.setMoveInfoText("");
             activity.roundView.setSuggestMoveText(moveText);
             suggestForRed = forRed;
         }

@@ -908,6 +908,11 @@ public class PvMActivityAI {
                 boolean suggestForRed = activity.chessInfo.IsRedGo;
                 String moveText = convertMoveToChineseNotation(move, piece);
                 
+                // 清空步数信息，只显示支招内容
+                if (activity.roundView != null) {
+                    activity.roundView.setMoveInfoText("");
+                }
+                
                 // 使用PvPActivityGame的setSuggestMove方法（如果存在）
                 if (activity.gameManager != null) {
                     activity.gameManager.setSuggestMove(moveText, suggestForRed);

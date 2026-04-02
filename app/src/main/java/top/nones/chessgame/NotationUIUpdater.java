@@ -36,10 +36,13 @@ public class NotationUIUpdater {
                     }
                 }
                 
-                // 使用Toast显示棋谱信息
+                // 在RoundView中显示步数信息，保留支招信息
                 final String finalNotationInfo = notationInfo.toString();
                 activity.runOnUiThread(() -> {
-                    android.widget.Toast.makeText(activity, finalNotationInfo, android.widget.Toast.LENGTH_SHORT).show();
+                    if (activity.roundView != null) {
+                        // 只设置步数信息，不影响支招信息
+                        activity.roundView.setMoveInfoText(finalNotationInfo);
+                    }
                 });
             }
         }

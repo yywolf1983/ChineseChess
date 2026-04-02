@@ -27,6 +27,7 @@ public class RoundView extends View {
     private int aiThinkingProgress = 0; // AI思考动画进度
     private boolean isSuggestMode = false; // 是否处于支招模式
     private String suggestMoveText = ""; // 支招走法文本
+    private String moveInfoText = ""; // 步数信息文本
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
@@ -138,6 +139,12 @@ public class RoundView extends View {
     // 设置支招走法文本
     public void setSuggestMoveText(String moveText) {
         this.suggestMoveText = moveText;
+        invalidate();
+    }
+    
+    // 设置步数信息文本
+    public void setMoveInfoText(String infoText) {
+        this.moveInfoText = infoText;
         invalidate();
     }
 
@@ -387,8 +394,13 @@ public class RoundView extends View {
         // 检查是否有深度信息需要显示
         shouldShowAIInfo = shouldShowAIInfo && currentDepth > 0;
         
+        // 计算文本位置
+        float aiTextY = textY + lineHeight;
+        float moveInfoTextY = aiTextY;
+        float suggestTextY = moveInfoTextY;
+        
+        // 绘制AI信息
         if (shouldShowAIInfo) {
-            float aiTextY = textY + lineHeight;
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             
             String aiText = "";
@@ -410,13 +422,22 @@ public class RoundView extends View {
             // 绘制文本
             canvas.drawText(aiText, width / 2, aiTextY, infoTextPaint);
             
-            // 在深度下面一行显示支招走法信息
-            // 只要有支招文本就显示，不依赖于isSuggestMode
-            if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
-                float suggestTextY = aiTextY + lineHeight;
-                infoTextPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText("支招: " + suggestMoveText, width / 2, suggestTextY, infoTextPaint);
-            }
+            // 调整步数信息的位置
+            moveInfoTextY = aiTextY + lineHeight;
+        }
+        
+        // 显示步数信息和支招走法信息
+        // 只要有步数信息或支招文本就显示，不依赖于shouldShowAIInfo
+        if (moveInfoText != null && !moveInfoText.isEmpty()) {
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(moveInfoText, width / 2, moveInfoTextY, infoTextPaint);
+        }
+        
+        // 显示支招走法信息，无论是否有步数信息
+        if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
+            suggestTextY = moveInfoText != null && !moveInfoText.isEmpty() ? moveInfoTextY + lineHeight : moveInfoTextY;
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText("支招: " + suggestMoveText, width / 2, suggestTextY, infoTextPaint);
         }
         
         // 重置文本对齐
