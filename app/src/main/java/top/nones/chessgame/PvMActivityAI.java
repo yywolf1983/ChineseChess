@@ -127,9 +127,7 @@ public class PvMActivityAI {
         
         boolean isCurrentPlayerRed = this.activity.chessInfo.IsRedGo;
         
-        if (Rule.isDead(this.activity.chessInfo.piece, isCurrentPlayerRed)) {
-            return null;
-        }
+        // 移除胜利判断，只保留被将判断
         
         boolean hasValidMoves = false;
         for (int i = 0; i < 10; i++) {
@@ -422,21 +420,7 @@ public class PvMActivityAI {
         }
         
         if (move == null) {
-            if (this.activity.chessInfo.IsRedGo) {
-                if (Rule.isDead(this.activity.chessInfo.piece, true)) {
-                    if (this.activity != null) {
-                        Toast.makeText(this.activity, "红方被将死！黑方胜利", Toast.LENGTH_SHORT).show();
-                    }
-                    return false;
-                }
-            } else {
-                if (Rule.isDead(this.activity.chessInfo.piece, false)) {
-                    if (this.activity != null) {
-                        Toast.makeText(this.activity, "黑方被将死！红方胜利", Toast.LENGTH_SHORT).show();
-                    }
-                    return false;
-                }
-            }
+            // 移除胜利判断，只保留被将判断
             return false;
         }
         
@@ -699,10 +683,8 @@ public class PvMActivityAI {
                 aiInstance.stopAISearch();
                 
                 if (activity.chessInfo != null) {
-                    boolean isRed = activity.chessInfo.IsRedGo;
-                    if (activity.chessInfo.piece != null && Rule.isDead(activity.chessInfo.piece, isRed)) {
-                        Toast.makeText(activity, isRed ? "红方被将死！黑方胜利" : "黑方被将死！红方胜利", Toast.LENGTH_SHORT).show();
-                    } else {
+                    // 移除胜利判断，只保留被将判断
+                    {
                         if (aiInstance.aiRetryCount < 3) {
                             aiInstance.aiRetryCount++;
                             aiInstance.startAIThread();
@@ -1084,9 +1066,7 @@ public class PvMActivityAI {
         }
         
         boolean isRed = tempChessInfo.IsRedGo;
-        if (Rule.isDead(tempChessInfo.piece, isRed)) {
-            return null;
-        }
+        // 移除胜利判断，只保留被将判断
         
         boolean hasValidMoves = false;
         for (int i = 0; i < 10; i++) {

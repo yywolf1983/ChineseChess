@@ -398,6 +398,9 @@ public class RoundView extends View {
         float aiTextY = textY + lineHeight;
         float currentY = aiTextY;
         
+        // 检查是否有AI信息或支招信息
+        boolean hasAIOrSuggestInfo = shouldShowAIInfo || (suggestMoveText != null && !suggestMoveText.isEmpty());
+        
         // 绘制AI信息
         if (shouldShowAIInfo) {
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -425,17 +428,17 @@ public class RoundView extends View {
             currentY += lineHeight;
         }
         
-        // 显示步数信息
-        if (moveInfoText != null && !moveInfoText.isEmpty()) {
-            infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText(moveInfoText, width / 2, currentY, infoTextPaint);
-            currentY += lineHeight;
-        }
-        
         // 显示支招走法信息
         if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
+            currentY += lineHeight;
+        }
+        
+        // 只在没有AI信息和支招信息时显示步数信息
+        if (!hasAIOrSuggestInfo && moveInfoText != null && !moveInfoText.isEmpty()) {
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            canvas.drawText(moveInfoText, width / 2, currentY, infoTextPaint);
         }
         
         // 重置文本对齐

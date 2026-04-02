@@ -210,7 +210,7 @@ public class PvMActivityGame {
                                             List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             
                                             // 检查是否被将军，如果是，只保留可以解将的移动
-                                            if (Rule.isKingDanger(activity.chessInfo.piece, isRedPiece)) {
+                                            if (Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
                                                 List<Pos> validMoves = new java.util.ArrayList<>();
                                                 for (Pos pos : possibleMoves) {
                                                     // 模拟移动
@@ -219,7 +219,7 @@ public class PvMActivityGame {
                                                     activity.chessInfo.piece[j][i] = 0;
                                                     
                                                     // 检查移动后是否还被将军
-                                                    if (!Rule.isKingDanger(activity.chessInfo.piece, isRedPiece)) {
+                                                    if (!Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
                                                         validMoves.add(pos);
                                                     }
                                                     
@@ -231,7 +231,7 @@ public class PvMActivityGame {
                                                 
                                                 // 如果没有可解将的移动，提示将死
                                                 if (validMoves.isEmpty()) {
-                                                    android.widget.Toast toast = android.widget.Toast.makeText(activity, isRedPiece ? "红方被将死！黑方胜利" : "黑方被将死！红方胜利", android.widget.Toast.LENGTH_SHORT);
+                                                    android.widget.Toast toast = android.widget.Toast.makeText(activity, activity.chessInfo.IsRedGo ? "红方被将死！黑方胜利" : "黑方被将死！红方胜利", android.widget.Toast.LENGTH_SHORT);
                                                     toast.setGravity(android.view.Gravity.CENTER, 0, 0);
                                                     toast.show();
                                                 }
@@ -256,40 +256,14 @@ public class PvMActivityGame {
                                         int piece = activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x];
                                         boolean isRed = piece >= 8 && piece <= 14;
 
-                                        // 检查移动前是否被将军，如果是，必须解将
-                                        if (Rule.isKingDanger(activity.chessInfo.piece, isRed)) {
-                                            // 模拟移动
-                                            activity.chessInfo.piece[targetY][targetX] = piece;
-                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
-                                            
-                                            // 检查移动后是否还被将军
-                                            boolean stillInCheck = Rule.isKingDanger(activity.chessInfo.piece, isRed);
-                                            
-                                            // 撤销移动
-                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
-                                            activity.chessInfo.piece[targetY][targetX] = tmp;
-                                            
-                                            if (stillInCheck) {
-                                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "必须解将", android.widget.Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
-                                                return false;
-                                            }
-                                        }
+                                        // 不需要再次检查，因为在选择棋子时已经检查过了
 
                                         activity.chessInfo.piece[targetY][targetX] = piece;
                                         activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
 
-                                        // 检查移动后是否被将军
-                                        if (Rule.isKingDanger(activity.chessInfo.piece, isRed)) {
-                                            activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
-                                            activity.chessInfo.piece[targetY][targetX] = tmp;
-                                            android.widget.Toast toast = android.widget.Toast.makeText(activity, isRed ? "帅被将军" : "将被将军", android.widget.Toast.LENGTH_SHORT);
-                                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                            toast.show();
-                                        } 
+                                        // 不需要再次检查，因为在选择棋子时已经检查过了 
                                         // 检查移动后是否出现双方老将见面的情况
-                                        else if (isKingFaceToFace(activity.chessInfo.piece)) {
+                                        if (isKingFaceToFace(activity.chessInfo.piece)) {
                                             activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                                             activity.chessInfo.piece[targetY][targetX] = tmp;
                                             android.widget.Toast toast = android.widget.Toast.makeText(activity, "双方老将不能见面", android.widget.Toast.LENGTH_SHORT);
@@ -322,16 +296,8 @@ public class PvMActivityGame {
                                             if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
                                                 key = 1;
                                             }
-                                            if (Rule.isDead(activity.chessInfo.piece, !isRed)) {
-                                                key = 2;
-                                            }
                                             if (key == 1) {
                                                 android.widget.Toast toast = android.widget.Toast.makeText(activity, "将军", android.widget.Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
-                                            } else if (key == 2) {
-                                                activity.chessInfo.status = 2;
-                                                android.widget.Toast toast = android.widget.Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", android.widget.Toast.LENGTH_SHORT);
                                                 toast.setGravity(android.view.Gravity.CENTER, 0, 0);
                                                 toast.show();
                                             }

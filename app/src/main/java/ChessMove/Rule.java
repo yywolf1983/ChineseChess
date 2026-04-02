@@ -293,7 +293,7 @@ public class Rule {
             int x = kingX + dir[0];
             int y = kingY + dir[1];
             int obstacleCount = 0;
-            boolean foundEnemy = false;
+            boolean foundCannon = false;
             
             while (x >= 0 && x < 9 && y >= 0 && y < 10) {
                 int pieceId = piece[y][x];
@@ -302,14 +302,16 @@ public class Rule {
                     boolean isEnemy = isRedKing ? (pieceId >= 1 && pieceId <= 7) : (pieceId >= 8 && pieceId <= 14);
                     if (isEnemy) {
                         if (pieceId == 5 || pieceId == 12) { // 车
-                            return true;
+                            // 车需要在直线上没有障碍物才能攻击到王
+                            if (obstacleCount == 0) {
+                                return true;
+                            }
                         } else if (pieceId == 6 || pieceId == 13) { // 炮
                             // 炮需要有一个炮架才能攻击
                             if (obstacleCount == 1) {
                                 return true;
                             }
                         }
-                        foundEnemy = true;
                         break;
                     } else {
                         obstacleCount++;
@@ -361,23 +363,39 @@ public class Rule {
         }
         
         // 4. 检查将/帅的对面攻击
-        if (kingX >= 3 && kingX <= 5) {
-            boolean pathClear = true;
-            int startY = isRedKing ? kingY + 1 : kingY - 1;
-            int endY = isRedKing ? 9 : 0;
-            int step = isRedKing ? 1 : -1;
+        if (kingX >= 0 && kingX < 9) {
+            // 搜索对方的王
+            int enemyKingId = isRedKing ? 1 : 8;
+            int enemyKingX = -1;
+            int enemyKingY = -1;
+            boolean foundEnemyKing = false;
             
-            for (int y = startY; y != endY; y += step) {
-                if (piece[y][kingX] != 0) {
-                    pathClear = false;
-                    break;
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
+                    if (piece[y][x] == enemyKingId) {
+                        enemyKingX = x;
+                        enemyKingY = y;
+                        foundEnemyKing = true;
+                        break;
+                    }
                 }
+                if (foundEnemyKing) break;
             }
             
-            if (pathClear) {
-                int enemyKingId = isRedKing ? 1 : 8;
-                int enemyKingY = isRedKing ? 9 : 0;
-                if (piece[enemyKingY][kingX] == enemyKingId) {
+            // 如果找到对方的王，检查是否在同一条直线上且中间没有其他棋子
+            if (foundEnemyKing && enemyKingX == kingX) {
+                boolean pathClear = true;
+                int startY = Math.min(kingY, enemyKingY) + 1;
+                int endY = Math.max(kingY, enemyKingY);
+                
+                for (int y = startY; y < endY; y++) {
+                    if (piece[y][kingX] != 0) {
+                        pathClear = false;
+                        break;
+                    }
+                }
+                
+                if (pathClear) {
                     return true;
                 }
             }

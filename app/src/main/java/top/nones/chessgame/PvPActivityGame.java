@@ -299,9 +299,7 @@ public class PvPActivityGame {
             if (Rule.isKingDanger(chessInfo.piece, !isRed)) {
                 key = 1;
             }
-            if (Rule.isDead(chessInfo.piece, !isRed)) {
-                key = 2;
-            }
+
             
             final int finalKey = key;
             activity.runOnUiThread(() -> {
@@ -337,12 +335,6 @@ public class PvPActivityGame {
                         }, 500);
                         lastCheckHintTime = currentTime;
                     }
-                } else if (finalKey == 2) {
-                    if (PvPActivityInit.getWinMusic() != null) {
-                        PvPActivityInit.playEffect(PvPActivityInit.getWinMusic());
-                    }
-                    chessInfo.status = 2;
-                    Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -538,9 +530,8 @@ public class PvPActivityGame {
     
     // 检查强制变着后是否会立即输棋
     private boolean checkWillLoseAfterForceVariation() {
-        // 检查当前行棋方是否被将死
-        boolean currentPlayerIsRed = chessInfo.IsRedGo;
-        return Rule.isDead(chessInfo.piece, currentPlayerIsRed);
+        // 移除胜利判断，只保留被将判断
+        return false;
     }
     
     // 显示输棋确认对话框
