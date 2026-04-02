@@ -313,11 +313,6 @@ public class NotationManager {
             return;
         }
         
-        // 摆棋模式下不提取走法记录，因为游戏还未开始
-        if (activity.chessInfo.IsSetupMode) {
-            return;
-        }
-        
         // 首先添加原始棋谱中到currentMoveIndex的走法
         if (currentNotation != null) {
             java.util.List<ChessNotation.MoveRecord> originalMoves = currentNotation.getMoveRecords();
@@ -365,6 +360,8 @@ public class NotationManager {
         }
         
         // 按照临时列表的顺序处理，添加用户后续的走法
+        // 摆棋后如果用户有行棋，按当前行棋保存
+        // 如果没有行棋，就不要有任何棋步记录
         for (int i = tempList.size() - 1; i >= 0; i--) {
             ChessInfo info = tempList.get(i);
             // 只有当prePos和curPos都不为null时，才添加到走法记录
