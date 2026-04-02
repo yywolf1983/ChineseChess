@@ -26,6 +26,7 @@ public class PvPActivityGame {
     private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
     private int forceVariationHintRound = 0; // 记录上次浮窗提示的回合数
     private long lastCheckHintTime = 0; // 记录上次将军提示的时间戳
+    private Boolean suggestForRed = null; // 记录支招是给红方还是黑方，null表示没有支招
 
     public PvPActivityGame(PvPActivity activity, ChessInfo chessInfo, InfoSet infoSet, ChessView chessView) {
         this.activity = activity;
@@ -36,6 +37,14 @@ public class PvPActivityGame {
 
     public void setRoundView(PvPActivityRound roundView) {
         this.roundView = roundView;
+    }
+    
+    // 设置支招信息，并记录是给哪一方的
+    public void setSuggestMove(String moveText, boolean forRed) {
+        if (roundView != null) {
+            roundView.setSuggestMoveText(moveText);
+            suggestForRed = forRed;
+        }
     }
 
     public boolean onTouch(View view, MotionEvent event) {
@@ -261,6 +270,16 @@ public class PvPActivityGame {
             }
             if (roundView != null) {
                 roundView.requestDraw();
+            }
+            
+            // 落子后清除支招信息（只有获得支招的一方落子后才清除）
+            if (roundView != null && suggestForRed != null) {
+                // 判断当前落子方是否是获得支招的一方
+                // isRed 是落子方的颜色，suggestForRed 是获得支招的一方的颜色
+                if (isRed == suggestForRed) {
+                    roundView.setSuggestMoveText("");
+                    suggestForRed = null; // 清除记录
+                }
             }
         }
     }

@@ -12,9 +12,34 @@ import Info.Pos;
 
 public class PvMActivityGame {
     private PvMActivity activity;
+    private Boolean suggestForRed = null; // 记录支招是给红方还是黑方，null表示没有支招
     
     public PvMActivityGame(PvMActivity activity) {
         this.activity = activity;
+    }
+    
+    // 设置支招信息，并记录是给哪一方的
+    public void setSuggestMove(String moveText, boolean forRed) {
+        if (activity.roundView != null) {
+            activity.roundView.setSuggestMoveText(moveText);
+            suggestForRed = forRed;
+        }
+    }
+    
+    // 检查是否应该清除支招信息
+    public boolean shouldClearSuggest(boolean isRed) {
+        if (suggestForRed == null) {
+            return false;
+        }
+        return isRed == suggestForRed;
+    }
+    
+    // 清除支招信息
+    public void clearSuggest() {
+        if (activity.roundView != null) {
+            activity.roundView.setSuggestMoveText("");
+        }
+        suggestForRed = null;
     }
     
     // 检查双方老将是否见面

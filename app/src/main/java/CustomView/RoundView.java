@@ -26,6 +26,7 @@ public class RoundView extends View {
     private boolean isRedTurn = false; // 当前是否是红方回合
     private int aiThinkingProgress = 0; // AI思考动画进度
     private boolean isSuggestMode = false; // 是否处于支招模式
+    private String suggestMoveText = ""; // 支招走法文本
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
@@ -133,6 +134,12 @@ public class RoundView extends View {
         this.isSuggestMode = isSuggestMode;
         invalidate();
     }
+    
+    // 设置支招走法文本
+    public void setSuggestMoveText(String moveText) {
+        this.suggestMoveText = moveText;
+        invalidate();
+    }
 
     private void initPaints() {
         // 背景画笔
@@ -208,7 +215,7 @@ public class RoundView extends View {
         canvas.drawRoundRect(rectF, 10, 10, borderPaint);
         
         // 计算垂直间距，调整为更美观的布局
-        float paddingTop = convertDpToPixel(12, getContext());
+        float paddingTop = convertDpToPixel(4, getContext());
         float lineHeight = convertDpToPixel(24, getContext());
         
         // 绘制对战模式（突出显示）
@@ -402,6 +409,14 @@ public class RoundView extends View {
             
             // 绘制文本
             canvas.drawText(aiText, width / 2, aiTextY, infoTextPaint);
+            
+            // 在深度下面一行显示支招走法信息
+            // 只要有支招文本就显示，不依赖于isSuggestMode
+            if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
+                float suggestTextY = aiTextY + lineHeight;
+                infoTextPaint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText("支招: " + suggestMoveText, width / 2, suggestTextY, infoTextPaint);
+            }
         }
         
         // 重置文本对齐

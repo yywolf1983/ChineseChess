@@ -12,6 +12,7 @@ public class PvPActivityRound extends View {
     private ChessInfo chessInfo;
     private Paint paint;
     private int type; // 0 表示双人对战，1 表示人机对战
+    private String suggestMoveText = ""; // 支招走法文本
 
     public PvPActivityRound(Context context, ChessInfo chessInfo, int type) {
         super(context);
@@ -43,6 +44,11 @@ public class PvPActivityRound extends View {
         canvas.drawText(roundInfo, 30, 40, paint);
         canvas.drawText(turnInfo, 30, 80, paint);
         canvas.drawText(statusInfo, 30, 120, paint);
+        
+        // 显示支招信息
+        if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
+            canvas.drawText("支招: " + suggestMoveText, 30, 160, paint);
+        }
     }
 
     private String getStatusInfo() {
@@ -83,6 +89,12 @@ public class PvPActivityRound extends View {
 
     public void setType(int type) {
         this.type = type;
+        invalidate();
+    }
+    
+    // 设置支招走法文本
+    public void setSuggestMoveText(String moveText) {
+        this.suggestMoveText = moveText;
         invalidate();
     }
 }

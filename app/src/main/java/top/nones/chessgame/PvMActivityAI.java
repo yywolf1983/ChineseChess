@@ -506,6 +506,18 @@ public class PvMActivityAI {
             this.activity.roundView.requestDraw();
         }
         
+        // AI落子后清除支招信息（只有获得支招的一方落子后才清除）
+        if (this.activity.gameManager != null) {
+            // 判断AI是否是获得支招的一方
+            // AI落子方是isRed，需要判断是否与suggestForRed一致
+            if (this.activity.gameManager.shouldClearSuggest(isRed)) {
+                this.activity.gameManager.clearSuggest();
+            }
+        } else if (this.activity.roundView != null) {
+            // 如果没有gameManager，直接清除
+            this.activity.roundView.setSuggestMoveText("");
+        }
+        
         this.activity.continueGameRoundCount++;
         
         this.activity.startTurnTimer();
@@ -791,6 +803,123 @@ public class PvMActivityAI {
                 List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, move.fromPos.x, move.fromPos.y, piece);
                 activity.chessInfo.ret = possibleMoves;
                 activity.chessView.requestDraw();
+                
+                // 在RoundView中显示支招走法信息
+                // 判断支招是给哪一方的（当前行棋方）
+                boolean suggestForRed = activity.chessInfo.IsRedGo;
+                String moveText = convertMoveToChineseNotation(move, piece);
+                
+                // 使用PvPActivityGame的setSuggestMove方法（如果存在）
+                if (activity.gameManager != null) {
+                    activity.gameManager.setSuggestMove(moveText, suggestForRed);
+                } else if (activity.roundView != null) {
+                    // 直接设置到RoundView
+                    activity.roundView.setSuggestMoveText(moveText);
+                }
+            }
+        }
+        
+        // 将走法转换为标准中文象棋记谱格式
+        // 格式：棋子名称 + 起始纵线 + 走法（进/退/平） + 目标位置
+        private String convertMoveToChineseNotation(Move move, int piece) {
+            if (move == null || move.fromPos == null || move.toPos == null) {
+                return "";
+            }
+            
+            // 获取棋子名称
+            String pieceName = getPieceName(piece);
+            
+            // 判断是红方还是黑方
+            boolean isRed = piece >= 8;
+            
+            // 获取起始纵线（从左到右，红方：一至九，黑方：1-9）
+            String fromFile = getFileName(move.fromPos.x, isRed);
+            
+            // 判断走法类型
+            String moveType = getMoveType(move, isRed);
+            
+            // 获取目标位置
+            String targetPos = getTargetPosition(move, piece, isRed);
+            
+            return pieceName + fromFile + moveType + targetPos;
+        }
+        
+        // 获取棋子名称
+        private String getPieceName(int piece) {
+            switch (piece) {
+                case 1: return "将";
+                case 2: return "士";
+                case 3: return "象";
+                case 4: return "马";
+                case 5: return "车";
+                case 6: return "炮";
+                case 7: return "卒";
+                case 8: return "帅";
+                case 9: return "仕";
+                case 10: return "相";
+                case 11: return "马";
+                case 12: return "车";
+                case 13: return "炮";
+                case 14: return "兵";
+                default: return "";
+            }
+        }
+        
+        // 获取纵线名称（从左到右）
+        private String getFileName(int x, boolean isRed) {
+            String[] redFiles = {"一", "二", "三", "四", "五", "六", "七", "八", "九"};
+            String[] blackFiles = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
+            
+            // 红方从右到左是一至九，黑方从左到右是1-9
+            if (isRed) {
+                return redFiles[8 - x]; // 红方：右边是一，左边是九
+            } else {
+                return blackFiles[x]; // 黑方：左边是1，右边是9
+            }
+        }
+        
+        // 判断走法类型（进/退/平）
+        private String getMoveType(Move move, boolean isRed) {
+            int dy = move.toPos.y - move.fromPos.y;
+            
+            // 红方：向上（y减小）为进，向下（y增大）为退
+            // 黑方：向下（y增大）为进，向上（y减小）为退
+            if (isRed) {
+                if (dy < 0) return "进";
+                else if (dy > 0) return "退";
+                else return "平";
+            } else {
+                if (dy > 0) return "进";
+                else if (dy < 0) return "退";
+                else return "平";
+            }
+        }
+        
+        // 获取目标位置
+        private String getTargetPosition(Move move, int piece, boolean isRed) {
+            // 判断是否为直线移动的棋子（车、炮、兵/卒、将/帅）
+            boolean isStraightPiece = (piece == 1 || piece == 5 || piece == 6 || piece == 7 ||
+                                       piece == 8 || piece == 12 || piece == 13 || piece == 14);
+            
+            if (isStraightPiece && move.fromPos.x == move.toPos.x) {
+                // 直线移动且在同一纵线上，返回步数（进/退的格数）
+                int steps = Math.abs(move.toPos.y - move.fromPos.y);
+                return getStepName(steps, isRed);
+            } else {
+                // 其他情况，返回目标纵线
+                return getFileName(move.toPos.x, isRed);
+            }
+        }
+        
+        // 获取步数名称
+        private String getStepName(int steps, boolean isRed) {
+            String[] redSteps = {"", "一", "二", "三", "四", "五", "六", "七", "八", "九"};
+            String[] blackSteps = {"", "1", "2", "3", "4", "5", "6", "7", "8", "9"};
+            
+            if (isRed) {
+                return redSteps[steps];
+            } else {
+                return blackSteps[steps];
             }
         }
     }

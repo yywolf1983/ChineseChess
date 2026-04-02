@@ -449,6 +449,13 @@ public class PvMActivityControls {
                                                     activity.roundView.requestDraw();
                                                 }
                                                 
+                                                // 玩家落子后清除支招信息（只有获得支招的一方落子后才清除）
+                                                if (activity.gameManager != null) {
+                                                    if (activity.gameManager.shouldClearSuggest(isRed)) {
+                                                        activity.gameManager.clearSuggest();
+                                                    }
+                                                }
+                                                
                                                 // 检查是否需要AI移动
                                                 activity.gameManager.checkAIMove();
                                         }
