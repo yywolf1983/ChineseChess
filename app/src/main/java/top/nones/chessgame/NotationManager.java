@@ -78,8 +78,8 @@ public class NotationManager {
         builder.setTitle("保存棋谱");
         builder.setView(dialogView);
         builder.setPositiveButton("保存", (dialog, which) -> {
-            // 生成默认文件名
-            String fileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + ".pgn";
+            // 生成默认文件名，不包含.pgn扩展名
+            String fileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
             
             String redPlayer = redPlayerEditText.getText().toString().trim();
             String blackPlayer = blackPlayerEditText.getText().toString().trim();
@@ -195,8 +195,11 @@ public class NotationManager {
         }
         
         try {
-            // 使用保存对话框中输入的信息
-            String fileName = pendingSaveFileName != null ? pendingSaveFileName : "棋谱.pgn";
+            // 使用保存对话框中输入的信息，并确保加上.pgn扩展名
+            String fileName = pendingSaveFileName != null ? pendingSaveFileName : "棋谱";
+            if (!fileName.toLowerCase().endsWith(".pgn")) {
+                fileName += ".pgn";
+            }
             String redPlayer = pendingSaveRedPlayer != null ? pendingSaveRedPlayer : "";
             String blackPlayer = pendingSaveBlackPlayer != null ? pendingSaveBlackPlayer : "";
             String date = pendingSaveDate != null ? pendingSaveDate : "";
