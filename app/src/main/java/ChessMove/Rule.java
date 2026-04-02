@@ -116,7 +116,7 @@ public class Rule {
             case 11: // 红马
                 // 马的移动（日字）
                 int[][] knightMoves = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1}};
-                int[][] knightLegs = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}, {1, 0}, {1, 0}, {-1, 0}, {-1, 0}};
+                int[][] knightLegs = {{0, 1}, {0, -1}, {0, 1}, {0, -1}, {1, 0}, {1, 0}, {-1, 0}, {-1, 0}};
                 for (int i = 0; i < knightMoves.length; i++) {
                     int[] move = knightMoves[i];
                     int[] leg = knightLegs[i];
@@ -250,11 +250,11 @@ public class Rule {
         int kingX = -1, kingY = -1;
         boolean foundKing = false;
         
-        // 快速找到王的位置 - 只在九宫格内搜索
+        // 在整个棋盘上搜索王的位置
         if (isRedKing) {
-            // 红帅只能在九宫格内 (x:3-5, y:0-2)
-            for (int y = 0; y <= 2; y++) {
-                for (int x = 3; x <= 5; x++) {
+            // 搜索红帅
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
                     if (piece[y][x] == 8) { // 红帅
                         kingX = x;
                         kingY = y;
@@ -265,9 +265,9 @@ public class Rule {
                 if (foundKing) break;
             }
         } else {
-            // 黑将只能在九宫格内 (x:3-5, y:7-9)
-            for (int y = 7; y <= 9; y++) {
-                for (int x = 3; x <= 5; x++) {
+            // 搜索黑将
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
                     if (piece[y][x] == 1) { // 黑将
                         kingX = x;
                         kingY = y;
@@ -417,6 +417,39 @@ public class Rule {
             }
         }
         
+        // 检查自己的王是否存在
+        boolean kingExists = false;
+        if (isRedKing) {
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
+                    if (piece[y][x] == 8) { // 红帅
+                        kingExists = true;
+                        break;
+                    }
+                }
+                if (kingExists) break;
+            }
+        } else {
+            for (int y = 0; y < 10; y++) {
+                for (int x = 0; x < 9; x++) {
+                    if (piece[y][x] == 1) { // 黑将
+                        kingExists = true;
+                        break;
+                    }
+                }
+                if (kingExists) break;
+            }
+        }
+        
+        if (!kingExists) {
+            return true; // 王不存在，视为被将死
+        }
+        
+        // 检查是否被将军
+        if (!isKingDanger(piece, isRedKing)) {
+            return false; // 没有被将军，不是将死
+        }
+        
         if (isRedKing == true) {
             for (int i = 0; i <= 9; i++) {
                 for (int j = 0; j <= 8; j++) {
@@ -426,16 +459,31 @@ public class Rule {
                         while (it.hasNext()) {
                             Pos pos = it.next();
                             int tmp = piece[pos.y][pos.x];
-                            if (tmp == 1) {
-                                return false;
-                            }
+                            
+                            // 模拟执行走法
                             piece[pos.y][pos.x] = piece[i][j];
                             piece[i][j] = 0;
-                            if (isKingDanger(piece, true) == false) {
+                            
+                            // 检查王是否存在
+                            boolean kingStillExists = false;
+                            for (int y = 0; y < 10; y++) {
+                                for (int x = 0; x < 9; x++) {
+                                    if (piece[y][x] == 8) { // 红帅
+                                        kingStillExists = true;
+                                        break;
+                                    }
+                                }
+                                if (kingStillExists) break;
+                            }
+                            
+                            if (kingStillExists && !isKingDanger(piece, true)) {
+                                // 王存在且没有被将军，说明有解将的走法
                                 piece[i][j] = piece[pos.y][pos.x];
                                 piece[pos.y][pos.x] = tmp;
                                 return false;
                             }
+                            
+                            // 恢复棋盘状态
                             piece[i][j] = piece[pos.y][pos.x];
                             piece[pos.y][pos.x] = tmp;
                         }
@@ -451,16 +499,31 @@ public class Rule {
                         while (it.hasNext()) {
                             Pos pos = it.next();
                             int tmp = piece[pos.y][pos.x];
-                            if (tmp == 8) {
-                                return false;
-                            }
+                            
+                            // 模拟执行走法
                             piece[pos.y][pos.x] = piece[i][j];
                             piece[i][j] = 0;
-                            if (isKingDanger(piece, false) == false) {
+                            
+                            // 检查王是否存在
+                            boolean kingStillExists = false;
+                            for (int y = 0; y < 10; y++) {
+                                for (int x = 0; x < 9; x++) {
+                                    if (piece[y][x] == 1) { // 黑将
+                                        kingStillExists = true;
+                                        break;
+                                    }
+                                }
+                                if (kingStillExists) break;
+                            }
+                            
+                            if (kingStillExists && !isKingDanger(piece, false)) {
+                                // 王存在且没有被将军，说明有解将的走法
                                 piece[i][j] = piece[pos.y][pos.x];
                                 piece[pos.y][pos.x] = tmp;
                                 return false;
                             }
+                            
+                            // 恢复棋盘状态
                             piece[i][j] = piece[pos.y][pos.x];
                             piece[pos.y][pos.x] = tmp;
                         }

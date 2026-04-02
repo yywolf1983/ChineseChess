@@ -396,8 +396,7 @@ public class RoundView extends View {
         
         // 计算文本位置
         float aiTextY = textY + lineHeight;
-        float moveInfoTextY = aiTextY;
-        float suggestTextY = moveInfoTextY;
+        float currentY = aiTextY;
         
         // 绘制AI信息
         if (shouldShowAIInfo) {
@@ -420,24 +419,23 @@ public class RoundView extends View {
             }
             
             // 绘制文本
-            canvas.drawText(aiText, width / 2, aiTextY, infoTextPaint);
+            canvas.drawText(aiText, width / 2, currentY, infoTextPaint);
             
-            // 调整步数信息的位置
-            moveInfoTextY = aiTextY + lineHeight;
+            // 调整当前位置
+            currentY += lineHeight;
         }
         
-        // 显示步数信息和支招走法信息
-        // 只要有步数信息或支招文本就显示，不依赖于shouldShowAIInfo
+        // 显示步数信息
         if (moveInfoText != null && !moveInfoText.isEmpty()) {
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText(moveInfoText, width / 2, moveInfoTextY, infoTextPaint);
+            canvas.drawText(moveInfoText, width / 2, currentY, infoTextPaint);
+            currentY += lineHeight;
         }
         
-        // 显示支招走法信息，无论是否有步数信息
+        // 显示支招走法信息
         if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
-            suggestTextY = moveInfoText != null && !moveInfoText.isEmpty() ? moveInfoTextY + lineHeight : moveInfoTextY;
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("支招: " + suggestMoveText, width / 2, suggestTextY, infoTextPaint);
+            canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
         }
         
         // 重置文本对齐

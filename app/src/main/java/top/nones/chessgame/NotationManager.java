@@ -318,9 +318,6 @@ public class NotationManager {
             return;
         }
         
-        // 清空现有的走法记录，确保不会添加到原有记录后面
-        notation.getMoveRecords().clear();
-        
         // 创建一个临时列表来存储所有ChessInfo对象，而不修改原栈
         java.util.List<ChessInfo> tempList = new java.util.ArrayList<>();
         java.util.Stack<ChessInfo> originalStack = new java.util.Stack<>();
