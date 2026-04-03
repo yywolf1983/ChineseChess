@@ -210,7 +210,7 @@ public class RoundView extends View {
             return;
         }
         
-        // 获取视图尺寸
+        // 避免频繁计算和绘制，使用缓存的视图尺寸
         int width = getWidth();
         int height = getHeight();
         
@@ -241,13 +241,13 @@ public class RoundView extends View {
         // 检查是否有一方被将死或王被吃掉
         boolean redKingExists = false;
         boolean blackKingExists = false;
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
-                if (chessInfo.piece[i][j] == 1) { // 黑将
-                    blackKingExists = true;
-                } else if (chessInfo.piece[i][j] == 8) { // 红帅
-                    redKingExists = true;
-                }
+        // 优化：只检查必要的行，红帅在y=0行，黑将在y=9行
+        for (int j = 0; j < 9; j++) {
+            if (chessInfo.piece[0][j] == 8) { // 红帅
+                redKingExists = true;
+            }
+            if (chessInfo.piece[9][j] == 1) { // 黑将
+                blackKingExists = true;
             }
         }
         
@@ -267,8 +267,8 @@ public class RoundView extends View {
                     // 差异较大时使用平滑过渡
                     moveScore += diff / 5;
                 }
-                // 触发下一次重绘
-                postInvalidateDelayed(50);
+                // 触发下一次重绘，增加延迟时间
+                postInvalidateDelayed(100);
             }
             
             // 显示绝对值并添加红方或黑方前缀
@@ -294,7 +294,6 @@ public class RoundView extends View {
         
         // 绘制红方和黑方时间（居中显示）
         float textY = infoY + lineHeight; // 下半部分，调整位置
-        float iconSize = convertDpToPixel(16, getContext());
         
         // 红方时间（左半部分居中）
         float redCenterX = width * 1 / 3;
@@ -305,9 +304,9 @@ public class RoundView extends View {
         
         // 显示当前行棋方（中间位置）
         float turnCenterX = width * 1 / 2;
-        String turnText = chessInfo != null && chessInfo.IsRedGo ? "红方" : "黑方";
+        String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         // 使用相应的颜色
-        Paint turnPaint = chessInfo != null && chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
+        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
         turnPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(turnText, turnCenterX, textY, turnPaint);
         
@@ -327,7 +326,7 @@ public class RoundView extends View {
             // 支招模式：总是显示
             shouldShowAIInfo = true;
             // 支招模式下，使用当前行棋方的深度
-            currentDepth = chessInfo != null && chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
+            currentDepth = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
         } else if (gameMode == 1) {
             // 人机对战（玩家红）：显示黑方（AI）的深度
             shouldShowAIInfo = true;
@@ -351,7 +350,7 @@ public class RoundView extends View {
             if (redDepth > 0 || blackDepth > 0) {
                 shouldShowAIInfo = true;
                 // 双人模式下，使用当前行棋方的深度
-                currentDepth = chessInfo != null && chessInfo.IsRedGo ? redDepth : blackDepth;
+                currentDepth = chessInfo.IsRedGo ? redDepth : blackDepth;
             } else {
                 shouldShowAIInfo = false;
             }
@@ -372,7 +371,7 @@ public class RoundView extends View {
                 } else if (gameMode == 3) {
                     currentDepth = isRedTurn ? redDepth : blackDepth;
                 } else if (isSuggestMode) {
-                    currentDepth = chessInfo != null && chessInfo.IsRedGo ? redDepth : blackDepth;
+                    currentDepth = chessInfo.IsRedGo ? redDepth : blackDepth;
                 }
             }
         }

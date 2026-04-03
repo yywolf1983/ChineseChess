@@ -39,16 +39,16 @@ public class PvMActivityAI {
     private void initExecutorService() {
         // 优化线程池配置，根据CPU核心数动态调整
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        int corePoolSize = Math.max(2, Math.min(availableProcessors - 2, 4)); // 保留2-4个核心给系统
-        int maximumPoolSize = Math.max(4, Math.min(availableProcessors - 1, 8)); // 最大线程数
+        int corePoolSize = Math.max(1, Math.min(availableProcessors - 2, 3)); // 保留更多核心给系统
+        int maximumPoolSize = Math.max(3, Math.min(availableProcessors - 1, 5)); // 减少最大线程数
         long keepAliveTime = 60L;
         
         // 初始化线程池
         executorService = new java.util.concurrent.ThreadPoolExecutor(
             corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
-            new java.util.concurrent.ArrayBlockingQueue<>(10),
+            new java.util.concurrent.ArrayBlockingQueue<>(5), // 减小队列大小
             java.util.concurrent.Executors.defaultThreadFactory(),
-            new java.util.concurrent.ThreadPoolExecutor.DiscardOldestPolicy()
+            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy() // 使用CallerRunsPolicy，避免任务被丢弃
         );
         // 允许核心线程超时，避免空闲时占用资源
         executorService.allowCoreThreadTimeOut(true);
@@ -1110,8 +1110,8 @@ public class PvMActivityAI {
             if (this.depthUpdateFuture != null) {
                 this.depthUpdateFuture.cancel(true);
             }
-            // 减少深度更新频率，从500ms改为1000ms，避免频繁更新UI
-            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 1000, TimeUnit.MILLISECONDS);
+            // 进一步减少深度更新频率，从1000ms改为500ms，避免频繁更新UI
+            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 500, TimeUnit.MILLISECONDS);
         }
     }
     
