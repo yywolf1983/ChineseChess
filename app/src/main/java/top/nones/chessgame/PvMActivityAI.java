@@ -955,15 +955,15 @@ public class PvMActivityAI {
         private String getMoveType(Move move, boolean isRed) {
             int dy = move.toPos.y - move.fromPos.y;
             
-            // 红方：向上（y减小）为进，向下（y增大）为退
-            // 黑方：向下（y增大）为进，向上（y减小）为退
+            // 红方：向黑方（y增大）为进，向己方（y减小）为退
+            // 黑方：向红方（y减小）为进，向己方（y增大）为退
             if (isRed) {
-                if (dy < 0) return "进";
-                else if (dy > 0) return "退";
-                else return "平";
-            } else {
                 if (dy > 0) return "进";
                 else if (dy < 0) return "退";
+                else return "平";
+            } else {
+                if (dy < 0) return "进";
+                else if (dy > 0) return "退";
                 else return "平";
             }
         }
