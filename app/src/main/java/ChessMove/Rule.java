@@ -593,6 +593,37 @@ public class Rule {
         }
         return true;
     }
+    
+    // 检查一个棋子是否能够解将
+    public static boolean CanDefendCheck(int[][] piece, int fromX, int fromY, int pieceID) {
+        // 获取当前玩家颜色
+        boolean isRed = pieceID >= 8 && pieceID <= 14;
+        
+        // 获取所有可能的移动位置
+        List<Pos> possibleMoves = PossibleMoves(piece, fromX, fromY, pieceID);
+        
+        // 检查是否有任何移动可以解将
+        for (Pos move : possibleMoves) {
+            // 创建棋盘的临时副本
+            int[][] tempPiece = new int[10][9];
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 9; j++) {
+                    tempPiece[i][j] = piece[i][j];
+                }
+            }
+            
+            // 执行移动
+            tempPiece[move.y][move.x] = pieceID;
+            tempPiece[fromY][fromX] = 0;
+            
+            // 检查移动后是否还被将军
+            if (!isKingDanger(tempPiece, isRed)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
 
 
 }

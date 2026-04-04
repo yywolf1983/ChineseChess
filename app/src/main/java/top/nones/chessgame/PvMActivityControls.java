@@ -297,14 +297,19 @@ public class PvMActivityControls {
                                         // 检查是否是当前回合的颜色的棋子
                                         boolean canSelect = (isRedPiece && activity.chessInfo.IsRedGo) || (!isRedPiece && !activity.chessInfo.IsRedGo);
                                         
-                                        if (canSelect) {
+                                        // 只有被将军时才检查棋子是否能解将
+                                        boolean canDefendCheck = true;
+                                        if (Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
+                                            canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
+                                        }
+                                        
+                                        if (canSelect && canDefendCheck) {
                                             // 开始计时
                                             activity.startTurnTimer();
                                             activity.chessInfo.prePos = new Pos(i, j);
                                             activity.chessInfo.IsChecked = true;
                                             java.util.List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             
-                                            // 取消将军不能行棋的判断，允许所有可能的移动
                                             activity.chessInfo.ret = possibleMoves;
                                             
                                             // 重新绘制界面，显示选中效果
@@ -335,6 +340,16 @@ public class PvMActivityControls {
                                             toast.setGravity(android.view.Gravity.CENTER, 0, 0);
                                             toast.show();
                                         } else {
+                                            // 检查移动后是否会导致自己被将军
+                                            boolean isCheckAfterMove = Rule.isKingDanger(activity.chessInfo.piece, isRed);
+                                            if (isCheckAfterMove) {
+                                                activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
+                                                activity.chessInfo.piece[targetY][targetX] = tmp;
+                                                Toast toast = Toast.makeText(activity, "移动后不能被将军", Toast.LENGTH_SHORT);
+                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                                toast.show();
+                                                return false;
+                                            }
                                             activity.chessInfo.IsChecked = false;
                                             activity.chessInfo.curPos = new Pos(targetX, targetY);
                                             activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
@@ -423,7 +438,13 @@ public class PvMActivityControls {
                                         // 检查是否是当前回合的颜色的棋子
                                         boolean canSelect = (isRedPiece && activity.chessInfo.IsRedGo) || (!isRedPiece && !activity.chessInfo.IsRedGo);
                                         
-                                        if (canSelect) {
+                                        // 只有被将军时才检查棋子是否能解将
+                                        boolean canDefendCheck = true;
+                                        if (Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
+                                            canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
+                                        }
+                                        
+                                        if (canSelect && canDefendCheck) {
                                             activity.chessInfo.prePos = new Pos(i, j);
                                             activity.chessInfo.ret = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             // 重新绘制界面，显示选中效果
