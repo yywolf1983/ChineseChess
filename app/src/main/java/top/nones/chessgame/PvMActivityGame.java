@@ -204,12 +204,19 @@ public class PvMActivityGame {
                                         // 检查是否是当前回合的颜色的棋子
                                         boolean canSelect = (isRedPiece && activity.chessInfo.IsRedGo) || (!isRedPiece && !activity.chessInfo.IsRedGo);
                                         
-                                        if (canSelect) {
+                                        // 检查当前行棋方的王是否被将军
+                                        boolean isChecked = Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo);
+                                        // 只有被将军时才检查棋子是否能解将
+                                        boolean canDefendCheck = true;
+                                        if (isChecked) {
+                                            canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
+                                        }
+                                        
+                                        if (canSelect && canDefendCheck) {
                                             activity.chessInfo.prePos = new Pos(i, j);
                                             activity.chessInfo.IsChecked = true;
                                             List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             
-                                            // 取消将军不能行棋的判断，允许所有可能的移动
                                             activity.chessInfo.ret = possibleMoves;
                                             
                                             // 重新绘制界面，显示选中效果
@@ -229,7 +236,32 @@ public class PvMActivityGame {
                                         int piece = activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x];
                                         boolean isRed = piece >= 8 && piece <= 14;
 
-                                        // 不需要再次检查，因为在选择棋子时已经检查过了
+                                        // 检查移动前是否被将军
+                                        boolean wasChecked = Rule.isKingDanger(activity.chessInfo.piece, isRed);
+                                        
+                                        // 如果被将军，检查移动是否能解将
+                                        if (wasChecked) {
+                                            // 创建棋盘的临时副本
+                                            int[][] tempPiece = new int[10][9];
+                                            for (int row = 0; row < 10; row++) {
+                                                for (int col = 0; col < 9; col++) {
+                                                    tempPiece[row][col] = activity.chessInfo.piece[row][col];
+                                                }
+                                            }
+                                            
+                                            // 执行移动
+                                            tempPiece[targetY][targetX] = piece;
+                                            tempPiece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
+                                            
+                                            // 检查移动后是否还被将军
+                                            boolean isStillChecked = Rule.isKingDanger(tempPiece, isRed);
+                                            if (isStillChecked) {
+                                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "移动后必须解将", android.widget.Toast.LENGTH_SHORT);
+                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                                toast.show();
+                                                return false;
+                                            }
+                                        }
 
                                         activity.chessInfo.piece[targetY][targetX] = piece;
                         activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
@@ -308,7 +340,15 @@ public class PvMActivityGame {
                                         // 检查是否是当前回合的颜色的棋子
                                         boolean canSelect = (isRedPiece && activity.chessInfo.IsRedGo) || (!isRedPiece && !activity.chessInfo.IsRedGo);
                                         
-                                        if (canSelect) {
+                                        // 检查当前行棋方的王是否被将军
+                                        boolean isChecked = Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo);
+                                        // 只有被将军时才检查棋子是否能解将
+                                        boolean canDefendCheck = true;
+                                        if (isChecked) {
+                                            canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
+                                        }
+                                        
+                                        if (canSelect && canDefendCheck) {
                                             activity.chessInfo.prePos = new Pos(i, j);
                                             activity.chessInfo.ret = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
                                             // 重新绘制界面，显示选中效果

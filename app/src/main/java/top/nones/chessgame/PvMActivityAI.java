@@ -452,10 +452,21 @@ public class PvMActivityAI {
             return false;
         }
         
-
+        // 检查是否吃掉了对方的老将
+        boolean isCaptureKing = tmp == 1 || tmp == 8;
         
         this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
         this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
+        
+        // 检查移动后是否会导致自己被将军（但如果吃掉了对方老将，则允许）
+        if (!isCaptureKing && Rule.isKingDanger(this.activity.chessInfo.piece, isRed)) {
+            // 移动会导致自己被将军，撤销移动
+            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
+            this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
+            LogUtils.e("PvMActivityAI", "AI移动会导致自己被将军，撤销移动");
+            return false;
+        }
+        
         this.activity.chessInfo.IsChecked = Rule.isKingDanger(this.activity.chessInfo.piece, !isRed);
         this.activity.chessInfo.Select = new int[]{-1, -1};
         this.activity.chessInfo.ret.clear();

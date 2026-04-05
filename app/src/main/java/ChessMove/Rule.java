@@ -293,7 +293,6 @@ public class Rule {
             int x = kingX + dir[0];
             int y = kingY + dir[1];
             int obstacleCount = 0;
-            boolean foundCannon = false;
             
             while (x >= 0 && x < 9 && y >= 0 && y < 10) {
                 int pieceId = piece[y][x];
@@ -612,9 +611,18 @@ public class Rule {
                 }
             }
             
+            // 检查是否吃掉了对方的老将
+            int capturedPiece = piece[move.y][move.x];
+            boolean isCaptureKing = capturedPiece == 1 || capturedPiece == 8;
+            
             // 执行移动
             tempPiece[move.y][move.x] = pieceID;
             tempPiece[fromY][fromX] = 0;
+            
+            // 如果吃掉了对方老将，这个移动可以解将（游戏结束）
+            if (isCaptureKing) {
+                return true;
+            }
             
             // 检查移动后是否还被将军
             if (!isKingDanger(tempPiece, isRed)) {

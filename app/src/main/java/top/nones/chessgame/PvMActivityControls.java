@@ -299,7 +299,9 @@ public class PvMActivityControls {
                                         
                                         // 只有被将军时才检查棋子是否能解将
                                         boolean canDefendCheck = true;
-                                        if (Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
+                                        // 检查当前行棋方的王是否被将军
+                                        boolean isChecked = Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo);
+                                        if (isChecked) {
                                             canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
                                         }
                                         
@@ -329,8 +331,77 @@ public class PvMActivityControls {
                                         int piece = activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x];
                                         boolean isRed = piece >= 8 && piece <= 14;
 
+                                        // 检查移动前是否被将军
+                                        boolean wasChecked = Rule.isKingDanger(activity.chessInfo.piece, isRed);
+                                        
+                                        // 如果被将军，检查移动是否能解将
+                                        if (wasChecked) {
+                                            // 创建棋盘的临时副本
+                                            int[][] tempPiece = new int[10][9];
+                                            for (int row = 0; row < 10; row++) {
+                                                for (int col = 0; col < 9; col++) {
+                                                    tempPiece[row][col] = activity.chessInfo.piece[row][col];
+                                                }
+                                            }
+                                            
+                                            // 执行移动
+                                            tempPiece[targetY][targetX] = piece;
+                                            tempPiece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
+                                            
+                                            // 检查移动后是否还被将军
+                                            boolean isStillChecked = Rule.isKingDanger(tempPiece, isRed);
+                                            if (isStillChecked) {
+                                                Toast toast = Toast.makeText(activity, "移动后必须解将", Toast.LENGTH_SHORT);
+                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                                toast.show();
+                                                return false;
+                                            }
+                                        }
+
                                         activity.chessInfo.piece[targetY][targetX] = piece;
                                         activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = 0;
+
+                                        // 检查是否吃掉了对方的老将
+                                        boolean isCaptureKing = tmp == 1 || tmp == 8;
+                                        if (isCaptureKing) {
+                                            // 吃掉对方老将，游戏结束
+                                            activity.chessInfo.IsChecked = false;
+                                            activity.chessInfo.curPos = new Pos(targetX, targetY);
+                                            activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
+                                            activity.chessInfo.ret.clear(); // 清空可移动位置
+
+                                            // 生成并记录标准象棋记谱走法
+                                            String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
+                                            if (moveString != null) {
+                                                Utils.LogUtils.i("Move", "用户走棋: " + moveString);
+                                            }
+
+                                            // 停止计时
+                                            activity.stopTurnTimer();
+
+                                            // 游戏结束
+                                            activity.chessInfo.status = 2;
+                                            Toast toast = Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT);
+                                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                            toast.show();
+
+                                            // 保存移动后的状态到栈中
+                                            try {
+                                                activity.infoSet.pushInfo(activity.chessInfo);
+                                            } catch (CloneNotSupportedException e) {
+                                                e.printStackTrace();
+                                            }
+
+                                            // 重新绘制界面
+                                            if (activity.chessView != null) {
+                                                activity.chessView.requestDraw();
+                                            }
+                                            if (activity.roundView != null) {
+                                                activity.roundView.requestDraw();
+                                            }
+
+                                            return false;
+                                        }
 
                                         // 检查移动后是否出现双方老将见面的情况
                                         if (isKingFaceToFace(activity.chessInfo.piece)) {
@@ -349,6 +420,19 @@ public class PvMActivityControls {
                                                 toast.setGravity(android.view.Gravity.CENTER, 0, 0);
                                                 toast.show();
                                                 return false;
+                                            }
+                                            
+                                            // 检查移动是否解将（如果之前被将军）
+                                            if (wasChecked) {
+                                                boolean isStillChecked = Rule.isKingDanger(activity.chessInfo.piece, isRed);
+                                                if (isStillChecked) {
+                                                    activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
+                                                    activity.chessInfo.piece[targetY][targetX] = tmp;
+                                                    Toast toast = Toast.makeText(activity, "移动后必须解将", Toast.LENGTH_SHORT);
+                                                    toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+                                                    toast.show();
+                                                    return false;
+                                                }
                                             }
                                             activity.chessInfo.IsChecked = false;
                                             activity.chessInfo.curPos = new Pos(targetX, targetY);
@@ -440,7 +524,9 @@ public class PvMActivityControls {
                                         
                                         // 只有被将军时才检查棋子是否能解将
                                         boolean canDefendCheck = true;
-                                        if (Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo)) {
+                                        // 检查当前行棋方的王是否被将军
+                                        boolean isChecked = Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo);
+                                        if (isChecked) {
                                             canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
                                         }
                                         
