@@ -322,19 +322,23 @@ public class Rule {
         }
         
         // 2. 检查马的攻击
-        for (int[] move : knightMoves) {
-            int x = kingX + move[0];
-            int y = kingY + move[1];
-            
-            if (x >= 0 && x < 9 && y >= 0 && y < 10) {
-                // 检查马腿
-                int legX = kingX + move[0] / 2;
-                int legY = kingY + move[1] / 2;
-                if (legX >= 0 && legX < 9 && legY >= 0 && legY < 10 && piece[legY][legX] == 0) {
-                    int pieceId = piece[y][x];
-                    boolean isEnemy = isRedKing ? (pieceId == 4) : (pieceId == 11);
-                    if (isEnemy) {
-                        return true;
+        // 遍历整个棋盘，寻找对方的马
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int pieceId = piece[y][x];
+                boolean isEnemy = isRedKing ? (pieceId == 4) : (pieceId == 11);
+                if (isEnemy) {
+                    // 检查马是否能攻击到王
+                    int dx = kingX - x;
+                    int dy = kingY - y;
+                    // 马的攻击模式是日字，即 (±2, ±1) 或 (±1, ±2)
+                    if ((Math.abs(dx) == 2 && Math.abs(dy) == 1) || (Math.abs(dx) == 1 && Math.abs(dy) == 2)) {
+                        // 检查马腿
+                        int legX = x + dx / 2;
+                        int legY = y + dy / 2;
+                        if (legX >= 0 && legX < 9 && legY >= 0 && legY < 10 && piece[legY][legX] == 0) {
+                            return true;
+                        }
                     }
                 }
             }
