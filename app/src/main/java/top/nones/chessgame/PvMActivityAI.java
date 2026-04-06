@@ -39,16 +39,16 @@ public class PvMActivityAI {
     private void initExecutorService() {
         // 优化线程池配置，根据CPU核心数动态调整
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        int corePoolSize = Math.max(1, Math.min(availableProcessors - 2, 3)); // 保留更多核心给系统
-        int maximumPoolSize = Math.max(3, Math.min(availableProcessors - 1, 5)); // 减少最大线程数
-        long keepAliveTime = 60L;
+        int corePoolSize = Math.max(1, Math.min(availableProcessors - 2, 2)); // 保留更多核心给系统
+        int maximumPoolSize = Math.max(2, Math.min(availableProcessors - 1, 3)); // 减少最大线程数，避免过多线程竞争
+        long keepAliveTime = 30L; // 缩短空闲线程存活时间
         
         // 初始化线程池
         executorService = new java.util.concurrent.ThreadPoolExecutor(
             corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
-            new java.util.concurrent.ArrayBlockingQueue<>(5), // 减小队列大小
+            new java.util.concurrent.ArrayBlockingQueue<>(3), // 进一步减小队列大小
             java.util.concurrent.Executors.defaultThreadFactory(),
-            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy() // 使用CallerRunsPolicy，避免任务被丢弃
+            new java.util.concurrent.ThreadPoolExecutor.AbortPolicy() // 使用AbortPolicy，避免主线程被阻塞
         );
         // 允许核心线程超时，避免空闲时占用资源
         executorService.allowCoreThreadTimeOut(true);
@@ -646,7 +646,13 @@ public class PvMActivityAI {
                 return;
             }
             
-            Move move = aiInstance.calculateAIMove();
+            Move move = null;
+            try {
+                move = aiInstance.calculateAIMove();
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
+                e.printStackTrace();
+            }
             
             currentActivity = aiInstance.activity;
             if (currentActivity == null) {
@@ -654,7 +660,12 @@ public class PvMActivityAI {
             }
             
             final Move finalMove = move;
-            currentActivity.runOnUiThread(new AIUIRunnable(aiInstance, currentActivity, finalMove));
+            try {
+                currentActivity.runOnUiThread(new AIUIRunnable(aiInstance, currentActivity, finalMove));
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityAI", "UI线程执行异常: " + e.getMessage());
+                e.printStackTrace();
+            }
         }
     }
     
@@ -675,24 +686,30 @@ public class PvMActivityAI {
                 return;
             }
             
-            if (move != null) {
-                aiInstance.executeAIMove(move);
-            } else {
-                aiInstance.stopAISearch();
-                
-                if (activity.chessInfo != null) {
-                    // 移除胜利判断，只保留被将判断
-                    {
+            try {
+                if (move != null) {
+                    aiInstance.executeAIMove(move);
+                } else {
+                    aiInstance.stopAISearch();
+                    
+                    if (activity.chessInfo != null) {
+                        // 移除胜利判断，只保留被将判断
                         if (aiInstance.aiRetryCount < 3) {
                             aiInstance.aiRetryCount++;
                             aiInstance.startAIThread();
                         } else {
                             aiInstance.aiRetryCount = 0;
                         }
+                    } else {
+                        aiInstance.aiRetryCount = 0;
                     }
-                } else {
-                    aiInstance.aiRetryCount = 0;
                 }
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityAI", "执行AI走法异常: " + e.getMessage());
+                e.printStackTrace();
+                // 确保AI搜索被停止
+                aiInstance.stopAISearch();
+                aiInstance.aiRetryCount = 0;
             }
         }
     }
@@ -884,8 +901,8 @@ public class PvMActivityAI {
                 activity.chessView.requestDraw();
                 
                 // 在RoundView中显示支招走法信息
-                // 判断支招是给哪一方的（当前行棋方）
-                boolean suggestForRed = activity.chessInfo.IsRedGo;
+                // 判断支招是给哪一方的（传入的isRed参数）
+                boolean suggestForRed = isRed;
                 String moveText = convertMoveToChineseNotation(move, piece);
                 
                 // 清空步数信息，只显示支招内容
@@ -1121,8 +1138,8 @@ public class PvMActivityAI {
             if (this.depthUpdateFuture != null) {
                 this.depthUpdateFuture.cancel(true);
             }
-            // 进一步减少深度更新频率，从1000ms改为500ms，避免频繁更新UI
-            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 500, TimeUnit.MILLISECONDS);
+            // 减少深度更新频率，从500ms改为1000ms，避免频繁更新UI
+            this.depthUpdateFuture = this.scheduledExecutorService.scheduleAtFixedRate(new DepthUpdateRunnable(this, isRed), 0, 1000, TimeUnit.MILLISECONDS);
         }
     }
     

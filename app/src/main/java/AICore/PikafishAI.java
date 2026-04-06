@@ -14,6 +14,7 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.TimeUnit;
 
 public class PikafishAI {
     private static final int DEFAULT_DEPTH = 20;
@@ -41,13 +42,17 @@ public class PikafishAI {
     }
     
     private void initialize() {
+        // 重置初始化状态
+        initialized = false;
+        process = null;
+        reader = null;
+        writer = null;
+        
         try {
             // 检查是否在模拟器中运行
             boolean isEmulator = isRunningInEmulator();
             if (isEmulator) {
                 Log.e("PikafishAI", "在模拟器中运行，尝试初始化AI");
-
-                // 不再跳过初始化，尝试在模拟器中也初始化AI
             }
             
             // 复制神经网络文件到缓存目录
@@ -64,6 +69,7 @@ public class PikafishAI {
                 binaryPath = context.getCacheDir().getAbsolutePath() + "/pikafish";
                 binaryFile = new File(binaryPath);
                 if (!binaryFile.exists()) {
+                    Log.e("PikafishAI", "无法找到pikafish可执行文件");
                     return;
                 }
             }
@@ -72,7 +78,7 @@ public class PikafishAI {
             try {
                 // 尝试多种权限设置方式
                 Process chmodProcess = Runtime.getRuntime().exec("chmod 755 " + binaryPath);
-                chmodProcess.waitFor();
+                int chmodExitCode = chmodProcess.waitFor();
                 
                 // 验证文件权限
                 boolean isExecutable = binaryFile.canExecute();
@@ -80,11 +86,18 @@ public class PikafishAI {
                 // 如果仍然不可执行，尝试使用另一种方式
                 if (!isExecutable) {
                     chmodProcess = Runtime.getRuntime().exec("chmod u+x " + binaryPath);
-                    chmodProcess.waitFor();
+                    chmodExitCode = chmodProcess.waitFor();
                     isExecutable = binaryFile.canExecute();
                 }
+                
+                if (!isExecutable) {
+                    Log.e("PikafishAI", "无法设置pikafish可执行权限");
+                    return;
+                }
             } catch (Exception e) {
+                Log.e("PikafishAI", "设置权限失败: " + e.getMessage());
                 e.printStackTrace();
+                return;
             }
             
             // 启动Pikafish进程
@@ -94,7 +107,14 @@ public class PikafishAI {
                 // 设置工作目录为缓存目录，确保引擎能找到pikafish.nnue文件
                 pb.directory(context.getCacheDir());
                 process = pb.start();
+                
+                // 检查进程是否成功启动
+                if (process == null) {
+                    Log.e("PikafishAI", "启动进程失败: process为null");
+                    return;
+                }
             } catch (Exception e) {
+                Log.e("PikafishAI", "启动进程失败: " + e.getMessage());
                 e.printStackTrace();
                 
                 // 尝试使用proot启动
@@ -136,6 +156,13 @@ public class PikafishAI {
                     // 设置工作目录为缓存目录，确保引擎能找到pikafish.nnue文件
                     pb.directory(context.getCacheDir());
                     process = pb.start();
+                    
+                    // 检查进程是否成功启动
+                    if (process == null) {
+                        Log.e("PikafishAI", "使用proot启动进程失败: process为null");
+                        return;
+                    }
+                    
                     Log.e("PikafishAI", "使用proot启动进程成功");
                     LogUtils.i("PikafishAI", "使用proot启动进程成功");
                 } catch (Exception ex) {
@@ -144,6 +171,12 @@ public class PikafishAI {
                     ex.printStackTrace();
                     return;
                 }
+            }
+            
+            // 检查进程是否存活
+            if (process == null) {
+                Log.e("PikafishAI", "进程未启动");
+                return;
             }
             
             reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
@@ -258,6 +291,8 @@ public class PikafishAI {
             Log.e("PikafishAI", "初始化失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "初始化失败: " + e.getMessage());
             e.printStackTrace();
+            // 确保资源被释放
+            close();
         }
     }
     
@@ -417,9 +452,13 @@ public class PikafishAI {
     
     private void sendCommand(String command) {
         try {
-            writer.write(command + "\n");
-            writer.flush();
-            LogUtils.d("PikafishAI", "发送命令: " + command);
+            if (writer != null) {
+                writer.write(command + "\n");
+                writer.flush();
+                LogUtils.d("PikafishAI", "发送命令: " + command);
+            } else {
+                LogUtils.e("PikafishAI", "发送命令失败: writer为null");
+            }
         } catch (Exception e) {
             LogUtils.e("PikafishAI", "发送命令失败: " + e.getMessage());
         }
@@ -568,8 +607,8 @@ public class PikafishAI {
                     if (bestMoveHolder[0] == null) {
                         LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + maxSearchTime + "ms)");
                         sendCommand("stop");
-                        // 等待1秒后如果仍然没有响应，中断读取
-                        Thread.sleep(1000);
+                        // 等待500ms后如果仍然没有响应，中断读取
+                        Thread.sleep(500);
                         if (bestMoveHolder[0] == null) {
                             LogUtils.e("PikafishAI", "超时后仍无响应，强制中断读取");
                             // 中断主线程的读取循环
@@ -586,8 +625,9 @@ public class PikafishAI {
                 timeoutThread.start();
                 
                 // 使用非阻塞方式读取输入，设置最大循环次数
-                int maxLoopCount = (int) (maxSearchTime / 5) + 500; // 减少休眠时间，增加循环次数
+                int maxLoopCount = (int) (maxSearchTime / 2) + 300; // 减少循环次数，避免过度消耗CPU
                 int loopCount = 0;
+                long lastActivityTime = System.currentTimeMillis();
                 
                 while (!Thread.currentThread().isInterrupted() && loopCount < maxLoopCount) {
                     loopCount++;
@@ -599,15 +639,24 @@ public class PikafishAI {
                         sendCommand("stop");
                         // 如果已经超时且还没有bestmove，使用当前最佳走法
                         if (bestMoveHolder[0] == null) {
-                            // 尝试从info行中提取ponder move作为备选
+                            // 尝试从info行中提取pv作为备选
                             LogUtils.w("PikafishAI", "超时未收到bestmove，使用默认走法");
                         }
+                        break;
+                    }
+                    
+                    // 检查是否长时间无活动，强制退出
+                    long currentTime = System.currentTimeMillis();
+                    if (currentTime - lastActivityTime > 3000) {
+                        LogUtils.w("PikafishAI", "长时间无活动，强制停止 (已耗时: " + (currentTime - startTime) + "ms)");
+                        sendCommand("stop");
                         break;
                     }
                     
                     try {
                         // 使用 BufferedReader 的 ready() 方法检查是否有数据可读
                         if (reader.ready()) {
+                            lastActivityTime = currentTime;
                             String line = reader.readLine();
                             if (line == null) {
                                 LogUtils.w("PikafishAI", "读取到null，结束读取");
@@ -637,24 +686,6 @@ public class PikafishAI {
                                                 // 忽略解析错误
                                             }
                                         }
-                                    } else if (parts[i].equals("nodes") && i + 1 < parts.length) {
-                                        try {
-                                            nodes = Integer.parseInt(parts[i + 1]);
-                                        } catch (NumberFormatException e) {
-                                            // 忽略解析错误
-                                        }
-                                    } else if (parts[i].equals("nps") && i + 1 < parts.length) {
-                                        try {
-                                            nps = Integer.parseInt(parts[i + 1]);
-                                        } catch (NumberFormatException e) {
-                                            // 忽略解析错误
-                                        }
-                                    } else if (parts[i].equals("time") && i + 1 < parts.length) {
-                                        try {
-                                            searchTime = Integer.parseInt(parts[i + 1]);
-                                        } catch (NumberFormatException e) {
-                                            // 忽略解析错误
-                                        }
                                     } else if (parts[i].equals("pv") && i + 1 < parts.length && bestMoveHolder[0] == null) {
                                         // 提取pv中的第一个走法作为备选
                                         bestMoveHolder[0] = parts[i + 1];
@@ -674,9 +705,8 @@ public class PikafishAI {
                                 sendCommand("stop");
                             }
                         } else {
-                            // 短暂休眠，避免CPU占用过高，根据循环次数调整休眠时间
-                            int sleepTime = loopCount < 100 ? 5 : 10; // 前100次循环使用更短的休眠时间
-                            Thread.sleep(sleepTime);
+                            // 短暂休眠，避免CPU占用过高
+                            Thread.sleep(10);
                         }
                     } catch (IOException e) {
                         LogUtils.e("PikafishAI", "读取输入流异常: " + e.getMessage());
@@ -957,9 +987,17 @@ public class PikafishAI {
     
     public void close() {
         try {
+            // 先中断搜索
+            shouldStop = true;
+            isSearching = false;
+            
+            // 关闭 writer
             if (writer != null) {
                 try {
+                    // 发送 quit 命令
                     sendCommand("quit");
+                    // 给进程一些时间处理 quit 命令
+                    Thread.sleep(100);
                     writer.close();
                 } catch (Exception e) {
                     LogUtils.e("PikafishAI", "关闭writer失败: " + e.getMessage());
@@ -967,6 +1005,8 @@ public class PikafishAI {
                     writer = null;
                 }
             }
+            
+            // 关闭 reader
             if (reader != null) {
                 try {
                     reader.close();
@@ -976,17 +1016,53 @@ public class PikafishAI {
                     reader = null;
                 }
             }
+            
+            // 销毁进程
             if (process != null) {
                 try {
+                    // 先尝试正常销毁
                     process.destroy();
+                    // 等待进程终止，最多等待2秒
+                    long startTime = System.currentTimeMillis();
+                    while (System.currentTimeMillis() - startTime < 2000) {
+                        try {
+                            process.exitValue();
+                            // 进程已终止
+                            break;
+                        } catch (IllegalThreadStateException e) {
+                            // 进程仍在运行，继续等待
+                            Thread.sleep(100);
+                        }
+                    }
+                    // 检查进程是否仍在运行
+                    try {
+                        process.exitValue();
+                    } catch (IllegalThreadStateException e) {
+                        // 进程仍在运行，再次尝试销毁
+                        process.destroy();
+                        // 等待销毁完成，最多等待1秒
+                        startTime = System.currentTimeMillis();
+                        while (System.currentTimeMillis() - startTime < 1000) {
+                            try {
+                                process.exitValue();
+                                // 进程已终止
+                                break;
+                            } catch (IllegalThreadStateException ex) {
+                                // 进程仍在运行，继续等待
+                                Thread.sleep(100);
+                            }
+                        }
+                    }
                 } catch (Exception e) {
                     LogUtils.e("PikafishAI", "销毁进程失败: " + e.getMessage());
                 } finally {
                     process = null;
                 }
             }
+            
             // 重置初始化状态
             initialized = false;
+            currentDepth = 0;
             LogUtils.i("PikafishAI", "资源已成功释放");
         } catch (Exception e) {
             LogUtils.e("PikafishAI", "关闭失败: " + e.getMessage());
