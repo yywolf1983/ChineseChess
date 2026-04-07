@@ -58,12 +58,7 @@ public class PvPActivityRound extends View {
             case 1:
                 return "游戏进行中";
             case 2:
-                // 根据IsRedGo判断胜利者
-                if (chessInfo.IsRedGo) {
-                    return "黑方胜利";
-                } else {
-                    return "红方胜利";
-                }
+                return "游戏结束";
             default:
                 return "游戏状态未知";
         }
