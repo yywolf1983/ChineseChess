@@ -7,6 +7,7 @@ import android.graphics.Paint;
 import android.view.View;
 
 import Info.ChessInfo;
+import ChessMove.Rule;
 import top.nones.chessgame.PvMActivity;
 
 /**
@@ -238,10 +239,47 @@ public class RoundView extends View {
         // 绘制评分（左侧）
         String scoreText;
         
+        // 检查是否有一方被将死或王被吃掉
+        boolean redKingExists = false;
+        boolean blackKingExists = false;
+        // 检查整个棋盘，寻找红帅和黑将
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (chessInfo.piece[i][j] == 8) { // 红帅
+                    redKingExists = true;
+                }
+                if (chessInfo.piece[i][j] == 1) { // 黑将
+                    blackKingExists = true;
+                }
+            }
+        }
+        
         // 检查游戏状态
-        if (chessInfo.status == 2) {
-            // 游戏结束
-            scoreText = "游戏结束";
+        boolean isGameOver = chessInfo.status == 2;
+        
+        // 检查是否有一方被将死
+        boolean redCheckmated = Rule.isCheckmate(chessInfo.piece, true);
+        boolean blackCheckmated = Rule.isCheckmate(chessInfo.piece, false);
+        
+        // 优先显示王被吃掉的情况
+        if (!redKingExists) {
+            scoreText = "黑方胜利！";
+        } else if (!blackKingExists) {
+            scoreText = "红方胜利！";
+        } else if (isGameOver || redCheckmated || blackCheckmated) {
+            // 游戏结束或被将死，根据将死情况判断胜利者
+            if (redCheckmated) {
+                scoreText = "黑方胜利！";
+            } else if (blackCheckmated) {
+                scoreText = "红方胜利！";
+            } else {
+                // 游戏结束，根据行棋方判断胜利者
+                if (chessInfo.IsRedGo) {
+                    scoreText = "黑方胜利！";
+                } else {
+                    scoreText = "红方胜利！";
+                }
+            }
         } else {
             // 评分平滑过渡处理
             if (moveScore != targetMoveScore) {

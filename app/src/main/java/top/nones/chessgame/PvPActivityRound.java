@@ -52,15 +52,42 @@ public class PvPActivityRound extends View {
     }
 
     private String getStatusInfo() {
-        switch (chessInfo.status) {
-            case 0:
-                return "游戏未开始";
-            case 1:
-                return "游戏进行中";
-            case 2:
-                return "游戏结束";
-            default:
-                return "游戏状态未知";
+        // 检查是否有一方被将死或王被吃掉
+        boolean redKingExists = false;
+        boolean blackKingExists = false;
+        // 检查整个棋盘，寻找红帅和黑将
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (chessInfo.piece[i][j] == 8) { // 红帅
+                    redKingExists = true;
+                }
+                if (chessInfo.piece[i][j] == 1) { // 黑将
+                    blackKingExists = true;
+                }
+            }
+        }
+        
+        // 优先显示王被吃掉的情况
+        if (!redKingExists) {
+            return "黑方胜利";
+        } else if (!blackKingExists) {
+            return "红方胜利";
+        } else {
+            switch (chessInfo.status) {
+                case 0:
+                    return "游戏未开始";
+                case 1:
+                    return "游戏进行中";
+                case 2:
+                    // 游戏结束，根据行棋方判断胜利者
+                    if (chessInfo.IsRedGo) {
+                        return "黑方胜利";
+                    } else {
+                        return "红方胜利";
+                    }
+                default:
+                    return "游戏状态未知";
+            }
         }
     }
 

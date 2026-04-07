@@ -292,12 +292,9 @@ public class PvMActivityGame {
                                 e.printStackTrace();
                             }
 
-                            int key = 0;
-                            if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
-                                key = 1;
-                            }
-                            if (key == 1) {
-                                // 移除Toast提示，通过界面显示提示信息
+                            // 检查游戏状态，包括将死
+                            if (activity.controlsManager != null) {
+                                activity.controlsManager.checkGameStatus(isRed);
                             }
 
                             // 增加继续对局后的回合计数器

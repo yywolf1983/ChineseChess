@@ -557,8 +557,8 @@ public class PvMActivityAI {
         
         this.activity.startTurnTimer();
         
-        // 如果刚刚执行了强制变着，跳过和棋检查，因为强制变着模式下应该允许AI走不同的棋
-        if (this.activity.controlsManager != null && !this.activity.chessInfo.forceVariation) {
+        // 检查游戏状态，包括将死和和棋条件
+        if (this.activity.controlsManager != null) {
             this.activity.controlsManager.checkGameStatus(isRed);
         }
         

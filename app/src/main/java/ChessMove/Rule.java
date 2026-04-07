@@ -311,7 +311,8 @@ public class Rule {
                                 return true;
                             }
                         }
-                        break;
+                        // 对于敌方棋子，继续检查后面是否有其他炮（重砲将）
+                        // 不在这里break，继续检查后面的棋子
                     } else {
                         obstacleCount++;
                     }
@@ -365,7 +366,7 @@ public class Rule {
             }
         }
         
-        // 4. 检查将/帅的对面攻击
+        // 4. 检查将/帅的对面攻击（跑将）
         if (kingX >= 0 && kingX < 9) {
             // 搜索对方的王
             int enemyKingId = isRedKing ? 1 : 8;
@@ -637,5 +638,35 @@ public class Rule {
         return false;
     }
 
+    // 检查是否将死
+    public static boolean isCheckmate(int[][] piece, boolean isRed) {
+        // 首先检查是否被将军
+        if (!isKingDanger(piece, isRed)) {
+            return false; // 没有被将军，不是将死
+        }
+        
+        // 检查是否有任何棋子可以解将
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int pieceID = piece[y][x];
+                if (pieceID == 0) {
+                    continue;
+                }
+                
+                // 检查是否是当前玩家的棋子
+                boolean pieceIsRed = pieceID >= 8 && pieceID <= 14;
+                if (pieceIsRed != isRed) {
+                    continue;
+                }
+                
+                // 检查这个棋子是否能够解将
+                if (CanDefendCheck(piece, x, y, pieceID)) {
+                    return false; // 有棋子可以解将，不是将死
+                }
+            }
+        }
+        
+        return true; // 被将军且无法解将，是将死
+    }
 
 }

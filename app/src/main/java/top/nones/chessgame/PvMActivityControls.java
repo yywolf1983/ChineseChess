@@ -632,10 +632,10 @@ public class PvMActivityControls {
         if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
             key = 1;
         }
-        // 取消被将死的判断
-        // if (Rule.isDead(activity.chessInfo.piece, !isRed)) {
-        //     key = 2;
-        // }
+        // 检查是否将死
+        if (Rule.isCheckmate(activity.chessInfo.piece, !isRed)) {
+            key = 2;
+        }
         
         if (key == 1) {
             long currentTime = System.currentTimeMillis();
@@ -665,6 +665,18 @@ public class PvMActivityControls {
                     }
                 }, 500);
                 lastCheckHintTime = currentTime;
+            }
+        } else if (key == 2) {
+            // 检查将死，游戏结束
+            activity.chessInfo.status = 2;
+            // 停止计时
+            activity.stopTurnTimer();
+            // 重新绘制界面
+            if (activity.chessView != null) {
+                activity.chessView.requestDraw();
+            }
+            if (activity.roundView != null) {
+                activity.roundView.requestDraw();
             }
         }
         
