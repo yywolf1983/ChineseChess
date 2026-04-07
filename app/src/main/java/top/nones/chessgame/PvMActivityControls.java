@@ -637,6 +637,10 @@ public class PvMActivityControls {
         if (Rule.isCheckmate(activity.chessInfo.piece, !isRed)) {
             key = 2;
         }
+        // 检查是否被困毙
+        if (Rule.isStalemate(activity.chessInfo.piece, !isRed)) {
+            key = 3;
+        }
         
         if (key == 1) {
             long currentTime = System.currentTimeMillis();
@@ -667,8 +671,8 @@ public class PvMActivityControls {
                 }, 500);
                 lastCheckHintTime = currentTime;
             }
-        } else if (key == 2) {
-            // 检查将死，游戏结束
+        } else if (key == 2 || key == 3) {
+            // 检查将死或被困毙，游戏结束
             activity.chessInfo.status = 2;
             // 停止计时
             activity.stopTurnTimer();

@@ -704,5 +704,56 @@ public class Rule {
         
         return true; // 被将军且无法解将，是将死
     }
+    
+    // 检查是否被困毙
+    public static boolean isStalemate(int[][] piece, boolean isRed) {
+        // 首先检查是否被将军，如果被将军则不是被困毙
+        if (isKingDanger(piece, isRed)) {
+            return false;
+        }
+        
+        // 检查是否有任何棋子可以移动
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int pieceID = piece[y][x];
+                if (pieceID == 0) {
+                    continue;
+                }
+                
+                // 检查是否是当前玩家的棋子
+                boolean pieceIsRed = pieceID >= 8 && pieceID <= 14;
+                if (pieceIsRed != isRed) {
+                    continue;
+                }
+                
+                // 获取该棋子的所有可能移动位置
+                List<Pos> possibleMoves = PossibleMoves(piece, x, y, pieceID);
+                if (!possibleMoves.isEmpty()) {
+                    // 检查是否有合法的移动
+                    for (Pos move : possibleMoves) {
+                        // 创建棋盘的临时副本
+                        int[][] tempPiece = new int[10][9];
+                        for (int i = 0; i < 10; i++) {
+                            for (int j = 0; j < 9; j++) {
+                                tempPiece[i][j] = piece[i][j];
+                            }
+                        }
+                        
+                        // 执行移动
+                        int capturedPiece = piece[move.y][move.x];
+                        tempPiece[move.y][move.x] = pieceID;
+                        tempPiece[y][x] = 0;
+                        
+                        // 检查移动后是否会导致自己被将军
+                        if (!isKingDanger(tempPiece, isRed)) {
+                            return false; // 有合法移动，不是被困毙
+                        }
+                    }
+                }
+            }
+        }
+        
+        return true; // 没有合法移动，是被困毙
+    }
 
 }

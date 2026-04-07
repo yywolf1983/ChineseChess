@@ -261,16 +261,20 @@ public class RoundView extends View {
         boolean redCheckmated = Rule.isCheckmate(chessInfo.piece, true);
         boolean blackCheckmated = Rule.isCheckmate(chessInfo.piece, false);
         
+        // 检查是否有一方被困毙
+        boolean redStalemated = Rule.isStalemate(chessInfo.piece, true);
+        boolean blackStalemated = Rule.isStalemate(chessInfo.piece, false);
+        
         // 优先显示王被吃掉的情况
         if (!redKingExists) {
             scoreText = "黑方胜利！";
         } else if (!blackKingExists) {
             scoreText = "红方胜利！";
-        } else if (isGameOver || redCheckmated || blackCheckmated) {
-            // 游戏结束或被将死，根据将死情况判断胜利者
-            if (redCheckmated) {
+        } else if (isGameOver || redCheckmated || blackCheckmated || redStalemated || blackStalemated) {
+            // 游戏结束或被将死或被困毙，根据情况判断胜利者
+            if (redCheckmated || redStalemated) {
                 scoreText = "黑方胜利！";
-            } else if (blackCheckmated) {
+            } else if (blackCheckmated || blackStalemated) {
                 scoreText = "红方胜利！";
             } else {
                 // 游戏结束，根据行棋方判断胜利者
