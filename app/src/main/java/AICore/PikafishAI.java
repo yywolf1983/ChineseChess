@@ -701,9 +701,9 @@ public class PikafishAI {
                                                 // 正数表示当前方有将死对方的机会
                                                 // 负数表示对方有将死当前方的机会
                                                 if (mateIn > 0) {
-                                                    score = 500 - mateIn * 10;
+                                                    score = 1000 - mateIn * 10;
                                                 } else {
-                                                    score = -500 + mateIn * 10;
+                                                    score = -1000 + mateIn * 10;
                                                 }
                                             } catch (NumberFormatException e) {
                                                 // 忽略解析错误
