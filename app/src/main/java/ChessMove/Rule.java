@@ -321,6 +321,43 @@ public class Rule {
             }
         }
         
+        // 额外检查：遍历整个棋盘，检查所有对方炮的攻击
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int pieceId = piece[y][x];
+                boolean isEnemyCannon = isRedKing ? (pieceId == 6) : (pieceId == 13);
+                if (isEnemyCannon) {
+                    // 检查炮是否与王在同一条直线上
+                    if (x == kingX || y == kingY) {
+                        int obstacleCount = 0;
+                        if (x == kingX) {
+                            // 同一列
+                            int start = Math.min(y, kingY) + 1;
+                            int end = Math.max(y, kingY);
+                            for (int i = start; i < end; i++) {
+                                if (piece[i][x] != 0) {
+                                    obstacleCount++;
+                                }
+                            }
+                        } else {
+                            // 同一行
+                            int start = Math.min(x, kingX) + 1;
+                            int end = Math.max(x, kingX);
+                            for (int i = start; i < end; i++) {
+                                if (piece[y][i] != 0) {
+                                    obstacleCount++;
+                                }
+                            }
+                        }
+                        // 炮需要有一个炮架才能攻击到王
+                        if (obstacleCount == 1) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        
         // 2. 检查马的攻击
         // 遍历整个棋盘，寻找对方的马
         for (int y = 0; y < 10; y++) {
