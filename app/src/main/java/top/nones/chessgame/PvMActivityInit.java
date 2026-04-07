@@ -387,91 +387,89 @@ public class PvMActivityInit {
             }
             
             // 先让ChessView处理触摸事件（用于摆棋窗口拖动和棋子点击）
-            boolean handled = activity.chessView.onTouchEvent(event);
-            if (handled) {
-                // 如果是点击棋子或清空按钮，需要更新Activity中的选中状态
-                // 摆棋模式的触摸事件已经由SetupModeView处理
-                if (activity.chessInfo != null && activity.chessInfo.IsSetupMode && event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
-                    // 处理棋盘上的放置逻辑
-                    float x = event.getX();
-                    float y = event.getY();
-                    if (x >= 0 && x <= activity.chessView.Board_width && y >= 0 && y <= activity.chessView.Board_height) {
-                        int[] pos = activity.getPos(event);
-                        if (pos != null) {
-                            activity.chessInfo.Select = pos;
-                            int i = pos[0];
-                            int j = pos[1];
+            activity.chessView.onTouchEvent(event);
+            
+            // 处理摆棋模式下的触摸事件
+            if (activity.chessInfo != null && activity.chessInfo.IsSetupMode && event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+                // 处理棋盘上的放置逻辑
+                float x = event.getX();
+                float y = event.getY();
+                if (x >= 0 && x <= activity.chessView.Board_width && y >= 0 && y <= activity.chessView.Board_height) {
+                    int[] pos = activity.getPos(event);
+                    if (pos != null) {
+                        activity.chessInfo.Select = pos;
+                        int i = pos[0];
+                        int j = pos[1];
 
-                            if (i >= 0 && i <= 8 && j >= 0 && j <= 9 && activity.chessInfo.piece != null && activity.chessInfo.piece[j] != null) {
-                                // 获取点击位置的棋子ID
-                                int boardPieceID = activity.chessInfo.piece[j][i];
-                                
-                                // 如果已经选中了棋盘上的棋子
-                                if (activity.setupManager != null) {
-                                    int[] selectedBoardPiecePos = activity.setupManager.getSelectedBoardPiecePos();
-                                    if (selectedBoardPiecePos != null && selectedBoardPiecePos[0] != -1 && selectedBoardPiecePos[1] != -1 && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null) {
-                                        // 获取要操作的棋子ID
-                                        int pieceToOperate = activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]];
-                                        
-                                        // 检查是否是点击原位置（下架）
-                                        if (i == selectedBoardPiecePos[0] && j == selectedBoardPiecePos[1]) {
-                                            // 点击原位置，下架棋子
-                                            if (pieceToOperate != 1 && pieceToOperate != 8) { // 老将不能下架
-                                                activity.setupManager.placePiece(selectedBoardPiecePos[0], selectedBoardPiecePos[1], 0);
+                        if (i >= 0 && i <= 8 && j >= 0 && j <= 9 && activity.chessInfo.piece != null && activity.chessInfo.piece[j] != null) {
+                            // 获取点击位置的棋子ID
+                            int boardPieceID = activity.chessInfo.piece[j][i];
+                            
+                            // 如果已经选中了棋盘上的棋子
+                            if (activity.setupManager != null) {
+                                int[] selectedBoardPiecePos = activity.setupManager.getSelectedBoardPiecePos();
+                                if (selectedBoardPiecePos != null && selectedBoardPiecePos[0] != -1 && selectedBoardPiecePos[1] != -1 && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null) {
+                                    // 获取要操作的棋子ID
+                                    int pieceToOperate = activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]];
+                                    
+                                    // 检查是否是点击原位置（下架）
+                                    if (i == selectedBoardPiecePos[0] && j == selectedBoardPiecePos[1]) {
+                                        // 点击原位置，下架棋子
+                                        if (pieceToOperate != 1 && pieceToOperate != 8) { // 老将不能下架
+                                            activity.setupManager.placePiece(selectedBoardPiecePos[0], selectedBoardPiecePos[1], 0);
+                                            // 重置选中状态
+                                            activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
+                                        }
+                                    }
+                                    // 点击的是空白区域（移动棋子）
+                                    else if (boardPieceID == 0) {
+                                        // 检查是否是老将
+                                        if (pieceToOperate == 1 || pieceToOperate == 8) {
+                                            // 老将不能下架，但可以移动到合法位置
+                                            // 检查新位置是否合理
+                                            if (activity.setupManager.isValidPiecePosition(pieceToOperate, i, j)) {
+                                                // 先将原位置设为0
+                                                activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
+                                                // 再将新位置设为棋子ID
+                                                activity.setupManager.placePiece(i, j, pieceToOperate);
+                                                // 重置选中状态
+                                                activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
+                                            }
+                                        } else {
+                                            // 不是老将，可以移动
+                                            // 检查新位置是否合理
+                                            if (activity.setupManager.isValidPiecePosition(pieceToOperate, i, j)) {
+                                                // 先将原位置设为0
+                                                activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
+                                                // 再将新位置设为棋子ID
+                                                activity.setupManager.placePiece(i, j, pieceToOperate);
                                                 // 重置选中状态
                                                 activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
                                             }
                                         }
-                                        // 点击的是空白区域（移动棋子）
-                                        else if (boardPieceID == 0) {
-                                            // 检查是否是老将
-                                            if (pieceToOperate == 1 || pieceToOperate == 8) {
-                                                // 老将不能下架，但可以移动到合法位置
-                                                // 检查新位置是否合理
-                                                if (activity.setupManager.isValidPiecePosition(pieceToOperate, i, j)) {
-                                                    // 先将原位置设为0
-                                                    activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
-                                                    // 再将新位置设为棋子ID
-                                                    activity.setupManager.placePiece(i, j, pieceToOperate);
-                                                    // 重置选中状态
-                                                    activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
-                                                }
-                                            } else {
-                                                // 不是老将，可以移动
-                                                // 检查新位置是否合理
-                                                if (activity.setupManager.isValidPiecePosition(pieceToOperate, i, j)) {
-                                                    // 先将原位置设为0
-                                                    activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
-                                                    // 再将新位置设为棋子ID
-                                                    activity.setupManager.placePiece(i, j, pieceToOperate);
-                                                    // 重置选中状态
-                                                    activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
-                                                }
-                                            }
-                                        }
                                     }
-                                    // 如果已经选中了棋子选择区域的棋子，放置到棋盘上
-                                    else if (activity.setupManager.getSelectedPieceID() > 0) {
-                                        activity.setupManager.placePiece(i, j, activity.setupManager.getSelectedPieceID());
-                                        // 重置选中状态
-                                        activity.setupManager.setSelectedPieceID(0);
-                                        if (activity.setupModeView != null) {
-                                            activity.setupModeView.clearSelection();
-                                        }
+                                }
+                                // 如果已经选中了棋子选择区域的棋子，放置到棋盘上
+                                else if (activity.setupManager.getSelectedPieceID() > 0) {
+                                    activity.setupManager.placePiece(i, j, activity.setupManager.getSelectedPieceID());
+                                    // 重置选中状态
+                                    activity.setupManager.setSelectedPieceID(0);
+                                    if (activity.setupModeView != null) {
+                                        activity.setupModeView.clearSelection();
                                     }
-                                    // 如果点击的是棋盘上的棋子，选中该棋子
-                                    else if (boardPieceID > 0) {
-                                        activity.setupManager.setSelectedBoardPiecePos(new int[]{i, j});
-                                        // 显示选中效果
-                                        activity.chessInfo.Select = new int[]{i, j};
-                                        activity.chessView.requestDraw();
-                                    }
-                                    // 点击空白区域，重置选中状态
-                                    else {
-                                        activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
-                                        activity.chessInfo.Select = new int[]{-1, -1};
-                                        activity.chessView.requestDraw();
-                                    }
+                                }
+                                // 如果点击的是棋盘上的棋子，选中该棋子
+                                else if (boardPieceID > 0) {
+                                    activity.setupManager.setSelectedBoardPiecePos(new int[]{i, j});
+                                    // 显示选中效果
+                                    activity.chessInfo.Select = new int[]{i, j};
+                                    activity.chessView.requestDraw();
+                                }
+                                // 点击空白区域，重置选中状态
+                                else {
+                                    activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
+                                    activity.chessInfo.Select = new int[]{-1, -1};
+                                    activity.chessView.requestDraw();
                                 }
                             }
                         }
@@ -479,7 +477,8 @@ public class PvMActivityInit {
                 }
                 return true;
             }
-            // 否则由Activity处理
+            
+            // 非摆棋模式下，由Activity处理触摸事件
             return activity.onTouch(view, event);
         }
     }

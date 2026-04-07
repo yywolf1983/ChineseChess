@@ -142,11 +142,11 @@
             android:layout_marginBottom="10dp">
             <Button
                 android:id="@+id/timeMinusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="-"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginRight="10dp" />
             <SeekBar
                 android:id="@+id/timeSeekBar"
@@ -159,11 +159,11 @@
                 android:thumb="@android:drawable/btn_star" />
             <Button
                 android:id="@+id/timePlusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="+"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginLeft="10dp" />
         </LinearLayout>
 
@@ -233,11 +233,11 @@
             android:layout_marginBottom="10dp">
             <Button
                 android:id="@+id/depthMinusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="-"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginRight="10dp" />
             <SeekBar
                 android:id="@+id/depthSeekBar"
@@ -250,11 +250,11 @@
                 android:thumb="@android:drawable/btn_star" />
             <Button
                 android:id="@+id/depthPlusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="+"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginLeft="10dp" />
         </LinearLayout>
 
@@ -324,11 +324,11 @@
             android:layout_marginBottom="10dp">
             <Button
                 android:id="@+id/skillLevelMinusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="-"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginRight="10dp" />
             <SeekBar
                 android:id="@+id/skillLevelSeekBar"
@@ -341,11 +341,11 @@
                 android:thumb="@android:drawable/btn_star" />
             <Button
                 android:id="@+id/skillLevelPlusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="+"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginLeft="10dp" />
         </LinearLayout>
 
@@ -423,11 +423,11 @@
             android:layout_marginBottom="10dp">
             <Button
                 android:id="@+id/multiPVMinusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="-"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginRight="10dp" />
             <SeekBar
                 android:id="@+id/multiPVSeekBar"
@@ -440,11 +440,11 @@
                 android:thumb="@android:drawable/btn_star" />
             <Button
                 android:id="@+id/multiPVPlusBtn"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
                 android:text="+"
-                android:textSize="20sp"
-                android:background="@drawable/selector_btn2"
+                android:textSize="14sp"
+                android:background="@android:color/transparent"
                 android:layout_marginLeft="10dp" />
         </LinearLayout>
 
