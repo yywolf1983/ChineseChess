@@ -221,9 +221,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 标准化评分，确保显示优势方积分
     public static int normalizeScore(int score, boolean isRedTurn) {
-        // 始终返回原始评分，不根据行棋方取反
-        // 这样可以确保显示的是优势方的积分，而不是当前行棋方的视角
-        return score;
+        // 确保评分始终以红方为基准
+        // 当黑方行棋时，引擎返回的评分是基于黑方视角的，需要取反
+        return isRedTurn ? score : -score;
     }
     
     // 更新时间显示

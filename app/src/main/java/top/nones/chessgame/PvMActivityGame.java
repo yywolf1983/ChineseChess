@@ -304,12 +304,17 @@ public class PvMActivityGame {
                             if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
                                 new Thread(() -> {
                                     AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
-                                    final int score = moveWithScore.score;
+                                    int score = moveWithScore.score;
                                     
+                                    // 确保评分始终以红方为基准
+                                    boolean isRedTurn = activity.chessInfo.IsRedGo;
+                                    score = PvMActivity.normalizeScore(score, isRedTurn);
+                                    
+                                    final int finalScore = score;
                                     // 更新评分显示
                                     activity.runOnUiThread(() -> {
                                         if (activity.roundView != null) {
-                                            activity.roundView.setMoveScore(score);
+                                            activity.roundView.setMoveScore(finalScore);
                                         }
                                     });
                                 }).start();
