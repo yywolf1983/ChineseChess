@@ -316,6 +316,8 @@ public class Rule {
                         if (pieceId != 6 && pieceId != 13 && pieceId != 5 && pieceId != 12) {
                             break;
                         }
+                        // 对于敌方车炮棋子，增加障碍物计数
+                        obstacleCount++;
                     } else {
                         obstacleCount++;
                     }
