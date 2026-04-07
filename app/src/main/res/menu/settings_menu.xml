@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_music"
+        android:title="音乐" />
+    <item
+        android:id="@+id/menu_effect"
+        android:title="音效" />
+    <item
+        android:id="@+id/menu_thinking_time"
+        android:title="思考时间" />
+    <item
+        android:id="@+id/menu_search_depth"
+        android:title="搜索深度" />
+    <item
+        android:id="@+id/menu_skill_level"
+        android:title="技能级别" />
+    <item
+        android:id="@+id/menu_multi_pv"
+        android:title="多主变搜索" />
+</menu>

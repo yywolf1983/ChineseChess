@@ -34,6 +34,10 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         }
     }
     public Button posBtn, negBtn;
+    public Button timeMinusBtn, timePlusBtn;
+    public Button depthMinusBtn, depthPlusBtn;
+    public Button skillLevelMinusBtn, skillLevelPlusBtn;
+    public Button multiPVMinusBtn, multiPVPlusBtn;
     public RadioGroup musicGroup;
     public RadioGroup effectGroup;
     public LinearLayout levelGroup;
@@ -133,16 +137,24 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         levelGroup = (LinearLayout) findViewById(R.id.levelGroup);
         timeSeekBar = (SeekBar) findViewById(R.id.timeSeekBar);
         timeValue = (TextView) findViewById(R.id.timeValue);
+        timeMinusBtn = (Button) findViewById(R.id.timeMinusBtn);
+        timePlusBtn = (Button) findViewById(R.id.timePlusBtn);
         
         // 初始化搜索深度滑块
         depthSeekBar = (SeekBar) findViewById(R.id.depthSeekBar);
         depthValue = (TextView) findViewById(R.id.depthValue);
+        depthMinusBtn = (Button) findViewById(R.id.depthMinusBtn);
+        depthPlusBtn = (Button) findViewById(R.id.depthPlusBtn);
         // 初始化技能级别滑块
         skillLevelSeekBar = (SeekBar) findViewById(R.id.skillLevelSeekBar);
         skillLevelValue = (TextView) findViewById(R.id.skillLevelValue);
+        skillLevelMinusBtn = (Button) findViewById(R.id.skillLevelMinusBtn);
+        skillLevelPlusBtn = (Button) findViewById(R.id.skillLevelPlusBtn);
         // 初始化MultiPV滑块
         multiPVSeekBar = (SeekBar) findViewById(R.id.multiPVSeekBar);
         multiPVValue = (TextView) findViewById(R.id.multiPVValue);
+        multiPVMinusBtn = (Button) findViewById(R.id.multiPVMinusBtn);
+        multiPVPlusBtn = (Button) findViewById(R.id.multiPVPlusBtn);
     }
 
 
@@ -151,6 +163,19 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         posBtn.setOnClickListener(this);
         //设置取消按钮被点击后，向外界提供监听
         negBtn.setOnClickListener(this);
+        
+        // 为思考时间按钮添加点击事件
+        timeMinusBtn.setOnClickListener(this);
+        timePlusBtn.setOnClickListener(this);
+        // 为搜索深度按钮添加点击事件
+        depthMinusBtn.setOnClickListener(this);
+        depthPlusBtn.setOnClickListener(this);
+        // 为技能级别按钮添加点击事件
+        skillLevelMinusBtn.setOnClickListener(this);
+        skillLevelPlusBtn.setOnClickListener(this);
+        // 为MultiPV按钮添加点击事件
+        multiPVMinusBtn.setOnClickListener(this);
+        multiPVPlusBtn.setOnClickListener(this);
     }
 
     @Override
@@ -193,6 +218,70 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             } else if (id == R.id.negBtn) {
                 if (onClickBottomListener != null) {
                     onClickBottomListener.onNegtiveClick();
+                }
+            } else if (id == R.id.timeMinusBtn) {
+                // 减少思考时间
+                playEffect(selectMusic);
+                if (thinkingTime > 1) {
+                    thinkingTime--;
+                    timeSeekBar.setProgress(thinkingTime);
+                    timeValue.setText(thinkingTime + "秒");
+                }
+            } else if (id == R.id.timePlusBtn) {
+                // 增加思考时间
+                playEffect(selectMusic);
+                if (thinkingTime < 60) {
+                    thinkingTime++;
+                    timeSeekBar.setProgress(thinkingTime);
+                    timeValue.setText(thinkingTime + "秒");
+                }
+            } else if (id == R.id.depthMinusBtn) {
+                // 减少搜索深度
+                playEffect(selectMusic);
+                if (searchDepth > 5) {
+                    searchDepth--;
+                    depthSeekBar.setProgress(searchDepth);
+                    depthValue.setText(searchDepth + "层");
+                }
+            } else if (id == R.id.depthPlusBtn) {
+                // 增加搜索深度
+                playEffect(selectMusic);
+                if (searchDepth < 35) {
+                    searchDepth++;
+                    depthSeekBar.setProgress(searchDepth);
+                    depthValue.setText(searchDepth + "层");
+                }
+            } else if (id == R.id.skillLevelMinusBtn) {
+                // 减少技能级别
+                playEffect(selectMusic);
+                if (skillLevel > 1) {
+                    skillLevel--;
+                    skillLevelSeekBar.setProgress(skillLevel);
+                    skillLevelValue.setText(skillLevel + "级");
+                }
+            } else if (id == R.id.skillLevelPlusBtn) {
+                // 增加技能级别
+                playEffect(selectMusic);
+                if (skillLevel < 20) {
+                    skillLevel++;
+                    skillLevelSeekBar.setProgress(skillLevel);
+                    skillLevelValue.setText(skillLevel + "级");
+                }
+            } else if (id == R.id.multiPVMinusBtn) {
+                // 减少MultiPV
+                playEffect(selectMusic);
+                if (multiPV > 1) {
+                    multiPV--;
+                    multiPVSeekBar.setProgress(multiPV - 1);
+                    multiPVValue.setText(multiPV + "变");
+                }
+            } else if (id == R.id.multiPVPlusBtn) {
+                // 增加MultiPV
+                playEffect(selectMusic);
+                if (multiPV < 5) {
+                    multiPV++;
+                    multiPVSeekBar.setProgress(multiPV - 1);
+                    multiPVValue.setText(multiPV + "变");
                 }
             }
         }
