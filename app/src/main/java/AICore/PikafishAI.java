@@ -250,8 +250,7 @@ public class PikafishAI {
                 }
                 
                 // 4. 设置多主变（MultiPV）
-                // 确保 MultiPV 至少为 2，让引擎考虑多个可能的走法，避免重复
-                multiPV = Math.max(2, multiPV);
+                // 按照设置进行，不设置最小值限制
                 sendCommand("setoption name MultiPV value " + multiPV);
                 LogUtils.i("PikafishAI", "设置MultiPV: " + multiPV);
                 
@@ -570,11 +569,20 @@ public class PikafishAI {
                 LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=3");
             } else {
                 // 正常模式：使用默认参数
-                int multiPV = 2; // 默认值
+                int multiPV = 1; // 默认值
                 int contempt = 20; // 默认值
-                LogUtils.i("PikafishAI", "正常模式：使用默认参数 - MultiPV=" + multiPV + ", Contempt=" + contempt);
-                // 确保 MultiPV 至少为 2
-                multiPV = Math.max(2, multiPV);
+                // 尝试获取用户设置的MultiPV值
+                try {
+                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
+                    Object settingObj = pvmaClass.getField("setting").get(null);
+                    if (settingObj != null) {
+                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
+                    }
+                } catch (Exception e) {
+                    // 忽略错误，使用默认值
+                }
+                LogUtils.i("PikafishAI", "正常模式：使用参数 - MultiPV=" + multiPV + ", Contempt=" + contempt);
+                // 按照设置进行，不设置最小值限制
                 // 设置 MultiPV
                 sendCommand("setoption name MultiPV value " + multiPV);
                 LogUtils.i("PikafishAI", "正常模式：设置MultiPV=" + multiPV);
@@ -944,8 +952,7 @@ public class PikafishAI {
     public void updateSettings(int skillLevel, int multiPV) {
         if (initialized) {
             // 设置多主变（MultiPV）
-            // 确保 MultiPV 至少为 2，让引擎考虑多个可能的走法，避免重复
-            multiPV = Math.max(2, multiPV);
+            // 按照设置进行，不设置最小值限制
             sendCommand("setoption name MultiPV value " + multiPV);
             LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
             
@@ -982,8 +989,7 @@ public class PikafishAI {
     public void updateSettings(int skillLevel, int multiPV, int depth, int thinkingTime) {
         if (initialized) {
             // 设置多主变（MultiPV）
-            // 确保 MultiPV 至少为 2，让引擎考虑多个可能的走法，避免重复
-            multiPV = Math.max(2, multiPV);
+            // 按照设置进行，不设置最小值限制
             sendCommand("setoption name MultiPV value " + multiPV);
             LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
             
