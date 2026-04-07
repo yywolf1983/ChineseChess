@@ -302,6 +302,7 @@ public class PvMActivityControls {
                                         // 检查当前行棋方的王是否被将军
                                         boolean isChecked = Rule.isKingDanger(activity.chessInfo.piece, activity.chessInfo.IsRedGo);
                                         if (isChecked) {
+                                            // 检查点击的棋子是否能够解将
                                             canDefendCheck = Rule.CanDefendCheck(activity.chessInfo.piece, i, j, pieceID);
                                         }
                                         

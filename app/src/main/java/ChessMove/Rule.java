@@ -181,11 +181,8 @@ public class Rule {
                                     nextX += dir[0];
                                     nextY += dir[1];
                                 }
-                                break;
                             }
-                            if (obstacleCount >= 2) {
-                                break;
-                            }
+                            // 即使遇到障碍物，也要继续检查后面的位置（用于重砲将的情况）
                         }
                         x += dir[0];
                         y += dir[1];
@@ -311,8 +308,10 @@ public class Rule {
                                 return true;
                             }
                         }
-                        // 对于敌方棋子，继续检查后面是否有其他炮（重砲将）
-                        // 不在这里break，继续检查后面的棋子
+                        // 对于敌方非车炮棋子，停止检查这个方向
+                        if (pieceId != 6 && pieceId != 13 && pieceId != 5 && pieceId != 12) {
+                            break;
+                        }
                     } else {
                         obstacleCount++;
                     }
