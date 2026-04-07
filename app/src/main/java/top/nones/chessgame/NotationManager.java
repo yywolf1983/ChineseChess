@@ -186,14 +186,14 @@ public class NotationManager {
                     if (activity.roundView != null) {
                         activity.roundView.requestDraw();
                     }
-                    Toast.makeText(activity, "棋谱加载成功: " + fileName, Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示加载成功信息
                 } else {
-                    Toast.makeText(activity, "棋谱格式不正确", Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示格式错误信息
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(activity, "加载棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            // 移除Toast提示，通过界面显示加载失败信息
         }
     }
     
@@ -204,7 +204,7 @@ public class NotationManager {
         }
         
         if (uri == null) {
-            Toast.makeText(activity, "保存路径无效", Toast.LENGTH_SHORT).show();
+            // 移除Toast提示，通过界面显示路径无效信息
             return;
         }
         
@@ -256,10 +256,10 @@ public class NotationManager {
                     // 写入新内容
                     writer.write(content);
                     writer.flush();
-                    Toast.makeText(activity, "棋谱保存成功: " + fileName, Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示保存成功信息
                 } catch (Exception e) {
                     e.printStackTrace();
-                    Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示保存失败信息
                 } finally {
                     try {
                         pfd.close();
@@ -268,7 +268,7 @@ public class NotationManager {
                     }
                 }
             } else {
-                Toast.makeText(activity, "无法创建文件描述符", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示创建文件描述符失败信息
             }
             
             // 清空临时变量
@@ -283,7 +283,7 @@ public class NotationManager {
         } catch (Exception e) {
             e.printStackTrace();
             if (activity != null) {
-                Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示保存失败信息
             }
         }
     }

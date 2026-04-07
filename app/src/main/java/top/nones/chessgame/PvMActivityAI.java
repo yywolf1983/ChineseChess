@@ -386,7 +386,7 @@ public class PvMActivityAI {
             // 通知用户需要重新计算
             if (this.activity != null) {
                 this.activity.runOnUiThread(() -> {
-                    Toast.makeText(this.activity, "重复局面，AI重新计算着法...", Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，避免频繁弹出
                 });
             }
             
@@ -408,13 +408,13 @@ public class PvMActivityAI {
         
         if (!redKingExists) {
             if (this.activity != null) {
-                Toast.makeText(this.activity, "红方胜利！黑将被吃掉了", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示胜利信息
             }
             return false;
         }
         if (!blackKingExists) {
             if (this.activity != null) {
-                Toast.makeText(this.activity, "黑方胜利！红帅被吃掉了", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示胜利信息
             }
             return false;
         }
@@ -819,12 +819,7 @@ public class PvMActivityAI {
                                 activity.pikafishAI.interrupt();
                             }
                             
-                            // 在UI线程显示超时提示
-                            if (activity != null) {
-                                activity.runOnUiThread(() -> {
-                                    Toast.makeText(activity, "AI计算超时，请重试", Toast.LENGTH_SHORT).show();
-                                });
-                            }
+                            // 移除Toast提示，通过界面显示超时信息
                         } catch (Exception e) {
                             LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
                             e.printStackTrace();
@@ -1204,6 +1199,15 @@ public class PvMActivityAI {
         return null;
     }
     
+    // 停止AI分析
+    public void stopAIAnalysis() {
+        synchronized (aiAnalysisLock) {
+            isAIAnalyzing = false;
+        }
+        // 取消深度更新任务
+        stopAISearch();
+    }
+
     public void shutdown() {
         if (executorService != null && !executorService.isShutdown()) {
             executorService.shutdownNow();

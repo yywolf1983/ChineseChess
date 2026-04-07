@@ -351,9 +351,7 @@ public class PvMActivityControls {
                                             // 检查移动后是否还被将军
                                             boolean isStillChecked = Rule.isKingDanger(tempPiece, isRed);
                                             if (isStillChecked) {
-                                                Toast toast = Toast.makeText(activity, "移动后必须解将", Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
+                                                // 移除Toast提示，通过界面显示提示信息
                                                 return false;
                                             }
                                         }
@@ -381,9 +379,7 @@ public class PvMActivityControls {
 
                                             // 游戏结束
                                             activity.chessInfo.status = 2;
-                                            Toast toast = Toast.makeText(activity, isRed ? "红方获得胜利" : "黑方获得胜利", Toast.LENGTH_SHORT);
-                                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                            toast.show();
+                                            // 移除Toast提示，通过界面显示胜利信息
 
                                             // 保存移动后的状态到栈中
                                             try {
@@ -407,18 +403,14 @@ public class PvMActivityControls {
                                         if (isKingFaceToFace(activity.chessInfo.piece)) {
                                             activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                                             activity.chessInfo.piece[targetY][targetX] = tmp;
-                                            Toast toast = Toast.makeText(activity, "双方老将不能见面", Toast.LENGTH_SHORT);
-                                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                            toast.show();
+                                            // 移除Toast提示，通过界面显示提示信息
                                         } else {
                                             // 检查移动后是否会导致自己被将军
                                             boolean isCheckAfterMove = Rule.isKingDanger(activity.chessInfo.piece, isRed);
                                             if (isCheckAfterMove) {
                                                 activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                                                 activity.chessInfo.piece[targetY][targetX] = tmp;
-                                                Toast toast = Toast.makeText(activity, "移动后不能被将军", Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
+                                                // 移除Toast提示，通过界面显示提示信息
                                                 return false;
                                             }
                                             
@@ -428,9 +420,7 @@ public class PvMActivityControls {
                                                 if (isStillChecked) {
                                                     activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                                                     activity.chessInfo.piece[targetY][targetX] = tmp;
-                                                    Toast toast = Toast.makeText(activity, "移动后必须解将", Toast.LENGTH_SHORT);
-                                                    toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                    toast.show();
+                                                    // 移除Toast提示，通过界面显示提示信息
                                                     return false;
                                                 }
                                             }
@@ -467,9 +457,7 @@ public class PvMActivityControls {
                                                 key = 1;
                                             }
                                             if (key == 1) {
-                                                Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
+                                                // 移除Toast提示，通过界面显示提示信息
                                             }
 
                                             // 增加继续对局后的回合计数器
@@ -561,9 +549,7 @@ public class PvMActivityControls {
         builder.setMessage(message);
         builder.setPositiveButton("同意和棋", (dialog, which) -> {
             activity.chessInfo.status = 2;
-            Toast toast = Toast.makeText(activity, "此乃和棋", Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
+            // 移除Toast提示，通过界面显示和棋信息
             // 游戏结束时重新绘制界面
             if (activity.chessView != null) {
                 activity.chessView.requestDraw();
@@ -934,9 +920,7 @@ public class PvMActivityControls {
             } else {
                 toastMessage = "三次重复局面，此乃和棋";
             }
-            Toast toast = Toast.makeText(activity, toastMessage, Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
+            // 移除Toast提示，通过界面显示和棋信息
             // 游戏结束时重新绘制界面
             if (activity.chessView != null) {
                 activity.chessView.requestDraw();

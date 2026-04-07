@@ -373,7 +373,7 @@ public class PvMActivitySetup {
             builder.show();
         } else {
             if (activity != null) {
-                Toast.makeText(activity, "棋子放置不完整，请继续放置棋子", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示提示信息
             }
         }
     }

@@ -150,7 +150,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     roundView.setTime(redTime, blackTime);
                 });
             }
-        }, 0, 100, TimeUnit.MILLISECONDS);
+        }, 0, 300, TimeUnit.MILLISECONDS);
     }
     
     // 初始化模块
@@ -489,6 +489,39 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 生命周期方法
     @Override
+    protected void onPause() {
+        super.onPause();
+        // 暂停音乐
+        if (backMusic != null && backMusic.isPlaying()) {
+            backMusic.pause();
+        }
+        // 暂停时间更新线程
+        if (timeUpdateExecutor != null) {
+            timeUpdateExecutor.shutdownNow();
+        }
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // 停止AI分析
+        if (aiManager != null) {
+            aiManager.stopAIAnalysis();
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 恢复音乐
+        if (backMusic != null && setting != null && setting.isMusicPlay && !backMusic.isPlaying()) {
+            backMusic.start();
+        }
+        // 重新初始化时间更新线程
+        initTimeUpdateExecutor();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         // 关闭PikafishAI资源
@@ -510,6 +543,27 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 timeUpdateExecutor.shutdownNow();
                 Thread.currentThread().interrupt();
             }
+        }
+        // 释放音乐资源
+        if (backMusic != null) {
+            backMusic.release();
+            backMusic = null;
+        }
+        if (selectMusic != null) {
+            selectMusic.release();
+            selectMusic = null;
+        }
+        if (clickMusic != null) {
+            clickMusic.release();
+            clickMusic = null;
+        }
+        if (checkMusic != null) {
+            checkMusic.release();
+            checkMusic = null;
+        }
+        if (winMusic != null) {
+            winMusic.release();
+            winMusic = null;
         }
         // 清理静态引用
         if (weakInstance != null && weakInstance.get() == this) {

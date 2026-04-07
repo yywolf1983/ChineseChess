@@ -69,7 +69,7 @@ public class PvPActivityControls {
                     if (activity.getRoundView() != null) {
                         activity.getRoundView().requestDraw();
                     }
-                    Toast.makeText(activity, "摆棋模式已开启", Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示提示信息
                 }
             }
         }
@@ -185,7 +185,7 @@ public class PvPActivityControls {
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
                 }
-                Toast.makeText(activity, "摆棋完成！红方开始", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示提示信息
                 // 重新绘制界面
                 if (activity.getChessView() != null) {
                     activity.getChessView().requestDraw();
@@ -206,7 +206,7 @@ public class PvPActivityControls {
                 } catch (CloneNotSupportedException e) {
                     e.printStackTrace();
                 }
-                Toast.makeText(activity, "摆棋完成！黑方开始", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示提示信息
                 // 重新绘制界面
                 if (activity.getChessView() != null) {
                     activity.getChessView().requestDraw();
@@ -215,7 +215,7 @@ public class PvPActivityControls {
             builder.setCancelable(false); // 必须选择一个选项
             builder.show();
         } else {
-            Toast.makeText(activity, "棋子放置不完整，请继续放置棋子", Toast.LENGTH_SHORT).show();
+            // 移除Toast提示，通过界面显示提示信息
         }
     }
 
@@ -240,7 +240,7 @@ public class PvPActivityControls {
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
-        Toast.makeText(activity, "游戏已重置", Toast.LENGTH_SHORT).show();
+        // 移除Toast提示，通过界面显示提示信息
     }
 
     private void handleRecallButton() {
@@ -475,7 +475,7 @@ public class PvPActivityControls {
                     fos.getChannel().truncate(fos.getChannel().position());
                     // 强制刷新文件系统缓存
                     fos.getFD().sync();
-                    Toast.makeText(activity, "棋谱保存成功: " + fileName, Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示保存成功信息
                 } catch (Exception e) {
                     e.printStackTrace();
                     Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();

@@ -256,9 +256,7 @@ public class PvMActivityGame {
                                             // 检查移动后是否还被将军
                                             boolean isStillChecked = Rule.isKingDanger(tempPiece, isRed);
                                             if (isStillChecked) {
-                                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "移动后必须解将", android.widget.Toast.LENGTH_SHORT);
-                                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                                toast.show();
+                                                // 移除Toast提示，通过界面显示提示信息
                                                 return false;
                                             }
                                         }
@@ -270,9 +268,7 @@ public class PvMActivityGame {
                         if (isKingFaceToFace(activity.chessInfo.piece)) {
                             activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                             activity.chessInfo.piece[targetY][targetX] = tmp;
-                            android.widget.Toast toast = android.widget.Toast.makeText(activity, "双方老将不能见面", android.widget.Toast.LENGTH_SHORT);
-                            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                            toast.show();
+                            // 移除Toast提示，通过界面显示提示信息
                         } else {
                             activity.chessInfo.IsChecked = false;
                             activity.chessInfo.curPos = new Pos(targetX, targetY);
@@ -301,9 +297,7 @@ public class PvMActivityGame {
                                 key = 1;
                             }
                             if (key == 1) {
-                                android.widget.Toast toast = android.widget.Toast.makeText(activity, "将军", android.widget.Toast.LENGTH_SHORT);
-                                toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                                toast.show();
+                                // 移除Toast提示，通过界面显示提示信息
                             }
 
                             // 增加继续对局后的回合计数器
@@ -377,9 +371,7 @@ public class PvMActivityGame {
     private void checkGameStatus(boolean isRed) {
         // 检查是否被将军
         if (Rule.isKingDanger(activity.chessInfo.piece, !isRed)) {
-            android.widget.Toast toast = android.widget.Toast.makeText(activity, "将军", android.widget.Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
+            // 移除Toast提示，通过界面显示提示信息
         }
     }
 }

@@ -101,7 +101,7 @@ public class PvPActivityGame {
                         // 显示选中效果
                         chessInfo.Select = new int[]{i, j};
                         chessView.requestDraw();
-                        Toast.makeText(activity, "已选中棋盘上的棋子，点击空白区域移动或下架", Toast.LENGTH_SHORT).show();
+                        // 移除Toast提示，通过界面显示提示信息
                     }
                     // 点击空白区域，重置选中状态
                     else {
@@ -131,7 +131,7 @@ public class PvPActivityGame {
                 selectedBoardPiecePos[0] = -1;
                 selectedBoardPiecePos[1] = -1;
             } else {
-                Toast.makeText(activity, "该位置不适合放置老将", Toast.LENGTH_SHORT).show();
+                // 移除Toast提示，通过界面显示提示信息
             }
         } else {
             // 不是老将，可以下架或移动
@@ -144,7 +144,7 @@ public class PvPActivityGame {
                     selectedBoardPiecePos[0] = -1;
                     selectedBoardPiecePos[1] = -1;
                 } else {
-                    Toast.makeText(activity, "老将不能下架", Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示提示信息
                 }
             } else {
                 // 点击新位置，移动棋子
@@ -158,7 +158,7 @@ public class PvPActivityGame {
                     selectedBoardPiecePos[0] = -1;
                     selectedBoardPiecePos[1] = -1;
                 } else {
-                    Toast.makeText(activity, "该位置不适合放置此棋子", Toast.LENGTH_SHORT).show();
+                    // 移除Toast提示，通过界面显示提示信息
                 }
             }
         }
@@ -298,29 +298,7 @@ public class PvPActivityGame {
                         if (PvPActivityInit.getCheckMusic() != null) {
                             PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
                         }
-                        Toast toast = Toast.makeText(activity, "将军", Toast.LENGTH_SHORT);
-                        toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-                        // 设置文本颜色为红色
-                        try {
-                            View view = toast.getView();
-                            if (view != null) {
-                                TextView textView = view.findViewById(android.R.id.message);
-                                if (textView != null) {
-                                    textView.setTextColor(android.graphics.Color.RED);
-                                }
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        toast.show();
-                        // 设置500毫秒后取消提示
-                        activity.getWindow().getDecorView().postDelayed(() -> {
-                            try {
-                                toast.cancel();
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        }, 500);
+                        // 移除Toast提示，通过界面显示提示信息
                         lastCheckHintTime = currentTime;
                     }
                 }
