@@ -305,11 +305,13 @@ public class RoundView extends View {
                 postInvalidateDelayed(100);
             }
             
-            // 显示绝对值并添加红方或黑方前缀
-            if (moveScore > 0) {
-                scoreText = "红方:" + moveScore;
-            } else if (moveScore < 0) {
-                scoreText = "黑方:" + Math.abs(moveScore);
+            // 显示优势方积分
+            if (Math.abs(moveScore) > 0) {
+                if (moveScore > 0) {
+                    scoreText = "红方:" + moveScore;
+                } else {
+                    scoreText = "黑方:" + Math.abs(moveScore);
+                }
             } else {
                 scoreText = "0";
             }

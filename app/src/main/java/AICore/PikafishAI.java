@@ -694,6 +694,20 @@ public class PikafishAI {
                                             } catch (NumberFormatException e) {
                                                 // 忽略解析错误
                                             }
+                                        } else if (parts[i + 1].equals("mate")) {
+                                            try {
+                                                int mateIn = Integer.parseInt(parts[i + 2]);
+                                                // 将mate分数转换为合适的数值
+                                                // 正数表示当前方有将死对方的机会
+                                                // 负数表示对方有将死当前方的机会
+                                                if (mateIn > 0) {
+                                                    score = 500 - mateIn * 10;
+                                                } else {
+                                                    score = -500 + mateIn * 10;
+                                                }
+                                            } catch (NumberFormatException e) {
+                                                // 忽略解析错误
+                                            }
                                         }
                                     } else if (parts[i].equals("pv") && i + 1 < parts.length) {
                                         // 提取pv中的第一个走法

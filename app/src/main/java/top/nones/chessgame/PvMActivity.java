@@ -219,11 +219,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         return String.format("%02d:%02d", minutes, seconds);
     }
     
-    // 标准化评分，确保始终以红方为基准
+    // 标准化评分，确保显示优势方积分
     public static int normalizeScore(int score, boolean isRedTurn) {
-        if (!isRedTurn) {
-            return -score;
-        }
+        // 始终返回原始评分，不根据行棋方取反
+        // 这样可以确保显示的是优势方的积分，而不是当前行棋方的视角
         return score;
     }
     
