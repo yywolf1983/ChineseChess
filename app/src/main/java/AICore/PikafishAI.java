@@ -588,6 +588,7 @@ public class PikafishAI {
             
             // 读取最佳走法和评分
             final String[] bestMoveHolder = new String[1]; // 使用数组作为可变包装
+            final java.util.List<String> possibleMoves = new java.util.ArrayList<>(); // 保存所有可能的走法
             int score = 0;
             int nodes = 0;
             int nps = 0;
@@ -686,9 +687,19 @@ public class PikafishAI {
                                                 // 忽略解析错误
                                             }
                                         }
-                                    } else if (parts[i].equals("pv") && i + 1 < parts.length && bestMoveHolder[0] == null) {
-                                        // 提取pv中的第一个走法作为备选
-                                        bestMoveHolder[0] = parts[i + 1];
+                                    } else if (parts[i].equals("pv") && i + 1 < parts.length) {
+                                        // 提取pv中的第一个走法
+                                        String move = parts[i + 1];
+                                        if (bestMoveHolder[0] == null) {
+                                            bestMoveHolder[0] = move;
+                                        }
+                                        // 在强制变着模式下，保存所有可能的走法
+                                        if (chessInfo != null && chessInfo.forceVariation) {
+                                            if (!possibleMoves.contains(move)) {
+                                                possibleMoves.add(move);
+                                                LogUtils.i("PikafishAI", "强制变着模式：添加可能的走法: " + move);
+                                            }
+                                        }
                                     }
                                 }
                             } else if (line.startsWith("bestmove")) {
@@ -754,8 +765,28 @@ public class PikafishAI {
             LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", 节点数: " + nodes + ", 节点/秒: " + nps + ", 搜索时间: " + actualSearchTime + "ms, 已停止: " + shouldStop);
             
             if (bestMoveHolder[0] != null) {
-                Move move = uciToMove(bestMoveHolder[0]);
-                LogUtils.i("PikafishAI", "最佳走法: " + move + ", 评分: " + score);
+                String selectedMove = bestMoveHolder[0];
+                
+                // 在强制变着模式下，随机选择一个非最佳走法
+                if (chessInfo != null && chessInfo.forceVariation && !possibleMoves.isEmpty()) {
+                    // 过滤掉与最佳走法相同的走法
+                    java.util.List<String> alternativeMoves = new java.util.ArrayList<>();
+                    for (String move : possibleMoves) {
+                        if (!move.equals(selectedMove)) {
+                            alternativeMoves.add(move);
+                        }
+                    }
+                    
+                    // 如果有其他走法，随机选择一个
+                    if (!alternativeMoves.isEmpty()) {
+                        java.util.Random random = new java.util.Random();
+                        selectedMove = alternativeMoves.get(random.nextInt(alternativeMoves.size()));
+                        LogUtils.i("PikafishAI", "强制变着模式：随机选择走法: " + selectedMove);
+                    }
+                }
+                
+                Move move = uciToMove(selectedMove);
+                LogUtils.i("PikafishAI", "选择走法: " + move + ", 评分: " + score);
                 
                 // 强制变着模式在AI走棋后仍然保持，直到局面改变
                 // 不在这里重置强制变着模式标志位，让它在走棋后自然失效
