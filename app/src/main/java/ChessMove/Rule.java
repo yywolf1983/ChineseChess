@@ -1,5 +1,7 @@
 package ChessMove;
 
+import android.util.Log;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -300,11 +302,13 @@ public class Rule {
                         if (pieceId == 5 || pieceId == 12) { // 车
                             // 车需要在直线上没有障碍物才能攻击到王
                             if (obstacleCount == 0) {
+                                Log.e("Rule", "将军检测: 车在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
                         } else if (pieceId == 6 || pieceId == 13) { // 炮
                             // 炮需要有一个炮架才能攻击
                             if (obstacleCount == 1) {
+                                Log.e("Rule", "将军检测: 炮在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
                         }
@@ -374,6 +378,7 @@ public class Rule {
                         int legX = x + dx / 2;
                         int legY = y + dy / 2;
                         if (legX >= 0 && legX < 9 && legY >= 0 && legY < 10 && piece[legY][legX] == 0) {
+                            Log.e("Rule", "将军检测: 马在 (" + x + ", " + y + ") 将军!");
                             return true;
                         }
                     }
@@ -397,6 +402,7 @@ public class Rule {
                 int pieceId = piece[y][x];
                 boolean isEnemy = isRedKing ? (pieceId == 7) : (pieceId == 14);
                 if (isEnemy) {
+                    Log.e("Rule", "将军检测: 卒在 (" + x + ", " + y + ") 将军!");
                     return true;
                 }
             }
@@ -436,6 +442,7 @@ public class Rule {
                 }
                 
                 if (pathClear) {
+                    Log.e("Rule", "将军检测: 将在 (" + enemyKingX + ", " + enemyKingY + ") 将军!");
                     return true;
                 }
             }
@@ -456,6 +463,7 @@ public class Rule {
                 int pieceId = piece[y][x];
                 boolean isEnemy = isRedKing ? (pieceId == 2) : (pieceId == 9);
                 if (isEnemy) {
+                    Log.e("Rule", "将军检测: 士在 (" + x + ", " + y + ") 将军!");
                     return true;
                 }
             }
