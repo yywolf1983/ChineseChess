@@ -265,11 +265,17 @@ public class RoundView extends View {
         boolean redStalemated = Rule.isStalemate(chessInfo.piece, true);
         boolean blackStalemated = Rule.isStalemate(chessInfo.piece, false);
         
+        // 检查是否是和棋
+        boolean isDraw = isGameOver && !redCheckmated && !blackCheckmated && !redStalemated && !blackStalemated && redKingExists && blackKingExists;
+        
         // 优先显示王被吃掉的情况
         if (!redKingExists) {
             scoreText = "黑方胜利！";
         } else if (!blackKingExists) {
             scoreText = "红方胜利！";
+        } else if (isDraw) {
+            // 和棋
+            scoreText = "和棋！";
         } else if (isGameOver || redCheckmated || blackCheckmated || redStalemated || blackStalemated) {
             // 游戏结束或被将死或被困毙，根据情况判断胜利者
             if (redCheckmated || redStalemated) {
