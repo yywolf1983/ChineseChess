@@ -469,6 +469,32 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     
     // 绘制传统坐标
     private void drawTraditionalCoordinates(Canvas canvas) {
-        // 空实现，不绘制任何坐标
+        if (canvas == null) return;
+        
+        Paint coordPaint = new Paint();
+        coordPaint.setColor(Color.BLACK);
+        coordPaint.setTextSize(Scale(20));
+        coordPaint.setTextAlign(Paint.Align.CENTER);
+        coordPaint.setAntiAlias(true);
+        coordPaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); // 设置粗体
+        
+        // 红方横坐标（从右到左：一、二、三、四、五、六、七、八、九）
+        String[] redCoords = {"九", "八", "七", "六", "五", "四", "三", "二", "一"};
+        // 黑方横坐标（从左到右：1、2、3、4、5、6、7、8、9）
+        String[] blackCoords = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
+        
+        // 绘制红方横坐标（底部）
+        for (int i = 0; i < 9; i++) {
+            int x = Scale(i * 85 + 43); // 中心点
+            int y = Scale(9 * 85 + 140); // 底部
+            canvas.drawText(redCoords[i], x, y, coordPaint);
+        }
+        
+        // 绘制黑方横坐标（顶部，向下调整）
+        for (int i = 0; i < 9; i++) {
+            int x = Scale(i * 85 + 43); // 中心点
+            int y = Scale(40); // 顶部，向下调整
+            canvas.drawText(blackCoords[i], x, y, coordPaint);
+        }
     }
 }
