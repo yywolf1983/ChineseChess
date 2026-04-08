@@ -39,16 +39,16 @@ public class PvMActivityAI {
     private void initExecutorService() {
         // 优化线程池配置，根据CPU核心数动态调整
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        int corePoolSize = Math.max(1, Math.min(availableProcessors - 2, 2)); // 保留更多核心给系统
-        int maximumPoolSize = Math.max(2, Math.min(availableProcessors - 1, 3)); // 减少最大线程数，避免过多线程竞争
-        long keepAliveTime = 30L; // 缩短空闲线程存活时间
+        int corePoolSize = Math.max(4, Math.min(availableProcessors, 8)); // 增加核心线程数
+        int maximumPoolSize = Math.max(8, Math.min(availableProcessors * 2, 16)); // 增加最大线程数
+        long keepAliveTime = 60L; // 延长空闲线程存活时间
         
         // 初始化线程池
         executorService = new java.util.concurrent.ThreadPoolExecutor(
             corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
-            new java.util.concurrent.ArrayBlockingQueue<>(3), // 进一步减小队列大小
+            new java.util.concurrent.ArrayBlockingQueue<>(50), // 大幅增加队列大小
             java.util.concurrent.Executors.defaultThreadFactory(),
-            new java.util.concurrent.ThreadPoolExecutor.AbortPolicy() // 使用AbortPolicy，避免主线程被阻塞
+            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy() // 使用CallerRunsPolicy，避免任务被拒绝
         );
         // 允许核心线程超时，避免空闲时占用资源
         executorService.allowCoreThreadTimeOut(true);
@@ -89,6 +89,17 @@ public class PvMActivityAI {
                     this.activity.chessInfo.consecutiveAttackBlack = 0;
                     this.activity.chessInfo.lastAttackedPiecePos = null;
                     this.activity.chessInfo.lastAttackedPieceType = 0;
+                }
+                
+                // 确保使用最新的设置
+                if (PvMActivity.setting != null && this.activity.chessInfo.setting != PvMActivity.setting) {
+                    this.activity.chessInfo.setting = PvMActivity.setting;
+                    // 更新PikafishAI的设置
+                    if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
+                        int skillLevel = PvMActivity.setting.skillLevel;
+                        int multiPV = PvMActivity.setting.multiPV;
+                        this.activity.pikafishAI.updateSettings(skillLevel, multiPV);
+                    }
                 }
             }
         }

@@ -656,8 +656,10 @@ public class PikafishAI {
                     
                     // 检查是否长时间无活动，强制退出
                     long currentTime = System.currentTimeMillis();
-                    if (currentTime - lastActivityTime > 3000) {
-                        LogUtils.w("PikafishAI", "长时间无活动，强制停止 (已耗时: " + (currentTime - startTime) + "ms)");
+                    // 长时间无活动阈值：设置的思考时间 + 3000ms
+                    long inactivityThreshold = time + 3000;
+                    if (currentTime - lastActivityTime > inactivityThreshold) {
+                        LogUtils.w("PikafishAI", "长时间无活动，强制停止 (已耗时: " + (currentTime - startTime) + "ms, 阈值: " + inactivityThreshold + "ms)");
                         sendCommand("stop");
                         break;
                     }

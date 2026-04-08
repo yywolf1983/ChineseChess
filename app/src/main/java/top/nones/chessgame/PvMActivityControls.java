@@ -216,6 +216,16 @@ public class PvMActivityControls {
             if (activity.roundView != null) {
                 activity.roundView.setGameMode(which);
             }
+            // 重新读取设置，确保新模式下使用最新设置
+            if (PvMActivity.setting != null && activity.chessInfo != null) {
+                activity.chessInfo.setting = PvMActivity.setting;
+            }
+            // 更新PikafishAI的设置
+            if (activity.pikafishAI != null) {
+                int skillLevel = PvMActivity.setting != null ? PvMActivity.setting.skillLevel : 20;
+                int multiPV = PvMActivity.setting != null ? PvMActivity.setting.multiPV : 1;
+                activity.pikafishAI.updateSettings(skillLevel, multiPV);
+            }
             // 不重置游戏，从当前棋局开始
             // 检查是否需要AI移动
             activity.gameManager.checkAIMove();
