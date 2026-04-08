@@ -69,10 +69,9 @@ public class PvMActivityAI {
         if (this.activity != null) {
             this.activity.startTurnTimer();
             
-            // 检查是否需要强制变着
+            // 检查是否需要强制变着 - 只在真正的三次重复局面时启用
             if (this.activity.chessInfo != null && this.activity.chessInfo.status == 1) {
-                if (this.activity.chessInfo.isThreefoldRepetition() || this.activity.chessInfo.isPerpetualCheck() || 
-                    this.activity.chessInfo.getPerpetualAttackSide() != null) {
+                if (this.activity.chessInfo.isThreefoldRepetition()) {
                     // 启用强制变着模式
                     this.activity.chessInfo.forceVariation = true;
                     this.activity.chessInfo.variationRandomness = 3; // 设置中等随机性
@@ -169,11 +168,7 @@ public class PvMActivityAI {
         java.util.Set<String> triedMoves = new java.util.HashSet<>(); // 记录已尝试的着法
         java.util.List<Move> allPossibleMoves = new java.util.ArrayList<>(); // 存储所有可能的着法
         
-        // 如果是强制变着模式，收集所有合法着法以供选择
-        if (this.activity.chessInfo.forceVariation) {
-            collectAllPossibleMoves(allPossibleMoves);
-        }
-        
+        // 始终使用 AI 计算，不随机选择着法
         while (retryCount < maxRetryCount) {
             // 空值检查
             if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized() || this.executorService == null) {
@@ -190,50 +185,22 @@ public class PvMActivityAI {
             }
             long aiTimeoutMs = thinkingTime * 1000 + AI_TIMEOUT_BUFFER_MS;
             
-            // 如果是强制变着模式且有收集到着法，从列表中选择
-            if (this.activity.chessInfo.forceVariation && !allPossibleMoves.isEmpty() && retryCount > 0) {
-                // 尝试从所有可能着法中选择一个不同的
-                move = selectDifferentMove(allPossibleMoves, triedMoves);
-                if (move != null) {
-                    // 模拟获取分数
-                    moveWithScore = new PikafishAI.MoveWithScore(move, 0);
-                } else {
-                    // 如果没有不同的着法，使用正常AI计算（带超时机制）
-                    try {
-                        java.util.concurrent.Future<PikafishAI.MoveWithScore> future = executorService.submit(() -> {
-                            if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized()) {
-                                return null;
-                            }
-                            return this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
-                        });
-                        moveWithScore = future.get(aiTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-                    } catch (java.util.concurrent.TimeoutException e) {
-                        LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
-                        break;
-                    } catch (Exception e) {
-                        LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
-                        e.printStackTrace();
-                        break;
+            // 始终使用 AI 计算（带超时机制），即使是强制变着模式
+            try {
+                java.util.concurrent.Future<PikafishAI.MoveWithScore> future = executorService.submit(() -> {
+                    if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized()) {
+                        return null;
                     }
-                }
-            } else {
-                // 正常AI计算（带超时机制）
-                try {
-                    java.util.concurrent.Future<PikafishAI.MoveWithScore> future = executorService.submit(() -> {
-                        if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized()) {
-                            return null;
-                        }
-                        return this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
-                    });
-                    moveWithScore = future.get(aiTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
-                } catch (java.util.concurrent.TimeoutException e) {
-                    LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
-                    break;
-                } catch (Exception e) {
-                    LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
-                    e.printStackTrace();
-                    break;
-                }
+                    return this.activity.pikafishAI.getBestMoveWithScore(this.activity.chessInfo);
+                });
+                moveWithScore = future.get(aiTimeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS);
+            } catch (java.util.concurrent.TimeoutException e) {
+                LogUtils.e("PvMActivityAI", "AI计算超时 (限制: " + aiTimeoutMs + "ms)");
+                break;
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
+                e.printStackTrace();
+                break;
             }
             
             if (moveWithScore == null) {
