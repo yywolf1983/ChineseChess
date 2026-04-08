@@ -717,17 +717,18 @@ public class PvMActivityControls {
                         return;
                     }
                     
+                    // 长将和长捉暂时不启用强制变着，只在真正的局面重复时启用
                     // 检查长将，后台强制变着并显示浮窗提示
-                    if (activity.chessInfo.isPerpetualCheck()) {
-                        handleForceVariation();
-                        return;
-                    }
+                    // if (activity.chessInfo.isPerpetualCheck()) {
+                    //     handleForceVariation();
+                    //     return;
+                    // }
                     
                     // 检查长捉，后台强制变着并显示浮窗提示
-                    if (activity.chessInfo.getPerpetualAttackSide() != null) {
-                        handleForceVariation();
-                        return;
-                    }
+                    // if (activity.chessInfo.getPerpetualAttackSide() != null) {
+                    //     handleForceVariation();
+                    //     return;
+                    // }
                 } else {
                     // 重置强制变着标志，允许下次检查
                     justExecutedForceVariation = false;

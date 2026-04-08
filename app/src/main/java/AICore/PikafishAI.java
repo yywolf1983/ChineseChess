@@ -185,24 +185,38 @@ public class PikafishAI {
             // 发送UCI命令初始化
             sendCommand("uci");
             
-            // 读取初始化响应
+            // 读取初始化响应（使用非阻塞方式）
             String line;
             long startTime = System.currentTimeMillis();
+            boolean uciOkReceived = false;
             
-            while ((line = reader.readLine()) != null) {
-                Log.e("PikafishAI", "初始化响应: " + line);
-                LogUtils.d("PikafishAI", "初始化响应: " + line);
-                if (line.equals("uciok")) {
-                    initialized = true;
-                    Log.e("PikafishAI", "UCI初始化成功");
-                    LogUtils.i("PikafishAI", "UCI初始化成功");
-                    break;
+            while (!uciOkReceived && System.currentTimeMillis() - startTime <= INIT_TIMEOUT_MS) {
+                if (reader.ready()) {
+                    line = reader.readLine();
+                    if (line != null) {
+                        Log.e("PikafishAI", "初始化响应: " + line);
+                        LogUtils.d("PikafishAI", "初始化响应: " + line);
+                        if (line.equals("uciok")) {
+                            uciOkReceived = true;
+                            initialized = true;
+                            Log.e("PikafishAI", "UCI初始化成功");
+                            LogUtils.i("PikafishAI", "UCI初始化成功");
+                        }
+                    }
                 }
-                if (System.currentTimeMillis() - startTime > INIT_TIMEOUT_MS) {
-                    Log.e("PikafishAI", "UCI初始化超时");
-                    LogUtils.e("PikafishAI", "UCI初始化超时");
-                    break;
+                if (!uciOkReceived) {
+                    try {
+                        Thread.sleep(50); // 短暂休眠，避免CPU占用过高
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
+            }
+            
+            if (!uciOkReceived) {
+                Log.e("PikafishAI", "UCI初始化超时");
+                LogUtils.e("PikafishAI", "UCI初始化超时");
             }
             
             if (initialized) {
@@ -265,21 +279,36 @@ public class PikafishAI {
                 // 等待参数设置完成
                 sendCommand("isready");
                 
-                // 等待就绪
+                // 等待就绪（使用非阻塞方式）
                 startTime = System.currentTimeMillis();
-                while ((line = reader.readLine()) != null) {
-                    Log.e("PikafishAI", "就绪响应: " + line);
-                    LogUtils.d("PikafishAI", "就绪响应: " + line);
-                    if (line.equals("readyok")) {
-                        Log.e("PikafishAI", "就绪成功");
-                        LogUtils.i("PikafishAI", "就绪成功");
-                        break;
+                boolean readyOkReceived = false;
+                
+                while (!readyOkReceived && System.currentTimeMillis() - startTime <= INIT_TIMEOUT_MS) {
+                    if (reader.ready()) {
+                        line = reader.readLine();
+                        if (line != null) {
+                            Log.e("PikafishAI", "就绪响应: " + line);
+                            LogUtils.d("PikafishAI", "就绪响应: " + line);
+                            if (line.equals("readyok")) {
+                                readyOkReceived = true;
+                                Log.e("PikafishAI", "就绪成功");
+                                LogUtils.i("PikafishAI", "就绪成功");
+                            }
+                        }
                     }
-                    if (System.currentTimeMillis() - startTime > INIT_TIMEOUT_MS) {
-                        Log.e("PikafishAI", "就绪超时");
-                        LogUtils.e("PikafishAI", "就绪超时");
-                        break;
+                    if (!readyOkReceived) {
+                        try {
+                            Thread.sleep(50); // 短暂休眠，避免CPU占用过高
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
                     }
+                }
+                
+                if (!readyOkReceived) {
+                    Log.e("PikafishAI", "就绪超时");
+                    LogUtils.e("PikafishAI", "就绪超时");
                 }
             }
             
@@ -551,22 +580,26 @@ public class PikafishAI {
             boolean wasForceVariation = false;
             if (chessInfo != null && chessInfo.forceVariation) {
                 wasForceVariation = true;
-                // 强制变着模式：降低深度，增加随机性
+                // 强制变着模式：增加深度、时间、多样性，技能拉满
                 int randomness = chessInfo.variationRandomness;
                 if (randomness <= 0) randomness = 3;
                 
-                // 根据随机性等级调整深度和时间
-                depth = Math.max(3, depth - randomness);
-                time = Math.max(500, time / randomness);
+                // 根据随机性等级增加深度和时间
+                depth = depth + randomness; // 增加深度
+                time = time * (randomness + 1); // 增加思考时间
                 
                 LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
                 
-                // 设置 Contempt 值为负数，鼓励引擎接受和棋，从而寻找不同的走法
-                sendCommand("setoption name Contempt value -" + (randomness * 10));
+                // 设置 Contempt 值为 0，让引擎更客观地评估局面
+                sendCommand("setoption name Contempt value 0");
                 
-                // 强制变着模式：确保 MultiPV 至少为 3，让引擎考虑更多可能的走法
-                sendCommand("setoption name MultiPV value 3");
-                LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=3");
+                // 强制变着模式：增加 MultiPV 到 5，让引擎考虑更多可能的走法
+                sendCommand("setoption name MultiPV value 5");
+                LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=5");
+                
+                // 强制变着模式：技能拉到最大（20）
+                sendCommand("setoption name Skill Level value 20");
+                LogUtils.i("PikafishAI", "强制变着模式：技能级别设为20");
             } else {
                 // 正常模式：使用默认参数
                 int multiPV = 1; // 默认值
@@ -996,8 +1029,43 @@ public class PikafishAI {
             sendCommand("setoption name Contempt value " + contempt);
             LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
             
-            // 等待参数设置完成
+            // 等待参数设置完成（使用非阻塞方式）
             sendCommand("isready");
+            waitForReadyOk();
+        }
+    }
+    
+    // 辅助方法：等待 readyok 响应
+    private void waitForReadyOk() {
+        if (reader == null) return;
+        
+        long startTime = System.currentTimeMillis();
+        boolean readyOkReceived = false;
+        String line;
+        
+        while (!readyOkReceived && System.currentTimeMillis() - startTime <= INIT_TIMEOUT_MS) {
+            try {
+                if (reader.ready()) {
+                    line = reader.readLine();
+                    if (line != null) {
+                        LogUtils.d("PikafishAI", "就绪响应: " + line);
+                        if (line.equals("readyok")) {
+                            readyOkReceived = true;
+                            LogUtils.i("PikafishAI", "就绪成功");
+                        }
+                    }
+                }
+                if (!readyOkReceived) {
+                    Thread.sleep(50);
+                }
+            } catch (Exception e) {
+                LogUtils.e("PikafishAI", "等待就绪失败: " + e.getMessage());
+                break;
+            }
+        }
+        
+        if (!readyOkReceived) {
+            LogUtils.e("PikafishAI", "就绪超时");
         }
     }
     
@@ -1033,8 +1101,9 @@ public class PikafishAI {
             sendCommand("setoption name Contempt value " + contempt);
             LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
             
-            // 等待参数设置完成
+            // 等待参数设置完成（使用非阻塞方式）
             sendCommand("isready");
+            waitForReadyOk();
         }
     }
     
