@@ -584,9 +584,9 @@ public class PikafishAI {
                 int randomness = chessInfo.variationRandomness;
                 if (randomness <= 0) randomness = 3;
                 
-                // 根据随机性等级增加深度和时间
+                // 根据随机性等级增加深度和时间（适度增加，避免 ANR）
                 depth = depth + randomness; // 增加深度
-                time = time * (randomness + 1); // 增加思考时间
+                time = (int) (time * 1.5); // 增加 50% 思考时间，避免过长导致 ANR
                 
                 LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
                 
