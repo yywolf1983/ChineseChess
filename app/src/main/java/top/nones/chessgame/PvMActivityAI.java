@@ -22,7 +22,7 @@ public class PvMActivityAI {
     private PvMActivity activity;
     private int aiRetryCount = 0;
     private final Object aiAnalysisLock = new Object();
-    private volatile boolean isAIAnalyzing = false;
+    public volatile boolean isAIAnalyzing = false;
     // 使用有界队列和自定义拒绝策略，避免线程堆积
     private java.util.concurrent.ThreadPoolExecutor executorService;
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -575,6 +575,9 @@ public class PvMActivityAI {
         
         stopAISearch();
         
+        // 重置AI分析状态
+        isAIAnalyzing = false;
+        
         // 重置AI思考状态，确保AI行棋后不显示"AI正在思考"
         if (this.activity != null && this.activity.roundView != null) {
             this.activity.roundView.setSearchDepth(0, isRed);
@@ -702,6 +705,7 @@ public class PvMActivityAI {
                     aiInstance.executeAIMove(move);
                 } else {
                     aiInstance.stopAISearch();
+                    aiInstance.isAIAnalyzing = false;
                     
                     if (activity.chessInfo != null) {
                         // 移除胜利判断，只保留被将判断
@@ -720,6 +724,7 @@ public class PvMActivityAI {
                 e.printStackTrace();
                 // 确保AI搜索被停止
                 aiInstance.stopAISearch();
+                aiInstance.isAIAnalyzing = false;
                 aiInstance.aiRetryCount = 0;
             }
         }
@@ -730,6 +735,13 @@ public class PvMActivityAI {
             return;
         }
         
+        synchronized (aiAnalysisLock) {
+            if (isAIAnalyzing) {
+                return;
+            }
+            isAIAnalyzing = true;
+        }
+        
         final PvMActivityAI aiInstance = this;
         
         this.executorService.execute(new AIThreadRunnable(aiInstance));
@@ -738,6 +750,19 @@ public class PvMActivityAI {
     public void checkAIMove() {
         if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.status != 1) {
             return;
+        }
+        
+        // 确保使用最新的设置
+        if (PvMActivity.setting != null && this.activity.chessInfo.setting != PvMActivity.setting) {
+            this.activity.chessInfo.setting = PvMActivity.setting;
+            // 更新PikafishAI的设置
+            if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
+                int skillLevel = PvMActivity.setting.skillLevel;
+                int multiPV = PvMActivity.setting.multiPV;
+                int depth = PvMActivity.setting.depth;
+                int thinkingTime = PvMActivity.setting.mLevel;
+                this.activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
+            }
         }
         
         if (this.activity.gameMode == 1) {

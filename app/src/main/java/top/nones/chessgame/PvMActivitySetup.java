@@ -502,8 +502,21 @@ public class PvMActivitySetup {
                 if (activity.roundView != null) {
                     activity.roundView.setVisibility(View.VISIBLE);
                 }
+                // 摆棋结束后默认设置为双人模式
+                activity.gameMode = 0;
+                // 更新RoundView的游戏模式显示
+                if (activity.roundView != null) {
+                    activity.roundView.setGameMode(0);
+                }
 
             } else {
+                // 开启摆棋模式前，中断所有行棋
+                // 停止AI分析
+                if (activity.aiManager != null) {
+                    activity.aiManager.stopAIAnalysis();
+                }
+                // 停止计时器
+                activity.stopTurnTimer();
                 // 开启摆棋模式
                 activity.chessInfo.IsSetupMode = true;
                 // 显示摆棋模式视图

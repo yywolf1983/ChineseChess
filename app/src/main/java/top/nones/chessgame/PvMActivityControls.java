@@ -224,7 +224,9 @@ public class PvMActivityControls {
             if (activity.pikafishAI != null) {
                 int skillLevel = PvMActivity.setting != null ? PvMActivity.setting.skillLevel : 20;
                 int multiPV = PvMActivity.setting != null ? PvMActivity.setting.multiPV : 1;
-                activity.pikafishAI.updateSettings(skillLevel, multiPV);
+                int depth = PvMActivity.setting != null ? PvMActivity.setting.depth : 10;
+                int thinkingTime = PvMActivity.setting != null ? PvMActivity.setting.mLevel : 5;
+                activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
             }
             // 不重置游戏，从当前棋局开始
             // 检查是否需要AI移动
@@ -275,6 +277,11 @@ public class PvMActivityControls {
             return false;
         }
         PvMActivity.curClickTime = lastClickTime;
+
+        // 检查AI是否正在分析，如果是则禁止人类玩家移动棋子
+        if (activity.aiManager != null && activity.aiManager.isAIAnalyzing) {
+            return false;
+        }
 
         if (event.getAction() == MotionEvent.ACTION_DOWN) {
             float x = event.getX();

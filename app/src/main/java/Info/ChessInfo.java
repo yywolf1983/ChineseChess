@@ -1,8 +1,10 @@
 package Info;
 
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -10,6 +12,7 @@ import ChessMove.Rule;
 
 public class ChessInfo implements Cloneable, Serializable {
     private static final long serialVersionUID = -8764412462496314495L;
+    private static final int MAX_POSITION_HISTORY_SIZE = 100; // 最大局面历史记录数量
 
     public int[][] piece;
     public boolean IsRedGo;
@@ -54,6 +57,14 @@ public class ChessInfo implements Cloneable, Serializable {
 
     public ChessInfo() {
         init();
+    }
+
+    // 具名内部类，用于创建带有 DiscardOldestPolicy 的 LinkedHashMap
+    private static class PositionHistoryMap extends LinkedHashMap<String, Integer> {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, Integer> eldest) {
+            return size() > MAX_POSITION_HISTORY_SIZE;
+        }
     }
 
     private void init() {
@@ -114,7 +125,7 @@ public class ChessInfo implements Cloneable, Serializable {
         suggestToPos = null;
         
         // 初始化和棋判断相关字段
-        positionHistory = new HashMap<>();
+        positionHistory = new PositionHistoryMap();
         consecutiveCheckRed = 0;
         consecutiveCheckBlack = 0;
         lastMoveWasCheck = false;
@@ -169,7 +180,8 @@ public class ChessInfo implements Cloneable, Serializable {
         this.suggestToPos = info.suggestToPos != null ? (Pos) info.suggestToPos.clone() : null;
         
         // 复制和棋判断相关字段
-        this.positionHistory = new HashMap<>(info.positionHistory);
+        this.positionHistory = new PositionHistoryMap();
+        this.positionHistory.putAll(info.positionHistory);
         this.consecutiveCheckRed = info.consecutiveCheckRed;
         this.consecutiveCheckBlack = info.consecutiveCheckBlack;
         this.lastMoveWasCheck = info.lastMoveWasCheck;
@@ -498,7 +510,8 @@ public class ChessInfo implements Cloneable, Serializable {
         info.suggestToPos = this.suggestToPos != null ? (Pos) this.suggestToPos.clone() : null;
         
         // 复制和棋判断相关字段
-        info.positionHistory = new HashMap<>(this.positionHistory);
+        info.positionHistory = new PositionHistoryMap();
+        info.positionHistory.putAll(this.positionHistory);
         info.consecutiveCheckRed = this.consecutiveCheckRed;
         info.consecutiveCheckBlack = this.consecutiveCheckBlack;
         info.lastMoveWasCheck = this.lastMoveWasCheck;
@@ -542,6 +555,26 @@ public class ChessInfo implements Cloneable, Serializable {
                     }
                 }
             }
+        }
+    }
+    
+    /**
+     * 反序列化时初始化字段
+     */
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        
+        // 确保 positionHistory 被初始化
+        if (positionHistory == null) {
+            positionHistory = new PositionHistoryMap();
+        }
+        
+        // 确保其他必要字段被初始化
+        if (ret == null) {
+            ret = new ArrayList<>();
+        }
+        if (Select == null) {
+            Select = new int[]{-1, -1};
         }
     }
 }

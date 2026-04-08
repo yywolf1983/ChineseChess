@@ -1038,6 +1038,8 @@ public class PikafishAI {
         }
     }
     
+
+    
     public void close() {
         try {
             // 先中断搜索
