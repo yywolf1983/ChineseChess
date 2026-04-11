@@ -523,6 +523,12 @@ public class PikafishAI {
         }
         
         try {
+            // 检查 reader 是否为 null
+            if (reader == null) {
+                Log.e("PikafishAI", "reader 为 null，AI 未正确初始化");
+                return new MoveWithScore(getDefaultMove(chessInfo), 0);
+            }
+            
             if (!initialized) {
                 Log.e("PikafishAI", "AI未初始化，尝试重新初始化");
                 // 尝试重新初始化
@@ -584,9 +590,9 @@ public class PikafishAI {
                 int randomness = chessInfo.variationRandomness;
                 if (randomness <= 0) randomness = 3;
                 
-                // 根据随机性等级增加深度和时间（适度增加，避免 ANR）
-                depth = depth + randomness; // 增加深度
-                time = (int) (time * 1.5); // 增加 50% 思考时间，避免过长导致 ANR
+                // 根据随机性等级增加深度和多样性，但不增加思考时间（避免 ANR）
+                depth = depth + randomness; // 只增加深度
+                // 保持思考时间不变，避免 ANR
                 
                 LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
                 
