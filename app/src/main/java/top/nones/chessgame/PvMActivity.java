@@ -523,26 +523,26 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // 关闭PikafishAI资源
-        if (pikafishAI != null) {
-            pikafishAI.close();
-        }
-        // 关闭AI线程池
-        if (aiManager != null) {
-            aiManager.shutdown();
-        }
-        // 关闭时间更新线程
+        final PikafishAI aiToClose = pikafishAI;
+        final PvMActivityAI aiManagerToShutdown = aiManager;
+
+        // 关闭时间更新线程（主线程避免等待）
         if (timeUpdateExecutor != null) {
             timeUpdateExecutor.shutdownNow();
-            try {
-                if (!timeUpdateExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
-                    timeUpdateExecutor.shutdownNow();
-                }
-            } catch (InterruptedException e) {
-                timeUpdateExecutor.shutdownNow();
-                Thread.currentThread().interrupt();
-            }
         }
+
+        // 将可能阻塞的关闭逻辑放到后台，避免destroy阶段卡顿
+        new Thread(() -> {
+            long cleanupStartMs = System.currentTimeMillis();
+            if (aiToClose != null) {
+                aiToClose.close();
+            }
+            if (aiManagerToShutdown != null) {
+                aiManagerToShutdown.shutdown();
+            }
+            LogUtils.i("Perf", "onDestroy background cleanup cost=" + (System.currentTimeMillis() - cleanupStartMs) + "ms");
+        }, "pvm-destroy-cleanup").start();
+
         // 释放音乐资源
         if (backMusic != null) {
             backMusic.release();

@@ -29,6 +29,13 @@ public class RoundView extends View {
     private boolean isSuggestMode = false; // 是否处于支招模式
     private String suggestMoveText = ""; // 支招走法文本
     private String moveInfoText = ""; // 步数信息文本
+    private String cachedBoardKey = "";
+    private boolean cachedRedKingExists = true;
+    private boolean cachedBlackKingExists = true;
+    private boolean cachedRedCheckmated = false;
+    private boolean cachedBlackCheckmated = false;
+    private boolean cachedRedStalemated = false;
+    private boolean cachedBlackStalemated = false;
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
@@ -239,48 +246,37 @@ public class RoundView extends View {
         // 绘制评分（左侧）
         String scoreText;
         
-        // 检查是否有一方被将死或王被吃掉
-        boolean redKingExists = false;
-        boolean blackKingExists = false;
-        // 检查整个棋盘，寻找红帅和黑将
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
-                if (chessInfo.piece[i][j] == 8) { // 红帅
-                    redKingExists = true;
-                }
-                if (chessInfo.piece[i][j] == 1) { // 黑将
-                    blackKingExists = true;
-                }
-            }
+        String currentBoardKey = buildBoardKey();
+        if (!currentBoardKey.equals(cachedBoardKey)) {
+            cachedBoardKey = currentBoardKey;
+            refreshEndgameStateCache();
         }
         
         // 检查游戏状态
         boolean isGameOver = chessInfo.status == 2;
         
-        // 检查是否有一方被将死
-        boolean redCheckmated = Rule.isCheckmate(chessInfo.piece, true);
-        boolean blackCheckmated = Rule.isCheckmate(chessInfo.piece, false);
-        
-        // 检查是否有一方被困毙
-        boolean redStalemated = Rule.isStalemate(chessInfo.piece, true);
-        boolean blackStalemated = Rule.isStalemate(chessInfo.piece, false);
-        
         // 检查是否是和棋
-        boolean isDraw = isGameOver && !redCheckmated && !blackCheckmated && !redStalemated && !blackStalemated && redKingExists && blackKingExists;
+        boolean isDraw = isGameOver
+            && !cachedRedCheckmated
+            && !cachedBlackCheckmated
+            && !cachedRedStalemated
+            && !cachedBlackStalemated
+            && cachedRedKingExists
+            && cachedBlackKingExists;
         
         // 优先显示王被吃掉的情况
-        if (!redKingExists) {
+        if (!cachedRedKingExists) {
             scoreText = "黑方胜利！";
-        } else if (!blackKingExists) {
+        } else if (!cachedBlackKingExists) {
             scoreText = "红方胜利！";
         } else if (isDraw) {
             // 和棋
             scoreText = "和棋！";
-        } else if (isGameOver || redCheckmated || blackCheckmated || redStalemated || blackStalemated) {
+        } else if (isGameOver || cachedRedCheckmated || cachedBlackCheckmated || cachedRedStalemated || cachedBlackStalemated) {
             // 游戏结束或被将死或被困毙，根据情况判断胜利者
-            if (redCheckmated || redStalemated) {
+            if (cachedRedCheckmated || cachedRedStalemated) {
                 scoreText = "黑方胜利！";
-            } else if (blackCheckmated || blackStalemated) {
+            } else if (cachedBlackCheckmated || cachedBlackStalemated) {
                 scoreText = "红方胜利！";
             } else {
                 // 游戏结束，根据行棋方判断胜利者
@@ -517,5 +513,42 @@ public class RoundView extends View {
     // 外部调用的绘制方法
     public void requestDraw() {
         invalidate();
+    }
+
+    private String buildBoardKey() {
+        StringBuilder sb = new StringBuilder(128);
+        if (chessInfo == null || chessInfo.piece == null) {
+            return "";
+        }
+
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                sb.append((char) ('A' + chessInfo.piece[i][j]));
+            }
+        }
+        sb.append('|').append(chessInfo.status);
+        sb.append('|').append(chessInfo.IsRedGo ? 'R' : 'B');
+        sb.append('|').append(chessInfo.totalMoves);
+        return sb.toString();
+    }
+
+    private void refreshEndgameStateCache() {
+        cachedRedKingExists = false;
+        cachedBlackKingExists = false;
+
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 9; j++) {
+                if (chessInfo.piece[i][j] == 8) {
+                    cachedRedKingExists = true;
+                } else if (chessInfo.piece[i][j] == 1) {
+                    cachedBlackKingExists = true;
+                }
+            }
+        }
+
+        cachedRedCheckmated = Rule.isCheckmate(chessInfo.piece, true);
+        cachedBlackCheckmated = Rule.isCheckmate(chessInfo.piece, false);
+        cachedRedStalemated = Rule.isStalemate(chessInfo.piece, true);
+        cachedBlackStalemated = Rule.isStalemate(chessInfo.piece, false);
     }
 }

@@ -226,7 +226,14 @@ public class PvMActivityControls {
                 int multiPV = PvMActivity.setting != null ? PvMActivity.setting.multiPV : 1;
                 int depth = PvMActivity.setting != null ? PvMActivity.setting.depth : 10;
                 int thinkingTime = PvMActivity.setting != null ? PvMActivity.setting.mLevel : 5;
-                activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
+                new Thread(
+                    () -> {
+                        long startMs = System.currentTimeMillis();
+                        activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
+                        LogUtils.i("Perf", "modeButton.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
+                    },
+                    "mode-update-settings"
+                ).start();
             }
             // 不重置游戏，从当前棋局开始
             // 检查是否需要AI移动

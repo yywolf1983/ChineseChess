@@ -317,7 +317,14 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                         
                         // 更新PikafishAI的设置
                         if (activity.pikafishAI != null) {
-                            activity.pikafishAI.updateSettings(skillLevel, multiPV, searchDepth, thinkingTime);
+                            new Thread(
+                                () -> {
+                                    long startMs = System.currentTimeMillis();
+                                    activity.pikafishAI.updateSettings(skillLevel, multiPV, searchDepth, thinkingTime);
+                                    LogUtils.i("Perf", "dialog.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
+                                },
+                                "dialog-update-settings"
+                            ).start();
                         }
                     }
                 } catch (Exception e) {

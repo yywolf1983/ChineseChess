@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # 设置JAVA_HOME为Java 17
-export JAVA_HOME=/opt/homebrew/Cellar/openjdk@17/17.0.18/libexec/openjdk.jdk/Contents/Home
 
 # 颜色定义
 GREEN="\033[0;32m"
