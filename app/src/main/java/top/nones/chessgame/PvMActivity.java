@@ -174,40 +174,47 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
     @Override
     public void onClick(View view) {
-        lastClickTime = System.currentTimeMillis();
-        if (lastClickTime - curClickTime < MIN_CLICK_DELAY_TIME) {
-            return;
-        }
-        curClickTime = lastClickTime;
+        try {
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - curClickTime < MIN_CLICK_DELAY_TIME) {
+                LogUtils.d("PvMActivity", "Button click skipped due to debounce");
+                return;
+            }
+            curClickTime = currentTime;
 
-        int viewId = view.getId();
-        if (viewId == R.id.btn_retry) {
-            controlsManager.handleRetryButton();
-        } else if (viewId == R.id.btn_prev) {
-            // 上一步
-            controlsManager.handlePrevButton();
-        } else if (viewId == R.id.btn_next) {
-            // 下一步
-            controlsManager.handleNextButton();
-        } else if (viewId == R.id.btn_recall) {
-            controlsManager.handleRecallButton();
-        } else if (viewId == R.id.btn_save) {
-            // 保存棋谱 - 使用SAF选择保存位置
-            notationManager.showSaveNotationDialog();
-        } else if (viewId == R.id.btn_settings) {
-            controlsManager.handleSettingsButton();
-        } else if (viewId == R.id.btn_mode) {
-            // 切换对战模式
-            controlsManager.handleModeButton();
-        } else if (viewId == R.id.btn_load) {
-            // 加载棋谱 - 使用SAF选择文件
-            notationManager.showLoadNotationDialog();
-        } else if (viewId == R.id.btn_statistics) {
-            // AI支招功能
-            controlsManager.handleStatisticsButton();
-        } else if (viewId == R.id.btn_setup) {
-            // 切换摆棋模式
-            setupManager.toggleSetupMode();
+            int viewId = view.getId();
+            LogUtils.d("PvMActivity", "Button clicked: " + viewId);
+            
+            if (viewId == R.id.btn_retry) {
+                controlsManager.handleRetryButton();
+            } else if (viewId == R.id.btn_prev) {
+                // 上一步
+                controlsManager.handlePrevButton();
+            } else if (viewId == R.id.btn_next) {
+                // 下一步
+                controlsManager.handleNextButton();
+            } else if (viewId == R.id.btn_recall) {
+                controlsManager.handleRecallButton();
+            } else if (viewId == R.id.btn_save) {
+                // 保存棋谱 - 使用SAF选择保存位置
+                notationManager.showSaveNotationDialog();
+            } else if (viewId == R.id.btn_settings) {
+                controlsManager.handleSettingsButton();
+            } else if (viewId == R.id.btn_mode) {
+                // 切换对战模式
+                controlsManager.handleModeButton();
+            } else if (viewId == R.id.btn_load) {
+                // 加载棋谱 - 使用SAF选择文件
+                notationManager.showLoadNotationDialog();
+            } else if (viewId == R.id.btn_statistics) {
+                // AI支招功能
+                controlsManager.handleStatisticsButton();
+            } else if (viewId == R.id.btn_setup) {
+                // 切换摆棋模式
+                setupManager.toggleSetupMode();
+            }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivity", "Error in button click handler", e);
         }
     }
     

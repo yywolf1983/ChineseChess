@@ -51,135 +51,153 @@ public class PvMActivityControls {
     
     // 处理重试按钮
     public void handleRetryButton() {
-        // 显示新局确认对话框
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
-        builder.setTitle("新局确认");
-        builder.setMessage("确定要开始新局吗？当前游戏进度将被清除。");
-        builder.setPositiveButton("确定", (dialog, which) -> {
-            // 完全重置游戏状态
-            try {
-                // 创建新的ChessInfo对象
-                activity.chessInfo = new ChessInfo();
-                // 重新设置setting属性
-                if (PvMActivity.setting != null) {
-                    activity.chessInfo.setting = PvMActivity.setting;
-                }
-                // 确保摆棋模式被关闭
-                activity.chessInfo.IsSetupMode = false;
-                
-                // 创建新的InfoSet对象
-                activity.infoSet = new InfoSet();
-                // 重新推入初始状态
-                activity.infoSet.pushInfo(activity.chessInfo);
-            } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-            }
-            
-            // 重置棋谱相关变量
-            activity.notationManager.setCurrentNotation(null);
-            activity.notationManager.setCurrentMoveIndex(0);
-            // 重置setupFEN，确保新局使用标准初始局面
-            activity.notationManager.setSetupFEN(null);
-            // 重置继续对局后的回合计数器
-            activity.continueGameRoundCount = 0;
-            // 重置时间
-            activity.redTime = 0;
-            activity.blackTime = 0;
-            activity.currentTurnStartTime = 0;
-            activity.updateTimeDisplay();
+        try {
+            LogUtils.d("PvMActivityControls", "handleRetryButton called");
+            // 显示新局确认对话框
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+            builder.setTitle("新局确认");
+            builder.setMessage("确定要开始新局吗？当前游戏进度将被清除。");
+            builder.setPositiveButton("确定", (dialog, which) -> {
+                try {
+                    // 完全重置游戏状态
+                    try {
+                        // 创建新的ChessInfo对象
+                        activity.chessInfo = new ChessInfo();
+                        // 重新设置setting属性
+                        if (PvMActivity.setting != null) {
+                            activity.chessInfo.setting = PvMActivity.setting;
+                        }
+                        // 确保摆棋模式被关闭
+                        activity.chessInfo.IsSetupMode = false;
+                        
+                        // 创建新的InfoSet对象
+                        activity.infoSet = new InfoSet();
+                        // 重新推入初始状态
+                        activity.infoSet.pushInfo(activity.chessInfo);
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvMActivityControls", "Error pushing info in retry", e);
+                    }
+                    
+                    // 重置棋谱相关变量
+                    activity.notationManager.setCurrentNotation(null);
+                    activity.notationManager.setCurrentMoveIndex(0);
+                    // 重置setupFEN，确保新局使用标准初始局面
+                    activity.notationManager.setSetupFEN(null);
+                    // 重置继续对局后的回合计数器
+                    activity.continueGameRoundCount = 0;
+                    // 重置时间
+                    activity.redTime = 0;
+                    activity.blackTime = 0;
+                    activity.currentTurnStartTime = 0;
+                    activity.updateTimeDisplay();
 
-            // 重新绘制界面
-            if (activity.chessView != null) {
-                activity.chessView.setChessInfo(activity.chessInfo);
-                activity.chessView.requestDraw();
-            }
-            if (activity.roundView != null) {
-                activity.roundView.setChessInfo(activity.chessInfo);
-                activity.roundView.requestDraw();
-            }
-            if (activity.setupModeView != null) {
-                activity.setupModeView.setChessInfo(activity.chessInfo);
-                activity.setupModeView.setVisibility(View.GONE);
-            }
-        });
-        builder.setNegativeButton("取消", null);
-        builder.show();
+                    // 重新绘制界面
+                    if (activity.chessView != null) {
+                        activity.chessView.setChessInfo(activity.chessInfo);
+                        activity.chessView.requestDraw();
+                    }
+                    if (activity.roundView != null) {
+                        activity.roundView.setChessInfo(activity.chessInfo);
+                        activity.roundView.requestDraw();
+                    }
+                    if (activity.setupModeView != null) {
+                        activity.setupModeView.setChessInfo(activity.chessInfo);
+                        activity.setupModeView.setVisibility(View.GONE);
+                    }
+                    LogUtils.d("PvMActivityControls", "handleRetryButton completed");
+                } catch (Exception e) {
+                    LogUtils.e("PvMActivityControls", "Error in positive button click", e);
+                }
+            });
+            builder.setNegativeButton("取消", null);
+            builder.show();
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleRetryButton", e);
+        }
     }
     
     // 处理悔棋按钮
     public void handleRecallButton() {
-        if (activity.infoSet != null && activity.infoSet.preInfo != null && activity.chessInfo != null && activity.infoSet.curInfo != null) {
-            // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
-            if (activity.infoSet.preInfo.size() > 1) {
-                // 弹出栈顶元素（当前状态）
-                activity.infoSet.preInfo.pop();
-                // 恢复到新的栈顶元素的状态
-                ChessInfo tmp = activity.infoSet.preInfo.peek();
-                try {
-                    if (tmp != null) {
-                        // 恢复棋盘状态
-                        activity.chessInfo.setInfo(tmp);
-                        activity.infoSet.curInfo.setInfo(tmp);
-                        // 清除当前chessInfo的过时走法记录，避免保存棋谱时处理到这些值
-                        activity.chessInfo.prePos = null;
-                        activity.chessInfo.curPos = null;
-                        // 重置时间
-                        activity.redTime = 0;
-                        activity.blackTime = 0;
-                        activity.currentTurnStartTime = 0;
-                        activity.updateTimeDisplay();
-                        // 重新绘制界面
-                        if (activity.chessView != null) {
-                            activity.chessView.requestDraw();
+        try {
+            LogUtils.d("PvMActivityControls", "handleRecallButton called");
+            if (activity.infoSet != null && activity.infoSet.preInfo != null && activity.chessInfo != null && activity.infoSet.curInfo != null) {
+                // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
+                if (activity.infoSet.preInfo.size() > 1) {
+                    // 弹出栈顶元素（当前状态）
+                    activity.infoSet.preInfo.pop();
+                    // 恢复到新的栈顶元素的状态
+                    ChessInfo tmp = activity.infoSet.preInfo.peek();
+                    try {
+                        if (tmp != null) {
+                            // 恢复棋盘状态
+                            activity.chessInfo.setInfo(tmp);
+                            activity.infoSet.curInfo.setInfo(tmp);
+                            // 清除当前chessInfo的过时走法记录，避免保存棋谱时处理到这些值
+                            activity.chessInfo.prePos = null;
+                            activity.chessInfo.curPos = null;
+                            // 重置时间
+                            activity.redTime = 0;
+                            activity.blackTime = 0;
+                            activity.currentTurnStartTime = 0;
+                            activity.updateTimeDisplay();
+                            // 重新绘制界面
+                            if (activity.chessView != null) {
+                                activity.chessView.requestDraw();
+                            }
+                            if (activity.roundView != null) {
+                                activity.roundView.requestDraw();
+                            }
                         }
-                        if (activity.roundView != null) {
-                            activity.roundView.requestDraw();
-                        }
-
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvMActivityControls", "Error in recall", e);
                     }
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-
-                }
-            } else if (activity.infoSet.preInfo.size() == 1) {
-                // 只剩一个状态了，这就是初始状态，直接恢复它但不弹出
-                ChessInfo tmp = activity.infoSet.preInfo.peek();
-                try {
-                    if (tmp != null) {
-                        // 恢复棋盘状态
-                        activity.chessInfo.setInfo(tmp);
-                        activity.infoSet.curInfo.setInfo(tmp);
-                        // 清除当前chessInfo的过时走法记录，避免保存棋谱时处理到这些值
-                        activity.chessInfo.prePos = null;
-                        activity.chessInfo.curPos = null;
-                        // 重置时间
-                        activity.redTime = 0;
-                        activity.blackTime = 0;
-                        activity.currentTurnStartTime = 0;
-                        activity.updateTimeDisplay();
-                        // 重新绘制界面
-                        if (activity.chessView != null) {
-                            activity.chessView.requestDraw();
+                } else if (activity.infoSet.preInfo.size() == 1) {
+                    // 只剩一个状态了，这就是初始状态，直接恢复它但不弹出
+                    ChessInfo tmp = activity.infoSet.preInfo.peek();
+                    try {
+                        if (tmp != null) {
+                            // 恢复棋盘状态
+                            activity.chessInfo.setInfo(tmp);
+                            activity.infoSet.curInfo.setInfo(tmp);
+                            // 清除当前chessInfo的过时走法记录，避免保存棋谱时处理到这些值
+                            activity.chessInfo.prePos = null;
+                            activity.chessInfo.curPos = null;
+                            // 重置时间
+                            activity.redTime = 0;
+                            activity.blackTime = 0;
+                            activity.currentTurnStartTime = 0;
+                            activity.updateTimeDisplay();
+                            // 重新绘制界面
+                            if (activity.chessView != null) {
+                                activity.chessView.requestDraw();
+                            }
+                            if (activity.roundView != null) {
+                                activity.roundView.requestDraw();
+                            }
                         }
-                        if (activity.roundView != null) {
-                            activity.roundView.requestDraw();
-                        }
-
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvMActivityControls", "Error in recall initial state", e);
                     }
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-
                 }
             }
+            LogUtils.d("PvMActivityControls", "handleRecallButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleRecallButton", e);
         }
     }
     
     // 处理设置按钮
     public void handleSettingsButton() {
-        // 显示设置对话框
-        CustomDialog.SettingDialog_PvM settingDialog = new CustomDialog.SettingDialog_PvM(activity);
-        settingDialog.setOnClickBottomListener(new SettingDialogListener(settingDialog));
-        settingDialog.show();
+        try {
+            LogUtils.d("PvMActivityControls", "handleSettingsButton called");
+            // 显示设置对话框
+            CustomDialog.SettingDialog_PvM settingDialog = new CustomDialog.SettingDialog_PvM(activity);
+            settingDialog.setOnClickBottomListener(new SettingDialogListener(settingDialog));
+            settingDialog.show();
+            LogUtils.d("PvMActivityControls", "handleSettingsButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleSettingsButton", e);
+        }
     }
     
     // 静态内部类，避免匿名内部类导致的空指针异常
@@ -207,74 +225,108 @@ public class PvMActivityControls {
     
     // 处理模式按钮
     public void handleModeButton() {
-        // 显示模式切换对话框
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
-        builder.setTitle("选择对战模式");
-        builder.setItems(new String[]{"双人对战", "人机对战(玩家红)", "人机对战(玩家黑)", "双机对战"}, (dialog, which) -> {
-            activity.gameMode = which;
-            // 更新RoundView的游戏模式显示
-            if (activity.roundView != null) {
-                activity.roundView.setGameMode(which);
-            }
-            // 重新读取设置，确保新模式下使用最新设置
-            if (PvMActivity.setting != null && activity.chessInfo != null) {
-                activity.chessInfo.setting = PvMActivity.setting;
-            }
-            // 更新PikafishAI的设置
-            if (activity.pikafishAI != null) {
-                int skillLevel = PvMActivity.setting != null ? PvMActivity.setting.skillLevel : 20;
-                int multiPV = PvMActivity.setting != null ? PvMActivity.setting.multiPV : 1;
-                int depth = PvMActivity.setting != null ? PvMActivity.setting.depth : 10;
-                int thinkingTime = PvMActivity.setting != null ? PvMActivity.setting.mLevel : 5;
-                new Thread(
-                    () -> {
-                        long startMs = System.currentTimeMillis();
-                        activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
-                        LogUtils.i("Perf", "modeButton.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
-                    },
-                    "mode-update-settings"
-                ).start();
-            }
-            // 不重置游戏，从当前棋局开始
-            // 检查是否需要AI移动
-            activity.gameManager.checkAIMove();
-        });
-        builder.show();
+        try {
+            LogUtils.d("PvMActivityControls", "handleModeButton called");
+            // 显示模式切换对话框
+            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+            builder.setTitle("选择对战模式");
+            builder.setItems(new String[]{"双人对战", "人机对战(玩家红)", "人机对战(玩家黑)", "双机对战"}, (dialog, which) -> {
+                try {
+                    activity.gameMode = which;
+                    // 更新RoundView的游戏模式显示
+                    if (activity.roundView != null) {
+                        activity.roundView.setGameMode(which);
+                    }
+                    // 重新读取设置，确保新模式下使用最新设置
+                    if (PvMActivity.setting != null && activity.chessInfo != null) {
+                        activity.chessInfo.setting = PvMActivity.setting;
+                    }
+                    // 更新PikafishAI的设置
+                    if (activity.pikafishAI != null) {
+                        int skillLevel = PvMActivity.setting != null ? PvMActivity.setting.skillLevel : 20;
+                        int multiPV = PvMActivity.setting != null ? PvMActivity.setting.multiPV : 1;
+                        int depth = PvMActivity.setting != null ? PvMActivity.setting.depth : 10;
+                        int thinkingTime = PvMActivity.setting != null ? PvMActivity.setting.mLevel : 5;
+                        new Thread(
+                            () -> {
+                                long startMs = System.currentTimeMillis();
+                                activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
+                                LogUtils.i("Perf", "modeButton.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
+                            },
+                            "mode-update-settings"
+                        ).start();
+                    }
+                    // 不重置游戏，从当前棋局开始
+                    // 检查是否需要AI移动
+                    activity.gameManager.checkAIMove();
+                    LogUtils.d("PvMActivityControls", "handleModeButton completed");
+                } catch (Exception e) {
+                    LogUtils.e("PvMActivityControls", "Error in mode button click", e);
+                }
+            });
+            builder.show();
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleModeButton", e);
+        }
     }
     
     // 处理统计/支招按钮
     public void handleStatisticsButton() {
-        long currentTime = System.currentTimeMillis();
-        if (currentTime - lastSuggestClickTime < SUGGEST_BUTTON_INTERVAL) {
-            // 点击间隔小于限制，不处理点击
-            return;
-        }
-        lastSuggestClickTime = currentTime;
-        
-        if (activity.chessInfo != null && !activity.chessInfo.IsSetupMode && !isAIAnalyzing) {
-            // 自动为当前行棋方支招
-            boolean currentPlayerIsRed = activity.chessInfo.IsRedGo;
-            activity.aiManager.showAIMove(currentPlayerIsRed);
-        } else {
+        try {
+            LogUtils.d("PvMActivityControls", "handleStatisticsButton called");
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastSuggestClickTime < SUGGEST_BUTTON_INTERVAL) {
+                // 点击间隔小于限制，不处理点击
+                LogUtils.d("PvMActivityControls", "Suggest button click skipped due to interval");
+                return;
+            }
+            lastSuggestClickTime = currentTime;
+            
+            if (activity.chessInfo != null && !activity.chessInfo.IsSetupMode && !isAIAnalyzing) {
+                // 自动为当前行棋方支招
+                boolean currentPlayerIsRed = activity.chessInfo.IsRedGo;
+                activity.aiManager.showAIMove(currentPlayerIsRed);
+            }
+            LogUtils.d("PvMActivityControls", "handleStatisticsButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleStatisticsButton", e);
         }
     }
     
     // 处理上一步按钮
     public void handlePrevButton() {
-        activity.notationManager.handlePrevButton();
+        try {
+            LogUtils.d("PvMActivityControls", "handlePrevButton called");
+            activity.notationManager.handlePrevButton();
+            LogUtils.d("PvMActivityControls", "handlePrevButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handlePrevButton", e);
+        }
     }
     
     // 处理下一步按钮
     public void handleNextButton() {
-        activity.notationManager.handleNextButton();
+        try {
+            LogUtils.d("PvMActivityControls", "handleNextButton called");
+            activity.notationManager.handleNextButton();
+            LogUtils.d("PvMActivityControls", "handleNextButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleNextButton", e);
+        }
     }
     
     // 处理加载棋谱按钮
     public void handleLoadNotationButton() {
-        // 打开棋谱管理界面
-        Intent intent = new Intent(activity, NotationActivity.class);
-        intent.putExtra("returnToGame", true);
-        activity.startActivityForResult(intent, 1001);
+        try {
+            LogUtils.d("PvMActivityControls", "handleLoadNotationButton called");
+            // 打开棋谱管理界面
+            Intent intent = new Intent(activity, NotationActivity.class);
+            intent.putExtra("returnToGame", true);
+            activity.startActivityForResult(intent, 1001);
+            LogUtils.d("PvMActivityControls", "handleLoadNotationButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error in handleLoadNotationButton", e);
+        }
     }
     
     // 处理触摸事件
