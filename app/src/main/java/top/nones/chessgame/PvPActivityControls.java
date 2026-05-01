@@ -31,47 +31,56 @@ public class PvPActivityControls {
     }
 
     public void onClick(View view) {
-        long lastClickTime = System.currentTimeMillis();
-        if (lastClickTime - PvPActivityInit.getCurClickTime() < PvPActivityInit.getMinClickDelayTime()) {
-            return;
-        }
-        PvPActivityInit.setCurClickTime(lastClickTime);
-        PvPActivityInit.setLastClickTime(lastClickTime);
+        try {
+            long currentTime = System.currentTimeMillis();
+            long lastClick = PvPActivityInit.getCurClickTime();
+            if (currentTime - lastClick < PvPActivityInit.getMinClickDelayTime()) {
+                LogUtils.d("PvPActivityControls", "Button click skipped due to debounce");
+                return;
+            }
+            PvPActivityInit.setCurClickTime(currentTime);
+            PvPActivityInit.setLastClickTime(currentTime);
 
-        if (PvPActivityInit.getSelectMusic() != null) {
-            PvPActivityInit.playEffect(PvPActivityInit.getSelectMusic());
-        }
-        int viewId = view.getId();
-        if (viewId == R.id.btn_retry) {
-            handleRetryButton();
-        } else if (viewId == R.id.btn_recall) {
-            handleRecallButton();
-        } else if (viewId == R.id.btn_save) {
-            // 保存棋谱，让用户指定文件名
-            handleSaveButton();
-        } else if (viewId == R.id.btn_setup) {
-            // 切换摆棋模式
-            if (chessInfo != null) {
-                if (chessInfo.IsSetupMode) {
-                    // 关闭摆棋模式，检查摆棋是否完成
-                    finishSetup();
-                } else {
-                    // 开启摆棋模式
-                    chessInfo.IsSetupMode = true;
-                    // 清空原来的缓存
-                    if (infoSet != null) {
-                        infoSet.newInfo();
+            if (PvPActivityInit.getSelectMusic() != null) {
+                PvPActivityInit.playEffect(PvPActivityInit.getSelectMusic());
+            }
+            
+            int viewId = view.getId();
+            LogUtils.d("PvPActivityControls", "Button clicked: " + viewId);
+            
+            if (viewId == R.id.btn_retry) {
+                handleRetryButton();
+            } else if (viewId == R.id.btn_recall) {
+                handleRecallButton();
+            } else if (viewId == R.id.btn_save) {
+                // 保存棋谱，让用户指定文件名
+                handleSaveButton();
+            } else if (viewId == R.id.btn_setup) {
+                // 切换摆棋模式
+                if (chessInfo != null) {
+                    if (chessInfo.IsSetupMode) {
+                        // 关闭摆棋模式，检查摆棋是否完成
+                        finishSetup();
+                    } else {
+                        // 开启摆棋模式
+                        chessInfo.IsSetupMode = true;
+                        // 清空原来的缓存
+                        if (infoSet != null) {
+                            infoSet.newInfo();
+                        }
+                        // 重新绘制界面
+                        if (activity.getChessView() != null) {
+                            activity.getChessView().requestDraw();
+                        }
+                        if (activity.getRoundView() != null) {
+                            activity.getRoundView().requestDraw();
+                        }
+                        // 移除Toast提示，通过界面显示提示信息
                     }
-                    // 重新绘制界面
-                    if (activity.getChessView() != null) {
-                        activity.getChessView().requestDraw();
-                    }
-                    if (activity.getRoundView() != null) {
-                        activity.getRoundView().requestDraw();
-                    }
-                    // 移除Toast提示，通过界面显示提示信息
                 }
             }
+        } catch (Exception e) {
+            LogUtils.e("PvPActivityControls", "Error in button click handler", e);
         }
     }
 
@@ -165,63 +174,80 @@ public class PvPActivityControls {
     
     // 结束摆棋并选择开局方
     private void finishSetup() {
-        if (checkSetupComplete()) {
-            // 显示选择开局方的对话框
-            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-            builder.setTitle("选择开局方");
-            builder.setMessage("请选择由哪一方开始下棋");
-            builder.setPositiveButton("红方开始", (dialog, which) -> {
-                // 红方开始，设置IsRedGo为true
-                chessInfo.IsRedGo = true;
-                // 退出摆棋模式
-                chessInfo.IsSetupMode = false;
-                // 确保游戏状态为进行中
-                chessInfo.status = 1;
-                // 重置infoSet，清空摆棋过程中的记录
-                infoSet = new InfoSet();
-                // 将当前摆棋局面保存到infoSet中作为初始状态
-                try {
-                    infoSet.pushInfo(chessInfo);
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-                }
-                // 移除Toast提示，通过界面显示提示信息
-                // 重新绘制界面
-                if (activity.getChessView() != null) {
-                    activity.getChessView().requestDraw();
-                }
-            });
-            builder.setNegativeButton("黑方开始", (dialog, which) -> {
-                // 黑方开始，设置IsRedGo为false
-                chessInfo.IsRedGo = false;
-                // 退出摆棋模式
-                chessInfo.IsSetupMode = false;
-                // 确保游戏状态为进行中
-                chessInfo.status = 1;
-                // 重置infoSet，清空摆棋过程中的记录
-                infoSet = new InfoSet();
-                // 将当前摆棋局面保存到infoSet中作为初始状态
-                try {
-                    infoSet.pushInfo(chessInfo);
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-                }
-                // 移除Toast提示，通过界面显示提示信息
-                // 重新绘制界面
-                if (activity.getChessView() != null) {
-                    activity.getChessView().requestDraw();
-                }
-            });
-            builder.setCancelable(false); // 必须选择一个选项
-            builder.show();
-        } else {
-            // 移除Toast提示，通过界面显示提示信息
+        try {
+            LogUtils.d("PvPActivityControls", "finishSetup called");
+            if (checkSetupComplete()) {
+                // 显示选择开局方的对话框
+                AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+                builder.setTitle("选择开局方");
+                builder.setMessage("请选择由哪一方开始下棋");
+                builder.setPositiveButton("红方开始", (dialog, which) -> {
+                    try {
+                        // 红方开始，设置IsRedGo为true
+                        chessInfo.IsRedGo = true;
+                        // 退出摆棋模式
+                        chessInfo.IsSetupMode = false;
+                        // 确保游戏状态为进行中
+                        chessInfo.status = 1;
+                        // 重置infoSet，清空摆棋过程中的记录
+                        infoSet = new InfoSet();
+                        // 将当前摆棋局面保存到infoSet中作为初始状态
+                        try {
+                            infoSet.pushInfo(chessInfo);
+                        } catch (CloneNotSupportedException e) {
+                            LogUtils.e("PvPActivityControls", "Error pushing info in finishSetup", e);
+                        }
+                        // 重新绘制界面
+                        if (activity.getChessView() != null) {
+                            activity.getChessView().requestDraw();
+                        }
+                        if (activity.getRoundView() != null) {
+                            activity.getRoundView().requestDraw();
+                        }
+                    } catch (Exception e) {
+                        LogUtils.e("PvPActivityControls", "Error in positive button click", e);
+                    }
+                });
+                builder.setNegativeButton("黑方开始", (dialog, which) -> {
+                    try {
+                        // 黑方开始，设置IsRedGo为false
+                        chessInfo.IsRedGo = false;
+                        // 退出摆棋模式
+                        chessInfo.IsSetupMode = false;
+                        // 确保游戏状态为进行中
+                        chessInfo.status = 1;
+                        // 重置infoSet，清空摆棋过程中的记录
+                        infoSet = new InfoSet();
+                        // 将当前摆棋局面保存到infoSet中作为初始状态
+                        try {
+                            infoSet.pushInfo(chessInfo);
+                        } catch (CloneNotSupportedException e) {
+                            LogUtils.e("PvPActivityControls", "Error pushing info in finishSetup (black)", e);
+                        }
+                        // 重新绘制界面
+                        if (activity.getChessView() != null) {
+                            activity.getChessView().requestDraw();
+                        }
+                        if (activity.getRoundView() != null) {
+                            activity.getRoundView().requestDraw();
+                        }
+                    } catch (Exception e) {
+                        LogUtils.e("PvPActivityControls", "Error in negative button click", e);
+                    }
+                });
+                builder.setCancelable(false); // 必须选择一个选项
+                builder.show();
+            }
+            LogUtils.d("PvPActivityControls", "finishSetup completed");
+        } catch (Exception e) {
+            LogUtils.e("PvPActivityControls", "Unexpected error in finishSetup", e);
         }
     }
 
     private void handleRetryButton() {
-        // 完全重置游戏状态
         try {
+            LogUtils.d("PvPActivityControls", "handleRetryButton called");
+            // 完全重置游戏状态
             // 创建新的ChessInfo对象
             chessInfo = new ChessInfo();
             // 创建新的InfoSet对象
@@ -237,112 +263,131 @@ public class PvPActivityControls {
                 activity.getRoundView().setChessInfo(chessInfo);
                 activity.getRoundView().requestDraw();
             }
+            LogUtils.d("PvPActivityControls", "handleRetryButton completed");
         } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+            LogUtils.e("PvPActivityControls", "Error in handleRetryButton", e);
+        } catch (Exception e) {
+            LogUtils.e("PvPActivityControls", "Unexpected error in handleRetryButton", e);
         }
-        // 移除Toast提示，通过界面显示提示信息
     }
 
     private void handleRecallButton() {
-        if (infoSet != null && infoSet.preInfo != null && chessInfo != null && infoSet.curInfo != null) {
-            // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
-            if (infoSet.preInfo.size() > 1) {
-                // 弹出栈顶元素（当前状态）
-                infoSet.preInfo.pop();
-                // 恢复到新的栈顶元素的状态
-                ChessInfo tmp = infoSet.preInfo.peek();
-                try {
-                    chessInfo.setInfo(tmp);
-                    infoSet.curInfo.setInfo(tmp);
-                    // 清除过时的走法记录，避免保存棋谱时处理到这些值
-                    chessInfo.prePos = null;
-                    chessInfo.curPos = null;
-                    // 重新绘制界面
-                    if (activity.getChessView() != null) {
-                        activity.getChessView().requestDraw();
+        try {
+            LogUtils.d("PvPActivityControls", "handleRecallButton called");
+            if (infoSet != null && infoSet.preInfo != null && chessInfo != null && infoSet.curInfo != null) {
+                // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
+                if (infoSet.preInfo.size() > 1) {
+                    // 弹出栈顶元素（当前状态）
+                    infoSet.preInfo.pop();
+                    // 恢复到新的栈顶元素的状态
+                    ChessInfo tmp = infoSet.preInfo.peek();
+                    try {
+                        chessInfo.setInfo(tmp);
+                        infoSet.curInfo.setInfo(tmp);
+                        // 清除过时的走法记录，避免保存棋谱时处理到这些值
+                        chessInfo.prePos = null;
+                        chessInfo.curPos = null;
+                        // 重新绘制界面
+                        if (activity.getChessView() != null) {
+                            activity.getChessView().requestDraw();
+                        }
+                        if (activity.getRoundView() != null) {
+                            activity.getRoundView().requestDraw();
+                        }
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvPActivityControls", "Error in recall - clone not supported", e);
                     }
-                    if (activity.getRoundView() != null) {
-                        activity.getRoundView().requestDraw();
+                } else if (infoSet.preInfo.size() == 1) {
+                    // 只剩一个状态了，这就是初始状态，直接恢复它但不弹出
+                    ChessInfo tmp = infoSet.preInfo.peek();
+                    try {
+                        chessInfo.setInfo(tmp);
+                        infoSet.curInfo.setInfo(tmp);
+                        // 清除过时的走法记录，避免保存棋谱时处理到这些值
+                        chessInfo.prePos = null;
+                        chessInfo.curPos = null;
+                        // 重新绘制界面
+                        if (activity.getChessView() != null) {
+                            activity.getChessView().requestDraw();
+                        }
+                        if (activity.getRoundView() != null) {
+                            activity.getRoundView().requestDraw();
+                        }
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvPActivityControls", "Error in recall initial state", e);
                     }
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
-                }
-            } else if (infoSet.preInfo.size() == 1) {
-                // 只剩一个状态了，这就是初始状态，直接恢复它但不弹出
-                ChessInfo tmp = infoSet.preInfo.peek();
-                try {
-                    chessInfo.setInfo(tmp);
-                    infoSet.curInfo.setInfo(tmp);
-                    // 清除过时的走法记录，避免保存棋谱时处理到这些值
-                    chessInfo.prePos = null;
-                    chessInfo.curPos = null;
-                    // 重新绘制界面
-                    if (activity.getChessView() != null) {
-                        activity.getChessView().requestDraw();
-                    }
-                    if (activity.getRoundView() != null) {
-                        activity.getRoundView().requestDraw();
-                    }
-                } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
                 }
             }
+            LogUtils.d("PvPActivityControls", "handleRecallButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvPActivityControls", "Unexpected error in handleRecallButton", e);
         }
     }
 
     // 保存棋谱（默认名称）
     public void handleSaveButton() {
-        // 创建一个布局用于输入对局信息
-        android.view.LayoutInflater inflater = activity.getLayoutInflater();
-        android.view.View dialogView = inflater.inflate(R.layout.dialog_save_notation, null);
-        
-        final android.widget.EditText redPlayerEditText = dialogView.findViewById(R.id.red_player_edit);
-        final android.widget.EditText blackPlayerEditText = dialogView.findViewById(R.id.black_player_edit);
-        final android.widget.EditText dateEditText = dialogView.findViewById(R.id.date_edit);
-        final android.widget.EditText locationEditText = dialogView.findViewById(R.id.location_edit);
-        final android.widget.EditText eventEditText = dialogView.findViewById(R.id.event_edit);
-        final android.widget.EditText roundEditText = dialogView.findViewById(R.id.round_edit);
-        
-        // 设置默认值
-        dateEditText.setText(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()));
-        
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setTitle("保存棋谱");
-        builder.setView(dialogView);
-        builder.setPositiveButton("保存", (dialog, which) -> {
-            // 生成默认文件名
-            String fileName = "双人对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + ".pgn";
+        try {
+            LogUtils.d("PvPActivityControls", "handleSaveButton called");
+            // 创建一个布局用于输入对局信息
+            android.view.LayoutInflater inflater = activity.getLayoutInflater();
+            android.view.View dialogView = inflater.inflate(R.layout.dialog_save_notation, null);
             
-            String redPlayer = redPlayerEditText.getText().toString().trim();
-            String blackPlayer = blackPlayerEditText.getText().toString().trim();
-            String date = dateEditText.getText().toString().trim();
-            String location = locationEditText.getText().toString().trim();
-            String event = eventEditText.getText().toString().trim();
-            String round = roundEditText.getText().toString().trim();
+            final android.widget.EditText redPlayerEditText = dialogView.findViewById(R.id.red_player_edit);
+            final android.widget.EditText blackPlayerEditText = dialogView.findViewById(R.id.black_player_edit);
+            final android.widget.EditText dateEditText = dialogView.findViewById(R.id.date_edit);
+            final android.widget.EditText locationEditText = dialogView.findViewById(R.id.location_edit);
+            final android.widget.EditText eventEditText = dialogView.findViewById(R.id.event_edit);
+            final android.widget.EditText roundEditText = dialogView.findViewById(R.id.round_edit);
             
-            // 保存信息到成员变量
-            pendingSaveFileName = fileName;
-            pendingSaveRedPlayer = redPlayer;
-            pendingSaveBlackPlayer = blackPlayer;
-            pendingSaveDate = date;
-            pendingSaveLocation = location;
-            pendingSaveEvent = event;
-            pendingSaveRound = round;
+            // 设置默认值
+            dateEditText.setText(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()));
             
-            // 使用SAF打开文件保存选择器
-            android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
-            intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
-            intent.setType("*/*");
-            intent.putExtra(android.content.Intent.EXTRA_TITLE, fileName);
-            activity.startActivityForResult(intent, 1003);
-        });
-        builder.setNegativeButton("取消", null);
-        builder.show();
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+            builder.setTitle("保存棋谱");
+            builder.setView(dialogView);
+            builder.setPositiveButton("保存", (dialog, which) -> {
+                try {
+                    // 生成默认文件名
+                    String fileName = "双人对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + ".pgn";
+                    
+                    String redPlayer = redPlayerEditText.getText().toString().trim();
+                    String blackPlayer = blackPlayerEditText.getText().toString().trim();
+                    String date = dateEditText.getText().toString().trim();
+                    String location = locationEditText.getText().toString().trim();
+                    String event = eventEditText.getText().toString().trim();
+                    String round = roundEditText.getText().toString().trim();
+                    
+                    // 保存信息到成员变量
+                    pendingSaveFileName = fileName;
+                    pendingSaveRedPlayer = redPlayer;
+                    pendingSaveBlackPlayer = blackPlayer;
+                    pendingSaveDate = date;
+                    pendingSaveLocation = location;
+                    pendingSaveEvent = event;
+                    pendingSaveRound = round;
+                    
+                    // 使用SAF打开文件保存选择器
+                    android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
+                    intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+                    intent.setType("*/*");
+                    intent.putExtra(android.content.Intent.EXTRA_TITLE, fileName);
+                    activity.startActivityForResult(intent, 1003);
+                } catch (Exception e) {
+                    LogUtils.e("PvPActivityControls", "Error in save button click", e);
+                }
+            });
+            builder.setNegativeButton("取消", null);
+            builder.show();
+            LogUtils.d("PvPActivityControls", "handleSaveButton completed");
+        } catch (Exception e) {
+            LogUtils.e("PvPActivityControls", "Unexpected error in handleSaveButton", e);
+        }
     }
 
     // 保存棋谱到URI
     public void saveChessNotationToUri(android.net.Uri uri) {
         try {
+            LogUtils.d("PvPActivityControls", "saveChessNotationToUri called, uri: " + uri);
             // 使用保存对话框中输入的信息
             String fileName = pendingSaveFileName != null ? pendingSaveFileName : "双人对局.pgn";
             String redPlayer = pendingSaveRedPlayer != null ? pendingSaveRedPlayer : "";
@@ -475,18 +520,19 @@ public class PvPActivityControls {
                     fos.getChannel().truncate(fos.getChannel().position());
                     // 强制刷新文件系统缓存
                     fos.getFD().sync();
-                    // 移除Toast提示，通过界面显示保存成功信息
+                    LogUtils.d("PvPActivityControls", "Chess notation saved successfully");
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("PvPActivityControls", "Error writing to file", e);
                     Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                 } finally {
                     try {
                         pfd.close();
                     } catch (java.io.IOException e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvPActivityControls", "Error closing file descriptor", e);
                     }
                 }
             } else {
+                LogUtils.e("PvPActivityControls", "Failed to create file descriptor");
                 Toast.makeText(activity, "无法创建文件描述符", Toast.LENGTH_SHORT).show();
             }
             
@@ -499,8 +545,9 @@ public class PvPActivityControls {
             pendingSaveEvent = null;
             pendingSaveRound = null;
             
+            LogUtils.d("PvPActivityControls", "saveChessNotationToUri completed");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("PvPActivityControls", "Unexpected error saving notation", e);
             Toast.makeText(activity, "保存棋谱失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }

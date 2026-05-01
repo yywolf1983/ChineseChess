@@ -2,6 +2,9 @@ package top.nones.chessgame;
 
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import androidx.appcompat.app.AppCompatActivity;
@@ -122,6 +125,24 @@ public class PvPActivityInit {
         paramsV.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
         paramsV.setMargins(30, 120, 30, 10);
         buttonGroup.setLayoutParams(paramsV);
+        
+        // 设置按钮监听器
+        setupButtonListeners(buttonGroup);
+    }
+    
+    // 递归设置按钮监听器，处理嵌套布局
+    private void setupButtonListeners(ViewGroup viewGroup) {
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            if (child instanceof Button) {
+                // 直接是Button
+                Button btn = (Button) child;
+                btn.setOnClickListener((View.OnClickListener) activity);
+            } else if (child instanceof ViewGroup) {
+                // 是ViewGroup，递归处理
+                setupButtonListeners((ViewGroup) child);
+            }
+        }
     }
 
     // Getters

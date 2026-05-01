@@ -78,6 +78,13 @@ public class LogUtils {
         writeToFile("ERROR", tag, message);
     }
     
+    // ERROR级别的日志，带异常
+    public static void e(String tag, String message, Throwable throwable) {
+        Log.e(TAG, "[" + tag + "] " + message, throwable);
+        String fullMessage = message + "\n" + Log.getStackTraceString(throwable);
+        writeToFile("ERROR", tag, fullMessage);
+    }
+    
     // 写入日志到文件
     private static void writeToFile(String level, String tag, String message) {
         if (!logFileEnabled || logFilePath == null) {

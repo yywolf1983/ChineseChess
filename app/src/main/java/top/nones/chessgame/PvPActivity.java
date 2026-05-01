@@ -13,6 +13,7 @@ import android.widget.RelativeLayout;
 import CustomView.ChessView;
 import Info.ChessInfo;
 import Info.InfoSet;
+import Utils.LogUtils;
 
 public class PvPActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
     private RelativeLayout relativeLayout;
@@ -25,96 +26,136 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_pvp);
-        relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
+        try {
+            LogUtils.d("PvPActivity", "onCreate called");
+            setContentView(R.layout.activity_pvp);
+            relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
 
-        // 初始化模块
-        initModule = new PvPActivityInit(this);
-        initModule.initialize(savedInstanceState, relativeLayout);
+            // 初始化模块
+            initModule = new PvPActivityInit(this);
+            initModule.initialize(savedInstanceState, relativeLayout);
 
-        // 获取初始化的对象
-        ChessInfo chessInfo = initModule.getChessInfo();
-        InfoSet infoSet = initModule.getInfoSet();
-        chessView = initModule.getChessView();
+            // 获取初始化的对象
+            ChessInfo chessInfo = initModule.getChessInfo();
+            InfoSet infoSet = initModule.getInfoSet();
+            chessView = initModule.getChessView();
 
-        // 初始化游戏模块
-        gameModule = new PvPActivityGame(this, chessInfo, infoSet, chessView);
+            // 初始化游戏模块
+            gameModule = new PvPActivityGame(this, chessInfo, infoSet, chessView);
 
-        // 初始化回合模块
-        roundModule = new PvPActivityRound(this, chessInfo, 0);
-        gameModule.setRoundView(roundModule);
+            // 初始化回合模块
+            roundModule = new PvPActivityRound(this, chessInfo, 0);
+            gameModule.setRoundView(roundModule);
 
-        // 初始化控制模块
-        controlsModule = new PvPActivityControls(this, chessInfo, infoSet, gameModule);
+            // 初始化控制模块
+            controlsModule = new PvPActivityControls(this, chessInfo, infoSet, gameModule);
 
-        // 设置触摸监听器
-        chessView.setOnTouchListener((view, event) -> {
-            // 先让ChessView处理触摸事件（用于摆棋窗口拖动和棋子点击）
-            boolean handled = chessView.onTouchEvent(event);
-            if (handled) {
-                // 摆棋模式的触摸事件已经由SetupModeView处理
-                return true;
-            }
-            // 否则由Activity处理
-            return onTouch(view, event);
-        });
+            // 设置触摸监听器
+            chessView.setOnTouchListener((view, event) -> {
+                try {
+                    // 先让ChessView处理触摸事件（用于摆棋窗口拖动和棋子点击）
+                    boolean handled = chessView.onTouchEvent(event);
+                    if (handled) {
+                        // 摆棋模式的触摸事件已经由SetupModeView处理
+                        return true;
+                    }
+                    // 否则由Activity处理
+                    return onTouch(view, event);
+                } catch (Exception e) {
+                    LogUtils.e("PvPActivity", "Error in touch listener", e);
+                    return false;
+                }
+            });
 
-        // 按钮点击监听器由PvPActivityControls模块处理
+            LogUtils.d("PvPActivity", "onCreate completed");
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onCreate", e);
+        }
     }
 
     @Override
     public boolean onTouch(View view, MotionEvent event) {
-        return gameModule.onTouch(view, event);
+        try {
+            return gameModule.onTouch(view, event);
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onTouch", e);
+            return false;
+        }
     }
 
     @Override
     public void onClick(View view) {
-        controlsModule.onClick(view);
+        try {
+            controlsModule.onClick(view);
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onClick", e);
+        }
     }
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        long lastClickTime = System.currentTimeMillis();
-        if (lastClickTime - PvPActivityInit.getCurClickTime() < PvPActivityInit.getMinClickDelayTime()) {
-            return true;
-        }
-        PvPActivityInit.setCurClickTime(lastClickTime);
-        PvPActivityInit.setLastClickTime(lastClickTime);
+        try {
+            long lastClickTime = System.currentTimeMillis();
+            if (lastClickTime - PvPActivityInit.getCurClickTime() < PvPActivityInit.getMinClickDelayTime()) {
+                return true;
+            }
+            PvPActivityInit.setCurClickTime(lastClickTime);
+            PvPActivityInit.setLastClickTime(lastClickTime);
 
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            // 直接退出
-            finish();
-            return true;
+            if (keyCode == KeyEvent.KEYCODE_BACK) {
+                // 直接退出
+                finish();
+                return true;
+            }
+            return super.onKeyDown(keyCode, event);
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onKeyDown", e);
+            return super.onKeyDown(keyCode, event);
         }
-        return super.onKeyDown(keyCode, event);
     }
 
     @Override
     protected void onPause() {
-        initModule.onPause();
-        super.onPause();
+        try {
+            initModule.onPause();
+            super.onPause();
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onPause", e);
+        }
     }
 
     @Override
     protected void onStop() {
-        initModule.onStop();
-        super.onStop();
+        try {
+            initModule.onStop();
+            super.onStop();
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onStop", e);
+        }
     }
 
     @Override
     protected void onStart() {
-        initModule.onStart();
-        super.onStart();
+        try {
+            initModule.onStart();
+            super.onStart();
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onStart", e);
+        }
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == 1003 && resultCode == RESULT_OK && data != null) {
-            Uri uri = data.getData();
-            if (uri != null) {
-                controlsModule.saveChessNotationToUri(uri);
+        try {
+            super.onActivityResult(requestCode, resultCode, data);
+            if (requestCode == 1003 && resultCode == RESULT_OK && data != null) {
+                Uri uri = data.getData();
+                if (uri != null) {
+                    controlsModule.saveChessNotationToUri(uri);
+                }
             }
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onActivityResult", e);
         }
     }
 
