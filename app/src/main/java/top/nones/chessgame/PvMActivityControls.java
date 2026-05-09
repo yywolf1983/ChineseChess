@@ -462,7 +462,7 @@ public class PvMActivityControls {
                                             try {
                                                 activity.infoSet.pushInfo(activity.chessInfo);
                                             } catch (CloneNotSupportedException e) {
-                                                e.printStackTrace();
+                                                LogUtils.e("PvMActivityControls", "操作失败", e);
                                             }
 
                                             // 重新绘制界面
@@ -526,7 +526,7 @@ public class PvMActivityControls {
                                             try {
                                                 activity.infoSet.pushInfo(activity.chessInfo);
                                             } catch (CloneNotSupportedException e) {
-                                                e.printStackTrace();
+                                                LogUtils.e("PvMActivityControls", "操作失败", e);
                                             }
 
                                             int key = 0;
@@ -734,7 +734,7 @@ public class PvMActivityControls {
                         }
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("PvMActivityControls", "操作失败", e);
                 }
                 toast.show();
                 // 设置500毫秒后取消提示
@@ -742,7 +742,7 @@ public class PvMActivityControls {
                     try {
                         toast.cancel();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityControls", "操作失败", e);
                     }
                 }, 500);
                 lastCheckHintTime = currentTime;

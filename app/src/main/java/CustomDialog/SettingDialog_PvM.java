@@ -29,7 +29,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 mediaPlayer.seekTo(0);
                 mediaPlayer.start();
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("SettingDialog_PvM", "操作失败", e);
             }
         }
     }

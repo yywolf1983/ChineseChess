@@ -9,6 +9,7 @@ import ChessMove.Rule;
 import ChessMove.Move;
 import Info.ChessInfo;
 import Info.Pos;
+import Utils.LogUtils;
 
 public class PvMActivityGame {
     private PvMActivity activity;
@@ -289,7 +290,7 @@ public class PvMActivityGame {
                             try {
                                 activity.infoSet.pushInfo(activity.chessInfo);
                             } catch (CloneNotSupportedException e) {
-                                e.printStackTrace();
+                                LogUtils.e("PvMActivityGame", "操作失败", e);
                             }
 
                             // 检查游戏状态，包括将死

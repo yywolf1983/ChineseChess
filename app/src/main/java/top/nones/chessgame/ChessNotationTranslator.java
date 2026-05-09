@@ -67,18 +67,8 @@ public class ChessNotationTranslator {
      * @return          中文数字（一、二、三...九）
      */
     public static String getColChar(int column) {
-        switch (column) {
-            case 1: return "一";
-            case 2: return "二";
-            case 3: return "三";
-            case 4: return "四";
-            case 5: return "五";
-            case 6: return "六";
-            case 7: return "七";
-            case 8: return "八";
-            case 9: return "九";
-            default: return "五";
-        }
+        String result = Info.ChessPiece.toChineseNumber(column);
+        return result.equals(String.valueOf(column)) ? "五" : result;
     }
 
     /**
@@ -88,27 +78,7 @@ public class ChessNotationTranslator {
      * @return          列号（1-9）
      */
     public static int getColNumber(char colChar) {
-        switch (colChar) {
-            case '一': return 1;
-            case '二': return 2;
-            case '三': return 3;
-            case '四': return 4;
-            case '五': return 5;
-            case '六': return 6;
-            case '七': return 7;
-            case '八': return 8;
-            case '九': return 9;
-            case '1': return 1;
-            case '2': return 2;
-            case '3': return 3;
-            case '4': return 4;
-            case '5': return 5;
-            case '6': return 6;
-            case '7': return 7;
-            case '8': return 8;
-            case '9': return 9;
-            default: return -1;
-        }
+        return Info.ChessPiece.fromChineseNumber(colChar);
     }
 
     /**
@@ -192,28 +162,13 @@ public class ChessNotationTranslator {
             return;
         }
 
-        // 冒泡排序
-        for (int i = 0; i < pieces.size() - 1; i++) {
-            for (int j = 0; j < pieces.size() - i - 1; j++) {
-                Info.Pos p1 = pieces.get(j);
-                Info.Pos p2 = pieces.get(j + 1);
-
-                int yCompare;
-                if (isRed) {
-                    // 红方：y值较大的位置离黑方底线更近
-                    yCompare = Integer.compare(p2.y, p1.y);
-                } else {
-                    // 黑方：y值较小的位置离红方底线更近
-                    yCompare = Integer.compare(p1.y, p2.y);
-                }
-
-                if (yCompare > 0) {
-                    // 交换位置
-                    pieces.set(j, p2);
-                    pieces.set(j + 1, p1);
-                }
+        java.util.Collections.sort(pieces, (p1, p2) -> {
+            if (isRed) {
+                return Integer.compare(p2.y, p1.y);
+            } else {
+                return Integer.compare(p1.y, p2.y);
             }
-        }
+        });
     }
 
     /**
@@ -228,123 +183,50 @@ public class ChessNotationTranslator {
             return;
         }
 
-        // 冒泡排序
-        for (int i = 0; i < pieces.size() - 1; i++) {
-            for (int j = 0; j < pieces.size() - i - 1; j++) {
-                Info.Pos p1 = pieces.get(j);
-                Info.Pos p2 = pieces.get(j + 1);
-
-                // 首先尝试根据走法中的列号选择
-                int moveCol = -1;
-                if (moveString != null && moveString.length() > 1) {
-                    // 找到列号的位置，跳过可能的前缀（前、后、中）
-                    int colIndex = 1;
-                    if (moveString.length() > 2) {
-                        char secondChar = moveString.charAt(1);
-                        if (secondChar == '前' || secondChar == '后' || secondChar == '中') {
-                            colIndex = 2;
-                        }
-                    }
-
-                    if (colIndex < moveString.length()) {
-                        char colChar = moveString.charAt(colIndex);
-                        moveCol = getColNumber(colChar);
-                    }
-                }
-
-                // 如果提取到了列号，根据列号选择棋子（优先级最高）
-                if (moveCol != -1) {
-                    // 计算两个棋子的列号
-                    int col1 = getNotationColumn(p1.x, isRed);
-                    int col2 = getNotationColumn(p2.x, isRed);
-                    
-                    // 首先选择列号完全匹配的棋子
-                    boolean col1Match = col1 == moveCol;
-                    boolean col2Match = col2 == moveCol;
-                    
-                    if (col1Match && !col2Match) {
-                        // p1 列号匹配，p2 不匹配，p1 优先
-                        continue;
-                    } else if (!col1Match && col2Match) {
-                        // p2 列号匹配，p1 不匹配，交换位置
-                        pieces.set(j, p2);
-                        pieces.set(j + 1, p1);
-                    } else if (col1Match && col2Match) {
-                        // 两个棋子列号都匹配，按y坐标排序（离对方底线的距离）
-                        int yCompare = 0;
-                        if (isRed) {
-                            // 红方：y值较大的位置离黑方底线更近
-                            yCompare = Integer.compare(p2.y, p1.y);
-                        } else {
-                            // 黑方：y值较小的位置离红方底线更近
-                            yCompare = Integer.compare(p1.y, p2.y);
-                        }
-                        if (yCompare > 0) {
-                            // 交换位置
-                            pieces.set(j, p2);
-                            pieces.set(j + 1, p1);
-                        }
-                    } else {
-                        // 两个棋子列号都不匹配，选择列号最接近目标列号的棋子
-                        int colCompare = Integer.compare(Math.abs(col1 - moveCol), Math.abs(col2 - moveCol));
-                        if (colCompare > 0) {
-                            // 交换位置
-                            pieces.set(j, p2);
-                            pieces.set(j + 1, p1);
-                        } else if (colCompare == 0) {
-                            // 如果列号距离相同，按y坐标排序（离对方底线的距离）
-                            int yCompare = 0;
-                            if (isRed) {
-                                // 红方：y值较大的位置离黑方底线更近
-                                yCompare = Integer.compare(p2.y, p1.y);
-                            } else {
-                                // 黑方：y值较小的位置离红方底线更近
-                                yCompare = Integer.compare(p1.y, p2.y);
-                            }
-                            if (yCompare > 0) {
-                                // 交换位置
-                                pieces.set(j, p2);
-                                pieces.set(j + 1, p1);
-                            }
-                        }
-                    }
-                    continue;
-                }
-
-                // 如果没有列号信息，按y坐标排序（离对方底线的距离）
-                int yCompare = 0;
-                if (isRed) {
-                    // 红方：y值较大的位置离黑方底线更近
-                    yCompare = Integer.compare(p2.y, p1.y);
-                } else {
-                    // 黑方：y值较小的位置离红方底线更近
-                    yCompare = Integer.compare(p1.y, p2.y);
-                }
-
-                if (yCompare != 0) {
-                    if (yCompare > 0) {
-                        // 交换位置
-                        pieces.set(j, p2);
-                        pieces.set(j + 1, p1);
-                    }
-                    continue;
-                }
-
-                // 如果y坐标相同，按x坐标排序
-                int xCompare;
-                if (isRed) {
-                    // 红方：从右到左排序（x值大的在前）
-                    xCompare = Integer.compare(p2.x, p1.x);
-                } else {
-                    // 黑方：从左到右排序（x值小的在前）
-                    xCompare = Integer.compare(p1.x, p2.x);
-                }
-                if (xCompare > 0) {
-                    // 交换位置
-                    pieces.set(j, p2);
-                    pieces.set(j + 1, p1);
+        // 提取走法中的列号
+        int moveCol = -1;
+        if (moveString != null && moveString.length() > 1) {
+            int colIndex = 1;
+            if (moveString.length() > 2) {
+                char secondChar = moveString.charAt(1);
+                if (secondChar == '前' || secondChar == '后' || secondChar == '中') {
+                    colIndex = 2;
                 }
             }
+            if (colIndex < moveString.length()) {
+                char colChar = moveString.charAt(colIndex);
+                moveCol = getColNumber(colChar);
+            }
         }
+
+        final int targetCol = moveCol;
+        final boolean red = isRed;
+
+        java.util.Collections.sort(pieces, (p1, p2) -> {
+            int col1 = getNotationColumn(p1.x, red);
+            int col2 = getNotationColumn(p2.x, red);
+
+            // 根据列号匹配度排序
+            if (targetCol != -1) {
+                boolean match1 = (col1 == targetCol);
+                boolean match2 = (col2 == targetCol);
+                if (match1 && !match2) return -1;
+                if (!match1 && match2) return 1;
+                if (match1) {
+                    // 两个都匹配，按y坐标排序
+                    return red ? Integer.compare(p2.y, p1.y) : Integer.compare(p1.y, p2.y);
+                }
+                // 两个都不匹配，按列号距离排序
+                int dist = Integer.compare(Math.abs(col1 - targetCol), Math.abs(col2 - targetCol));
+                if (dist != 0) return dist;
+            }
+
+            // 按y坐标排序
+            int yCmp = red ? Integer.compare(p2.y, p1.y) : Integer.compare(p1.y, p2.y);
+            if (yCmp != 0) return yCmp;
+
+            // y相同时按x排序
+            return red ? Integer.compare(p2.x, p1.x) : Integer.compare(p1.x, p2.x);
+        });
     }
 }

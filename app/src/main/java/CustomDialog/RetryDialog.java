@@ -12,6 +12,7 @@ import android.widget.RadioGroup;
 import top.nones.chessgame.R;
 import static top.nones.chessgame.PvMActivity.selectMusic;
 import top.nones.chessgame.PvMActivity;
+import Utils.LogUtils;
 
 /**
  * Created by 77304 on 2021/4/19.
@@ -25,7 +26,7 @@ public class RetryDialog extends Dialog implements RadioGroup.OnCheckedChangeLis
                 mediaPlayer.seekTo(0);
                 mediaPlayer.start();
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("RetryDialog", "操作失败", e);
             }
         }
     }

@@ -14,6 +14,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.Date;
+import Utils.LogUtils;
 
 public class SaveInfo {
     private static Context context;
@@ -186,7 +187,7 @@ public class SaveInfo {
                 try {
                     writer.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("SaveInfo", "操作失败", e);
                 }
             }
         }
@@ -339,67 +340,15 @@ public class SaveInfo {
                             if (moveCommentStart != -1) {
                                 movePart = movePart.substring(0, moveCommentStart).trim();
                             }
-                            // 处理红方走法中的全角数字，转换为中文数字
-                            movePart = movePart.replace("１", "一")
-                                              .replace("２", "二")
-                                              .replace("３", "三")
-                                              .replace("４", "四")
-                                              .replace("５", "五")
-                                              .replace("６", "六")
-                                              .replace("７", "七")
-                                              .replace("８", "八")
-                                              .replace("９", "九")
-                                              .replace("０", "零")
-                                              .replace("1", "一")
-                                              .replace("2", "二")
-                                              .replace("3", "三")
-                                              .replace("4", "四")
-                                              .replace("5", "五")
-                                              .replace("6", "六")
-                                              .replace("7", "七")
-                                              .replace("8", "八")
-                                              .replace("9", "九")
-                                              .replace("0", "零");
+                            // 处理红方走法：全角转半角 + 数字转中文
+                            movePart = top.nones.chessgame.ChessNotationTranslator.normalizeMoveString(movePart, true);
                             // 提取红方走法
                             currentRedMove = movePart;
                         }
                     } else if (line.trim().length() > 0) {
                         // 这是黑方走法
-                        // 处理黑方走法中的全角数字和中文数字，转换为阿拉伯数字
-                        String movePart = line.trim();
-                        // 处理全角数字
-                        movePart = movePart.replace('１', '1')
-                                          .replace('２', '2')
-                                          .replace('３', '3')
-                                          .replace('４', '4')
-                                          .replace('５', '5')
-                                          .replace('６', '6')
-                                          .replace('７', '7')
-                                          .replace('８', '8')
-                                          .replace('９', '9')
-                                          .replace('０', '0')
-                                          // 额外的全角数字变体
-                                          .replace("１", "1")
-                                          .replace("２", "2")
-                                          .replace("３", "3")
-                                          .replace("４", "4")
-                                          .replace("５", "5")
-                                          .replace("６", "6")
-                                          .replace("７", "7")
-                                          .replace("８", "8")
-                                          .replace("９", "9")
-                                          .replace("０", "0");
-                        // 处理中文数字
-                        movePart = movePart.replace("一", "1")
-                                          .replace("二", "2")
-                                          .replace("三", "3")
-                                          .replace("四", "4")
-                                          .replace("五", "5")
-                                          .replace("六", "6")
-                                          .replace("七", "7")
-                                          .replace("八", "8")
-                                          .replace("九", "9")
-                                          .replace("零", "0");
+                        // 处理黑方走法：全角转半角 + 数字转阿拉伯
+                        String movePart = top.nones.chessgame.ChessNotationTranslator.normalizeMoveString(line.trim(), false);
                         
                         if (currentRedMove != null) {
                             // 有对应的红方走法，添加完整的走法记录
@@ -425,21 +374,21 @@ public class SaveInfo {
                 try {
                     bufferedReader.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("SaveInfo", "操作失败", e);
                 }
             }
             if (reader != null) {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("SaveInfo", "操作失败", e);
                 }
             }
             if (fis != null) {
                 try {
                     fis.close();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("SaveInfo", "操作失败", e);
                 }
             }
         }

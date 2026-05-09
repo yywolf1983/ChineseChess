@@ -96,7 +96,7 @@ public class PikafishAI {
                 }
             } catch (Exception e) {
                 Log.e("PikafishAI", "设置权限失败: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PikafishAI", "操作失败", e);
                 return;
             }
             
@@ -115,7 +115,7 @@ public class PikafishAI {
                 }
             } catch (Exception e) {
                 Log.e("PikafishAI", "启动进程失败: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PikafishAI", "操作失败", e);
                 
                 // 尝试使用proot启动
                 try {
@@ -318,7 +318,7 @@ public class PikafishAI {
         } catch (Exception e) {
             Log.e("PikafishAI", "初始化失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "初始化失败: " + e.getMessage());
-            e.printStackTrace();
+            LogUtils.e("PikafishAI", "操作失败", e);
             // 确保资源被释放
             close();
         }
@@ -369,7 +369,7 @@ public class PikafishAI {
         } catch (Exception e) {
             Log.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
-            e.printStackTrace();
+            LogUtils.e("PikafishAI", "操作失败", e);
         }
     }
     
@@ -444,7 +444,7 @@ public class PikafishAI {
         } catch (Exception e) {
             Log.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
-            e.printStackTrace();
+            LogUtils.e("PikafishAI", "操作失败", e);
         }
     }
     
@@ -859,7 +859,7 @@ public class PikafishAI {
             
         } catch (Exception e) {
             LogUtils.e("PikafishAI", "获取最佳走法失败: " + e.getMessage());
-            e.printStackTrace();
+            LogUtils.e("PikafishAI", "操作失败", e);
             // 尝试重新初始化
             try {
                 close();

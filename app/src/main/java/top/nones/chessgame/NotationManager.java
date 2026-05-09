@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import Utils.LogUtils;
 
 public class NotationManager {
     private PvMActivity activity;
@@ -134,17 +135,15 @@ public class NotationManager {
     
     // 从URI加载棋谱
     public void loadChessNotationFromUri(Uri uri) {
-        try {
-            InputStream inputStream = activity.getContentResolver().openInputStream(uri);
+        try (InputStream inputStream = activity.getContentResolver().openInputStream(uri)) {
             if (inputStream != null) {
-                BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
                 StringBuilder content = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    content.append(line).append("\n");
+                try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"))) {
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        content.append(line).append("\n");
+                    }
                 }
-                reader.close();
-                inputStream.close();
                 
                 String fileContent = content.toString();
                 String fileName = "棋谱";
@@ -192,7 +191,7 @@ public class NotationManager {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("NotationManager", "加载棋谱失败", e);
             // 移除Toast提示，通过界面显示加载失败信息
         }
     }
@@ -258,13 +257,13 @@ public class NotationManager {
                     writer.flush();
                     // 移除Toast提示，通过界面显示保存成功信息
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogUtils.e("NotationManager", "保存棋谱写入失败", e);
                     // 移除Toast提示，通过界面显示保存失败信息
                 } finally {
                     try {
                         pfd.close();
                     } catch (java.io.IOException e) {
-                        e.printStackTrace();
+                        LogUtils.e("NotationManager", "关闭文件描述符失败", e);
                     }
                 }
             } else {
@@ -281,7 +280,7 @@ public class NotationManager {
             pendingSaveRound = null;
             
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("NotationManager", "保存棋谱失败", e);
             if (activity != null) {
                 // 移除Toast提示，通过界面显示保存失败信息
             }
@@ -431,47 +430,47 @@ public class NotationManager {
     
     // 上一步
     public void handlePrevButton() {
-        System.out.println("PvMActivity: 点击上一步按钮");
+        Utils.LogUtils.d("NotationManager", "点击上一步按钮");
         if (currentNotation != null) {
             java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
-            System.out.println("PvMActivity: 当前步数: " + currentMoveIndex);
+            Utils.LogUtils.d("NotationManager", "当前步数: " + currentMoveIndex);
             if (currentMoveIndex > 0) {
                 currentMoveIndex--;
-                System.out.println("PvMActivity: 执行上一步，新步数: " + currentMoveIndex);
+                Utils.LogUtils.d("NotationManager", "执行上一步，新步数: " + currentMoveIndex);
                 // 重新生成棋盘状态
                 BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
                 boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
             } else {
-                System.out.println("PvMActivity: 已经是第一步");
+                Utils.LogUtils.d("NotationManager", "已经是第一步");
             }
         } else {
-            System.out.println("PvMActivity: 没有加载棋谱");
+            Utils.LogUtils.d("NotationManager", "没有加载棋谱");
         }
     }
     
     // 下一步
     public void handleNextButton() {
-        System.out.println("PvMActivity: 点击下一步按钮");
+        Utils.LogUtils.d("NotationManager", "点击下一步按钮");
         if (currentNotation != null) {
             java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
             int moveRecordsSize = moveRecords != null ? moveRecords.size() : 0;
             int totalMoves = moveRecordsSize * 2;
-            System.out.println("PvMActivity: 当前步数: " + currentMoveIndex + ", 总步数: " + totalMoves);
+            Utils.LogUtils.d("NotationManager", "当前步数: " + currentMoveIndex + ", 总步数: " + totalMoves);
             if (moveRecords != null && !moveRecords.isEmpty() && currentMoveIndex < totalMoves) {
                 currentMoveIndex++;
-                System.out.println("PvMActivity: 执行下一步，新步数: " + currentMoveIndex);
+                Utils.LogUtils.d("NotationManager", "执行下一步，新步数: " + currentMoveIndex);
                 // 重新生成棋盘状态
                 BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
                 boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
             } else {
-                System.out.println("PvMActivity: 已经是最后一步");
+                Utils.LogUtils.d("NotationManager", "已经是最后一步");
             }
         } else {
-            System.out.println("PvMActivity: 没有加载棋谱");
+            Utils.LogUtils.d("NotationManager", "没有加载棋谱");
         }
     }
     

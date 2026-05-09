@@ -2,6 +2,7 @@ package top.nones.chessgame;
 
 import Info.ChessInfo;
 import Info.ChessNotation;
+import Utils.LogUtils;
 
 public class FENHandler {
     // 从FEN字符串生成ChessInfo
@@ -51,7 +52,7 @@ public class FENHandler {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("FENHandler", "解析FEN字符串失败", e);
         }
         return info;
     }
@@ -119,7 +120,7 @@ public class FENHandler {
             // 添加其他FEN部分（简化实现）
             fen.append(" - - 0 1");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("FENHandler", "生成FEN字符串失败", e);
             return "";
         }
         

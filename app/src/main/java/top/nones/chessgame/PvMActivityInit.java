@@ -498,7 +498,7 @@ public class PvMActivityInit {
                 }
                 Log.d("PvMActivity", "数据文件初始化完成");
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvMActivityInit", "操作失败", e);
             }
         }
     }
@@ -522,7 +522,7 @@ public class PvMActivityInit {
                 }
                 Log.d("PvMActivity", "数据加载完成");
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvMActivityInit", "操作失败", e);
                 // 确保在发生任何异常时，应用不会崩溃
                 if (activity != null) {
                     activity.runOnUiThread(new LoadDefaultAllRunnable(activity));
@@ -629,7 +629,7 @@ public class PvMActivityInit {
                     try {
                         activity.infoSet.pushInfo(activity.chessInfo);
                     } catch (CloneNotSupportedException ce) {
-                        ce.printStackTrace();
+                        LogUtils.e("PvMActivityInit", "操作失败", ce);
                     }
                 }
                 Log.d("PvMActivity", "InfoSet数据加载完成");
@@ -653,7 +653,7 @@ public class PvMActivityInit {
                 try {
                     activity.infoSet.pushInfo(activity.chessInfo);
                 } catch (CloneNotSupportedException ce) {
-                    ce.printStackTrace();
+                    LogUtils.e("PvMActivityInit", "操作失败", ce);
                 }
             }
         }
@@ -673,7 +673,7 @@ public class PvMActivityInit {
                 try {
                     activity.infoSet.pushInfo(activity.chessInfo);
                 } catch (CloneNotSupportedException e) {
-                    e.printStackTrace();
+                    LogUtils.e("PvMActivityInit", "操作失败", e);
                 }
             }
         }
@@ -697,7 +697,7 @@ public class PvMActivityInit {
                 try {
                     activity.infoSet.pushInfo(activity.chessInfo);
                 } catch (CloneNotSupportedException ce) {
-                    ce.printStackTrace();
+                    LogUtils.e("PvMActivityInit", "操作失败", ce);
                 }
                 // 更新roundView、chessView和setupModeView中的chessInfo引用
                 if (activity.roundView != null) {
@@ -749,7 +749,7 @@ public class PvMActivityInit {
                             }
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityInit", "操作失败", e);
                     }
                 }
                 
@@ -760,7 +760,7 @@ public class PvMActivityInit {
                             PvMActivity.selectMusic = MediaPlayer.create(activity, R.raw.select);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityInit", "操作失败", e);
                     }
                 }
                 if (PvMActivity.clickMusic == null) {
@@ -769,7 +769,7 @@ public class PvMActivityInit {
                             PvMActivity.clickMusic = MediaPlayer.create(activity, R.raw.click);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityInit", "操作失败", e);
                     }
                 }
                 if (PvMActivity.checkMusic == null) {
@@ -778,7 +778,7 @@ public class PvMActivityInit {
                             PvMActivity.checkMusic = MediaPlayer.create(activity, R.raw.checkmate);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityInit", "操作失败", e);
                     }
                 }
                 if (PvMActivity.winMusic == null) {
@@ -787,11 +787,11 @@ public class PvMActivityInit {
                             PvMActivity.winMusic = MediaPlayer.create(activity, R.raw.win);
                         }
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityInit", "操作失败", e);
                     }
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvMActivityInit", "操作失败", e);
             }
             Log.d("PvMActivity", "音乐初始化完成");
         }
@@ -814,7 +814,7 @@ public class PvMActivityInit {
                     Log.d("PvMActivity", "PikafishAI初始化完成");
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvMActivityInit", "操作失败", e);
             }
         }
     }

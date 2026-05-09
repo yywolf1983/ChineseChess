@@ -91,15 +91,11 @@ public class LogUtils {
             return;
         }
         
-        try {
-            FileWriter fileWriter = new FileWriter(logFilePath, true);
-            BufferedWriter bufferedWriter = new BufferedWriter(fileWriter);
-            
+        try (FileWriter fileWriter = new FileWriter(logFilePath, true);
+             BufferedWriter bufferedWriter = new BufferedWriter(fileWriter)) {
             String timeStamp = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date());
             String logLine = timeStamp + " [" + level + "] [" + tag + "] " + message + "\n";
-            
             bufferedWriter.write(logLine);
-            bufferedWriter.close();
         } catch (IOException e) {
             Log.e(TAG, "Error writing to log file: " + e.getMessage());
         }

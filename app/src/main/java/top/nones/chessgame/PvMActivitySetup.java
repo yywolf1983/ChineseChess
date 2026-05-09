@@ -9,6 +9,7 @@ import Info.InfoSet;
 import CustomView.ChessView;
 import CustomView.SetupModeView;
 import top.nones.chessgame.FENHandler;
+import Utils.LogUtils;
 
 public class PvMActivitySetup {
     private PvMActivity activity;
@@ -300,7 +301,7 @@ public class PvMActivitySetup {
                     String setupFEN = fenHandler.generateFEN(activity.chessInfo);
                     if (activity.notationManager != null) {
                         activity.notationManager.setSetupFEN(setupFEN);
-                        System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
+                        LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
                     }
                     // 退出摆棋模式
                     activity.chessInfo.IsSetupMode = false;
@@ -314,7 +315,7 @@ public class PvMActivitySetup {
                             activity.infoSet.pushInfo(activity.chessInfo);
                         }
                     } catch (CloneNotSupportedException e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivitySetup", "操作失败", e);
                     }
                     // 重置时间
                     activity.redTime = 0;
@@ -339,7 +340,7 @@ public class PvMActivitySetup {
                     String setupFEN = fenHandler.generateFEN(activity.chessInfo);
                     if (activity.notationManager != null) {
                         activity.notationManager.setSetupFEN(setupFEN);
-                        System.out.println("PvMActivity: 摆棋结束，保存FEN: " + setupFEN);
+                        LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
                     }
                     // 退出摆棋模式
                     activity.chessInfo.IsSetupMode = false;
@@ -353,7 +354,7 @@ public class PvMActivitySetup {
                             activity.infoSet.pushInfo(activity.chessInfo);
                         }
                     } catch (CloneNotSupportedException e) {
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivitySetup", "操作失败", e);
                     }
                     // 重置时间
                     activity.redTime = 0;

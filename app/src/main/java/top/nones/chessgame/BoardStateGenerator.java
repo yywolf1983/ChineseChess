@@ -2,6 +2,7 @@ package top.nones.chessgame;
 
 import Info.ChessInfo;
 import Info.ChessNotation;
+import Utils.LogUtils;
 
 public class BoardStateGenerator {
     private PvMActivity activity;
@@ -13,11 +14,11 @@ public class BoardStateGenerator {
     // 生成棋盘状态
     public void generateBoardStateFromNotation(ChessNotation notation, int moveIndex) {
         if (activity == null) {
-            System.out.println("PvMActivity: 生成棋盘状态失败，activity 为 null");
+            Utils.LogUtils.d("BoardStateGenerator", "生成棋盘状态失败，activity 为 null");
             return;
         }
         
-        System.out.println("PvMActivity: 开始生成棋盘状态，当前步数: " + moveIndex);
+        Utils.LogUtils.d("BoardStateGenerator", "开始生成棋盘状态，当前步数: " + moveIndex);
         if (notation != null) {
             // 初始化棋盘状态
             ChessInfo initialInfo = new ChessInfo();
@@ -25,7 +26,7 @@ public class BoardStateGenerator {
             // 检查是否有FEN信息
             String fen = notation.getFen();
             if (fen != null && !fen.isEmpty()) {
-                System.out.println("PvMActivity: 使用FEN初始化棋盘: " + fen);
+                Utils.LogUtils.d("BoardStateGenerator", "使用FEN初始化棋盘: " + fen);
                 // 从FEN初始化棋盘状态
                 FENHandler fenHandler = new FENHandler();
                 initialInfo = fenHandler.fenToChessInfo(fen);
@@ -43,7 +44,7 @@ public class BoardStateGenerator {
             // 根据当前步数生成棋盘状态
             java.util.List<ChessNotation.MoveRecord> moveRecords = notation.getMoveRecords();
             if (moveRecords != null && !moveRecords.isEmpty()) {
-                System.out.println("PvMActivity: 走法记录数量: " + moveRecords.size());
+                Utils.LogUtils.d("BoardStateGenerator", "走法记录数量: " + moveRecords.size());
                 ChessInfo currentInfo = initialInfo;
                 int moveCount = 0;
                 
@@ -53,41 +54,41 @@ public class BoardStateGenerator {
                     if (record == null) {
                         continue;
                     }
-                    System.out.println("PvMActivity: 处理第 " + (i + 1) + " 回合: 红方=" + record.redMove + ", 黑方=" + record.blackMove);
+                    Utils.LogUtils.d("BoardStateGenerator", "处理第 " + (i + 1) + " 回合: 红方=" + record.redMove + ", 黑方=" + record.blackMove);
                     
                     if (moveCount >= moveIndex) {
-                        System.out.println("PvMActivity: 已达到目标步数，停止处理");
+                        Utils.LogUtils.d("BoardStateGenerator", "已达到目标步数，停止处理");
                         break;
                     }
                     
                     // 处理红方走法
                     if (!record.redMove.isEmpty() && moveCount < moveIndex) {
-                        System.out.println("PvMActivity: 执行红方走法: " + record.redMove);
+                        Utils.LogUtils.d("BoardStateGenerator", "执行红方走法: " + record.redMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
                         ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, record.redMove, true);
                         if (tempInfo != null) {
                             currentInfo = tempInfo;
                             moveCount++;
-                            System.out.println("PvMActivity: 红方走法执行完成，当前步数: " + moveCount);
+                            Utils.LogUtils.d("BoardStateGenerator", "红方走法执行完成，当前步数: " + moveCount);
                         }
                     }
                     
                     // 处理黑方走法
                     if (!record.blackMove.isEmpty() && moveCount < moveIndex) {
-                        System.out.println("PvMActivity: 执行黑方走法: " + record.blackMove);
+                        Utils.LogUtils.d("BoardStateGenerator", "执行黑方走法: " + record.blackMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
                         ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, record.blackMove, false);
                         if (tempInfo != null) {
                             currentInfo = tempInfo;
                             moveCount++;
-                            System.out.println("PvMActivity: 黑方走法执行完成，当前步数: " + moveCount);
+                            Utils.LogUtils.d("BoardStateGenerator", "黑方走法执行完成，当前步数: " + moveCount);
                         }
                     }
                 }
                 
                 // 更新棋盘状态
                 if (currentInfo != null && activity.chessInfo != null && activity.infoSet != null && activity.infoSet.curInfo != null) {
-                    System.out.println("PvMActivity: 更新棋盘状态，总步数: " + moveCount);
+                    Utils.LogUtils.d("BoardStateGenerator", "更新棋盘状态，总步数: " + moveCount);
                     try {
                         // 清空现有棋盘并设置新状态
                         activity.chessInfo.setInfo(currentInfo);
@@ -122,7 +123,7 @@ public class BoardStateGenerator {
                         activity.infoSet.newInfo();
                         activity.infoSet.pushInfo(activity.chessInfo);
                     } catch (CloneNotSupportedException e) {
-                        e.printStackTrace();
+                        LogUtils.e("BoardStateGenerator", "保存棋局状态失败", e);
                     }
                     
                     // 重置时间相关变量，确保时间显示正确
@@ -136,16 +137,16 @@ public class BoardStateGenerator {
                     }
                     
                     // 重新绘制界面
-                    System.out.println("PvMActivity: 开始重新绘制界面，chessView=" + activity.chessView + ", roundView=" + activity.roundView);
+                    Utils.LogUtils.d("BoardStateGenerator", "开始重新绘制界面，chessView=" + activity.chessView + ", roundView=" + activity.roundView);
                     if (activity.chessView != null) {
-                        System.out.println("PvMActivity: 调用 chessView.requestDraw()");
+                        Utils.LogUtils.d("BoardStateGenerator", "调用 chessView.requestDraw()");
                         activity.chessView.requestDraw();
                         // 强制刷新界面
                         activity.chessView.invalidate();
                         activity.chessView.postInvalidate();
                     }
                     if (activity.roundView != null) {
-                        System.out.println("PvMActivity: 调用 roundView.requestDraw()");
+                        Utils.LogUtils.d("BoardStateGenerator", "调用 roundView.requestDraw()");
                         activity.roundView.requestDraw();
                         // 强制刷新界面
                         activity.roundView.invalidate();
@@ -157,11 +158,11 @@ public class BoardStateGenerator {
                         activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
                     }
                     
-                    System.out.println("PvMActivity: 界面重新绘制完成");
+                    Utils.LogUtils.d("BoardStateGenerator", "界面重新绘制完成");
 
                 }
             } else {
-                System.out.println("PvMActivity: 没有走法记录，使用初始棋盘状态");
+                Utils.LogUtils.d("BoardStateGenerator", "没有走法记录，使用初始棋盘状态");
                 // 如果没有走法记录，使用初始棋盘状态
                 if (activity.chessInfo != null && activity.infoSet != null && activity.infoSet.curInfo != null) {
                     try {
@@ -198,7 +199,7 @@ public class BoardStateGenerator {
                         activity.infoSet.newInfo();
                         activity.infoSet.pushInfo(activity.chessInfo);
                     } catch (CloneNotSupportedException e) {
-                        e.printStackTrace();
+                        LogUtils.e("BoardStateGenerator", "保存棋局状态失败", e);
                     }
                     
                     // 重新绘制界面
@@ -223,7 +224,7 @@ public class BoardStateGenerator {
                 }
             }
         } else {
-            System.out.println("PvMActivity: 没有加载棋谱");
+            Utils.LogUtils.d("BoardStateGenerator", "没有加载棋谱");
         }
     }
 }

@@ -202,7 +202,7 @@ public class PvMActivityAI {
                 break;
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PvMActivityAI", "操作失败", e);
                 break;
             }
             
@@ -507,7 +507,7 @@ public class PvMActivityAI {
         try {
             this.activity.infoSet.pushInfo(this.activity.chessInfo);
         } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+            LogUtils.e("PvMActivityAI", "操作失败", e);
         }
         
         if (this.activity.roundView != null) {
@@ -635,7 +635,7 @@ public class PvMActivityAI {
                 move = aiInstance.calculateAIMove();
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PvMActivityAI", "操作失败", e);
             }
             
             currentActivity = aiInstance.activity;
@@ -648,7 +648,7 @@ public class PvMActivityAI {
                 currentActivity.runOnUiThread(new AIUIRunnable(aiInstance, currentActivity, finalMove));
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "UI线程执行异常: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PvMActivityAI", "操作失败", e);
             }
         }
     }
@@ -691,7 +691,7 @@ public class PvMActivityAI {
                 }
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "执行AI走法异常: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PvMActivityAI", "操作失败", e);
                 // 确保AI搜索被停止
                 aiInstance.stopAISearch();
                 aiInstance.finishAnalyzing();
@@ -838,14 +838,14 @@ public class PvMActivityAI {
                         // 移除Toast提示，通过界面显示超时信息
                     } catch (Exception e) {
                         LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
-                        e.printStackTrace();
+                        LogUtils.e("PvMActivityAI", "操作失败", e);
                     }
                 } else {
                     LogUtils.e("PvMActivityAI", "空值检查失败，activity.chessInfo或activity.pikafishAI为null");
                 }
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "AI线程异常: " + e.getMessage());
-                e.printStackTrace();
+                LogUtils.e("PvMActivityAI", "操作失败", e);
             } finally {
                 // 停止深度更新任务
                 aiInstance.stopAISearch();

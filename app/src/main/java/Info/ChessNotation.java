@@ -9,6 +9,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import Utils.LogUtils;
 
 public class ChessNotation implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -220,7 +221,7 @@ public class ChessNotation implements Serializable {
             fos.close();
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("ChessNotation", "操作失败", e);
             return false;
         }
     }
@@ -251,7 +252,7 @@ public class ChessNotation implements Serializable {
             ChessNotation notation = SaveInfo.DeserializeChessNotation(context, fileName);
             return notation;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("ChessNotation", "操作失败", e);
             return null;
         }
     }
@@ -371,7 +372,7 @@ public class ChessNotation implements Serializable {
             
             return notation;
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("ChessNotation", "操作失败", e);
             return null;
         }
     }

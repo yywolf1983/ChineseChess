@@ -253,7 +253,7 @@ public class PvPActivityGame {
                     infoSet.pushInfo(chessInfo);
                 }
             } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
+                LogUtils.e("PvPActivityGame", "操作失败", e);
             }
 
             // 在主线程中执行UI操作
@@ -1112,53 +1112,19 @@ public class PvPActivityGame {
         
         // 生成黑方走法的阿拉伯数字版本，以符合中国象棋记谱标准
         if (!isRed) {
-            moveString = moveString.replace("一", "1")
-                                  .replace("二", "2")
-                                  .replace("三", "3")
-                                  .replace("四", "4")
-                                  .replace("五", "5")
-                                  .replace("六", "6")
-                                  .replace("七", "7")
-                                  .replace("八", "8")
-                                  .replace("九", "9");
+            moveString = Info.ChessPiece.chineseToArabic(moveString);
         }
         
         return moveString;
     }
     
     private String getPieceName(int pieceType) {
-        switch (pieceType) {
-            case 1: return "将";
-            case 2: return "士";
-            case 3: return "象";
-            case 4: return "马";
-            case 5: return "车";
-            case 6: return "炮";
-            case 7: return "卒";
-            case 8: return "帅";
-            case 9: return "仕";
-            case 10: return "相";
-            case 11: return "马";
-            case 12: return "车";
-            case 13: return "炮";
-            case 14: return "兵";
-            default: return "未知";
-        }
+        return Info.ChessPiece.getName(pieceType);
     }
     
     private String getColChar(int col) {
-        switch (col) {
-            case 1: return "一";
-            case 2: return "二";
-            case 3: return "三";
-            case 4: return "四";
-            case 5: return "五";
-            case 6: return "六";
-            case 7: return "七";
-            case 8: return "八";
-            case 9: return "九";
-            default: return "";
-        }
+        String result = Info.ChessPiece.toChineseNumber(col);
+        return result.equals(String.valueOf(col)) ? "" : result;
     }
 
     // Getters and Setters

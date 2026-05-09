@@ -57,7 +57,7 @@ public class PvPActivityInit {
         try {
             infoSet.pushInfo(chessInfo);
         } catch (CloneNotSupportedException e) {
-            e.printStackTrace();
+            LogUtils.e("PvPActivityInit", "操作失败", e);
         }
     }
 
@@ -219,7 +219,7 @@ public class PvPActivityInit {
             SaveInfo.SerializeChessInfo(chessInfo, "ChessInfo_pvp.bin");
             SaveInfo.SerializeInfoSet(infoSet, "InfoSet_pvp.bin");
         } catch (Exception e) {
-            e.printStackTrace();
+            LogUtils.e("PvPActivityInit", "操作失败", e);
         }
     }
 
@@ -228,7 +228,7 @@ public class PvPActivityInit {
             try {
                 mediaPlayer.start();
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvPActivityInit", "操作失败", e);
             }
         }
     }
@@ -239,7 +239,7 @@ public class PvPActivityInit {
                 mediaPlayer.pause();
                 mediaPlayer.seekTo(0);
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvPActivityInit", "操作失败", e);
             }
         }
     }
@@ -250,7 +250,7 @@ public class PvPActivityInit {
                 mediaPlayer.seekTo(0);
                 mediaPlayer.start();
             } catch (Exception e) {
-                e.printStackTrace();
+                LogUtils.e("PvPActivityInit", "操作失败", e);
             }
         }
     }
