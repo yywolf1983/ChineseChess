@@ -891,13 +891,7 @@ public class MoveSimulator {
         // 如果同一列有多个相同的棋子，添加前缀
         if (samePieces.size() > 1) {
             // 对棋子按y坐标排序
-            java.util.Collections.sort(samePieces, new java.util.Comparator<Pos>() {
-                @Override
-                public int compare(Pos p1, Pos p2) {
-                    if (p1 == null || p2 == null) return 0;
-                    return Integer.compare(p1.y, p2.y);
-                }
-            });
+            samePieces.sort((p1, p2) -> Integer.compare(p1.y, p2.y));
             
             if (isPawn) {
                 // 兵/卒使用数字前缀：一兵、二兵、三兵、四兵、五兵

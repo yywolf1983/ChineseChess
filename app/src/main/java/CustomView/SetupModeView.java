@@ -48,7 +48,7 @@ public class SetupModeView extends View {
         paint.setAntiAlias(true);
 
         // 将dp转换为像素
-        int pieceSize = (int) convertDpToPixel(30, getContext());
+        int pieceSize = (int) convertDpToPixel(35, getContext());
 
         try {
             // 加载棋子图片
@@ -120,10 +120,10 @@ public class SetupModeView extends View {
         canvas.drawRect(0, 0, getWidth(), getHeight(), paint);
 
         // 将dp转换为像素
-        float textSize = convertDpToPixel(15, getContext());
-        int pieceSize = (int) convertDpToPixel(30, getContext());
+        float textSize = convertDpToPixel(12, getContext());
+        int pieceSize = (int) convertDpToPixel(35, getContext());
         int padding = (int) convertDpToPixel(2, getContext());
-        int titleY = (int) convertDpToPixel(20, getContext());
+        int titleY = (int) convertDpToPixel(18, getContext());
 
         // 绘制标题
         paint.setColor(Color.parseColor("#333333"));
@@ -169,9 +169,9 @@ public class SetupModeView extends View {
         }
 
         // 将dp转换为像素
-        int blackStartY = (int) convertDpToPixel(30, getContext());
-        int nameYOffset = (int) convertDpToPixel(10, getContext());
-        int redYOffset = (int) convertDpToPixel(15, getContext());
+        int blackStartY = (int) convertDpToPixel(25, getContext());
+        int nameYOffset = (int) convertDpToPixel(6, getContext());
+        int redYOffset = (int) convertDpToPixel(10, getContext());
 
         // 计算每行棋子的总宽度和起始X坐标，使棋子居中
         int blackTotalWidth = blackPieceCount * (pieceSize + padding) - padding;
@@ -214,7 +214,7 @@ public class SetupModeView extends View {
                 }
 
                 // 绘制棋子名称
-                float nameTextSize = convertDpToPixel(7, getContext());
+                float nameTextSize = convertDpToPixel(5, getContext());
                 paint.setTextSize(nameTextSize);
                 paint.setColor(Color.parseColor("#333333"));
                 canvas.drawText(blackPieceNames[i], x + pieceSize / 2, y + pieceSize + nameYOffset, paint);
@@ -226,7 +226,7 @@ public class SetupModeView extends View {
         int redTotalWidth = redPieceCount * (pieceSize + padding) - padding;
         int redStartX = (windowWidth - redTotalWidth) / 2;
         int redCurrentX = redStartX;
-        int redStartY = blackStartY + pieceSize + redYOffset;
+        int redStartY = blackStartY + pieceSize + redYOffset + nameYOffset;
 
         // 绘制红棋
         String[] redPieceNames = {"帅", "士", "相", "马", "车", "炮", "兵"};
@@ -264,7 +264,7 @@ public class SetupModeView extends View {
                 }
 
                 // 绘制棋子名称
-                float nameTextSize = convertDpToPixel(7, getContext());
+                float nameTextSize = convertDpToPixel(5, getContext());
                 paint.setTextSize(nameTextSize);
                 paint.setColor(Color.parseColor("#333333"));
                 canvas.drawText(redPieceNames[i], x + pieceSize / 2, y + pieceSize + nameYOffset, paint);
@@ -275,7 +275,7 @@ public class SetupModeView extends View {
         // 绘制清空棋盘按钮
         int buttonWidth = (int) convertDpToPixel(100, getContext()); // 使用dp单位
         int buttonHeight = (int) convertDpToPixel(25, getContext()); // 使用dp单位
-        int buttonYOffset = (int) convertDpToPixel(15, getContext()); // 使用dp单位
+        int buttonYOffset = (int) convertDpToPixel(8, getContext()); // 使用dp单位
         int buttonX = (windowWidth - buttonWidth) / 2;
         int buttonY = redStartY + pieceSize + buttonYOffset;
 
@@ -332,7 +332,7 @@ public class SetupModeView extends View {
 
         int width = MeasureSpec.getSize(widthMeasureSpec);
         // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-        int height = (int) convertDpToPixel(175, getContext()); // 175dp高度，确保足够显示所有棋子和按钮
+        int height = (int) convertDpToPixel(150, getContext()); // 150dp高度，确保足够显示所有棋子、按钮以及底部留白
 
         setMeasuredDimension(width, height);
     }
@@ -345,7 +345,7 @@ public class SetupModeView extends View {
         float y = event.getY();
 
         // 将dp转换为像素
-        int pieceSize = (int) convertDpToPixel(30, getContext());
+        int pieceSize = (int) convertDpToPixel(35, getContext());
         int padding = (int) convertDpToPixel(2, getContext());
         int windowWidth = getWidth();
 
@@ -383,9 +383,10 @@ public class SetupModeView extends View {
         }
 
         // 将dp转换为像素
-        int blackStartY = (int) convertDpToPixel(30, getContext());
-        int redYOffset = (int) convertDpToPixel(15, getContext());
-        int buttonYOffset = (int) convertDpToPixel(15, getContext());
+        int blackStartY = (int) convertDpToPixel(25, getContext());
+        int nameYOffset = (int) convertDpToPixel(6, getContext());
+        int redYOffset = (int) convertDpToPixel(10, getContext());
+        int buttonYOffset = (int) convertDpToPixel(8, getContext());
         int buttonWidth = (int) convertDpToPixel(100, getContext());
         int buttonHeight = (int) convertDpToPixel(25, getContext());
 
@@ -417,7 +418,7 @@ public class SetupModeView extends View {
         int redTotalWidth = redPieceCount * (pieceSize + padding) - padding;
         int redStartX = (windowWidth - redTotalWidth) / 2;
         int redCurrentX = redStartX;
-        int redStartY = blackStartY + pieceSize + redYOffset;
+        int redStartY = blackStartY + pieceSize + redYOffset + nameYOffset;
 
         // 检查红棋
         for (int i = 0; i < RP.length; i++) {
