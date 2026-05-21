@@ -159,8 +159,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         if (chessInfo.piece[i][j] > 0) {
                             // 反转y坐标，确保红棋在屏幕下方，黑棋在屏幕上方
                             int drawY = 9 - i;
-                            // 增大棋子尺寸：从 80x80 增加到 85x85，填满整个格子
-                            pDesRect = new Rect(Scale(j * 85), Scale(drawY * 85 + 38), Scale(j * 85 + 85), Scale(drawY * 85 + 123));
+                            // 增大棋子尺寸：88x88，超出格子边界2像素，让棋子更大更饱满
+                            pDesRect = new Rect(Scale(j * 85 - 2), Scale(drawY * 85 + 36), Scale(j * 85 + 86), Scale(drawY * 85 + 124));
                             if (chessInfo.piece[i][j] <= 7) {
                                 int num = chessInfo.piece[i][j] - 1;
                                 if (BP != null && num >= 0 && num < BP.length && BP[num] != null) {
@@ -190,18 +190,18 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 // 反转y坐标，确保选中效果显示在正确的位置
                 int displayY = 9 - drawY;
-                // 绘制选中效果，无论当前是哪个玩家的回合，使用增大后的棋子尺寸 85x85
+                // 绘制选中效果，无论当前是哪个玩家的回合，使用增大后的棋子尺寸 88x88
                 if (isRedPiece && R_box != null) {
                     pSrcRect = new Rect(0, 0, R_box.getWidth(), R_box.getHeight());
-                    pDesRect = new Rect(Scale(drawX * 85), Scale(displayY * 85 + 38), Scale(drawX * 85 + 85), Scale(displayY * 85 + 123));
+                    pDesRect = new Rect(Scale(drawX * 85 - 2), Scale(displayY * 85 + 36), Scale(drawX * 85 + 86), Scale(displayY * 85 + 124));
                     canvas.drawBitmap(R_box, pSrcRect, pDesRect, null);
                 } else if (B_box != null) {
                     pSrcRect = new Rect(0, 0, B_box.getWidth(), B_box.getHeight());
-                    pDesRect = new Rect(Scale(drawX * 85), Scale(displayY * 85 + 38), Scale(drawX * 85 + 85), Scale(displayY * 85 + 123));
+                    pDesRect = new Rect(Scale(drawX * 85 - 2), Scale(displayY * 85 + 36), Scale(drawX * 85 + 86), Scale(displayY * 85 + 124));
                     canvas.drawBitmap(B_box, pSrcRect, pDesRect, null);
                 }
                 
-                // 绘制可移动位置，使用增大后的棋子尺寸 85x85
+                // 绘制可移动位置，使用增大后的棋子尺寸 88x88
                 if (chessInfo.ret != null) {
                     Iterator<Pos> it = chessInfo.ret.iterator();
                     while (it.hasNext()) {
@@ -211,7 +211,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         int displayPosY = 9 - y;
                         if (Pot != null) {
                             pSrcRect = new Rect(0, 0, Pot.getWidth(), Pot.getHeight());
-                            pDesRect = new Rect(Scale(x * 85), Scale(displayPosY * 85 + 38), Scale(x * 85 + 85), Scale(displayPosY * 85 + 123));
+                            pDesRect = new Rect(Scale(x * 85 - 2), Scale(displayPosY * 85 + 36), Scale(x * 85 + 86), Scale(displayPosY * 85 + 124));
                             canvas.drawBitmap(Pot, pSrcRect, pDesRect, null);
                         }
                     }
@@ -232,9 +232,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
             Rect tmpRect;
 
-            // 使用增大后的棋子尺寸 85x85 绘制走棋轨迹
-            pDesRect = new Rect(Scale(draw_curX * 85), Scale(draw_curY * 85 + 38), Scale(draw_curX * 85 + 85), Scale(draw_curY * 85 + 123));
-            tmpRect = new Rect(Scale(draw_preX * 85), Scale(draw_preY * 85 + 38), Scale(draw_preX * 85 + 85), Scale(draw_preY * 85 + 123));
+            // 使用增大后的棋子尺寸 88x88 绘制走棋轨迹
+            pDesRect = new Rect(Scale(draw_curX * 85 - 2), Scale(draw_curY * 85 + 36), Scale(draw_curX * 85 + 86), Scale(draw_curY * 85 + 124));
+            tmpRect = new Rect(Scale(draw_preX * 85 - 2), Scale(draw_preY * 85 + 36), Scale(draw_preX * 85 + 86), Scale(draw_preY * 85 + 124));
 
             if (real_curY >= 0 && real_curY < 10 && real_curX >= 0 && real_curX < 9 && chessInfo.piece != null && chessInfo.piece[real_curY] != null && chessInfo.piece[real_curY][real_curX] >= 1 && chessInfo.piece[real_curY][real_curX] <= 7) {
                 if (B_box != null) {
