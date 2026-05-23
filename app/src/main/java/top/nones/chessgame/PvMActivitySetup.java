@@ -46,111 +46,120 @@ public class PvMActivitySetup {
             return;
         }
         
-        // 保存操作前的状态，用于回滚
-        int originalSourcePiece = 0;
-        int originalTargetPiece = 0;
-        boolean rollbackNeeded = false;
-        
-        try {
-            // 保存原始状态
-            if (activity.chessInfo.piece[y] != null) {
-                originalTargetPiece = activity.chessInfo.piece[y][x];
-            }
-            if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
-                sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
-                originalSourcePiece = activity.chessInfo.piece[sourceY][sourceX];
-            }
+        // 获取锁对象
+        Object lock = activity.chessInfo.getLock();
+        synchronized (lock) {
+            // 保存操作前的状态，用于回滚
+            int originalSourcePiece = 0;
+            int originalTargetPiece = 0;
+            int originalAttackNum_B = activity.chessInfo.attackNum_B;
+            int originalAttackNum_R = activity.chessInfo.attackNum_R;
+            boolean rollbackNeeded = false;
             
-            // 如果是移除棋子，不需要检查数量限制
-            if (pieceID != 0) {
-                // 检查棋子数量限制时，需要考虑目标位置的原棋子
-                if (!checkPieceCountWithTarget(pieceID, sourceX, sourceY, x, y)) {
-                    // 显示数量限制提示
-                    return;
+            try {
+                // 保存原始状态
+                if (activity.chessInfo.piece[y] != null) {
+                    originalTargetPiece = activity.chessInfo.piece[y][x];
+                }
+                if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
+                    sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
+                    originalSourcePiece = activity.chessInfo.piece[sourceY][sourceX];
                 }
                 
-                // 检查位置合理性
-                if (!isValidPiecePosition(pieceID, x, y)) {
-                    // 显示位置不合理提示
-                    return;
+                // 如果是移除棋子，不需要检查数量限制
+                if (pieceID != 0) {
+                    // 检查棋子数量限制时，需要考虑目标位置的原棋子
+                    if (!checkPieceCountWithTarget(pieceID, sourceX, sourceY, x, y)) {
+                        // 显示数量限制提示
+                        return;
+                    }
+                    
+                    // 检查位置合理性
+                    if (!isValidPiecePosition(pieceID, x, y)) {
+                        // 显示位置不合理提示
+                        return;
+                    }
                 }
-            }
-            
-            // 标记需要回滚
-            rollbackNeeded = true;
-            
-            // 先临时保存原位置的棋子（如果有来源位置）
-            if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
-                sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
-                // 先将原位置设为0，避免数量检查错误
-                activity.chessInfo.piece[sourceY][sourceX] = 0;
-            }
-            
-            // 放置新棋子
-            if (activity.chessInfo.piece[y] != null) {
-                activity.chessInfo.piece[y][x] = pieceID;
-            }
-            
-            // 重新计算攻击棋子数量
-            activity.chessInfo.attackNum_B = 0;
-            activity.chessInfo.attackNum_R = 0;
-            for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
-                if (activity.chessInfo.piece[i] != null) {
-                    for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
-                        int piece = activity.chessInfo.piece[i][j];
-                        if (piece != 0) {
-                            // 黑方攻击棋子：车(5)、马(4)、炮(6)、卒(7)
-                            if (piece == 4 || piece == 5 || piece == 6 || piece == 7) {
-                                activity.chessInfo.attackNum_B++;
-                            }
-                            // 红方攻击棋子：车(12)、马(11)、炮(13)、兵(14)
-                            else if (piece == 11 || piece == 12 || piece == 13 || piece == 14) {
-                                activity.chessInfo.attackNum_R++;
+                
+                // 标记需要回滚
+                rollbackNeeded = true;
+                
+                // 先临时保存原位置的棋子（如果有来源位置）
+                if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
+                    sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
+                    // 先将原位置设为0，避免数量检查错误
+                    activity.chessInfo.piece[sourceY][sourceX] = 0;
+                }
+                
+                // 放置新棋子
+                if (activity.chessInfo.piece[y] != null) {
+                    activity.chessInfo.piece[y][x] = pieceID;
+                }
+                
+                // 重新计算攻击棋子数量
+                activity.chessInfo.attackNum_B = 0;
+                activity.chessInfo.attackNum_R = 0;
+                for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
+                    if (activity.chessInfo.piece[i] != null) {
+                        for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
+                            int piece = activity.chessInfo.piece[i][j];
+                            if (piece != 0) {
+                                // 黑方攻击棋子：车(5)、马(4)、炮(6)、卒(7)
+                                if (piece == 4 || piece == 5 || piece == 6 || piece == 7) {
+                                    activity.chessInfo.attackNum_B++;
+                                }
+                                // 红方攻击棋子：车(12)、马(11)、炮(13)、兵(14)
+                                else if (piece == 11 || piece == 12 || piece == 13 || piece == 14) {
+                                    activity.chessInfo.attackNum_R++;
+                                }
                             }
                         }
                     }
                 }
-            }
-            // 重新绘制界面
-            if (activity.chessView != null) {
-                activity.chessView.requestDraw();
-                // 立即刷新
-                activity.chessView.invalidate();
-            }
-            if (activity.setupModeView != null) {
-                activity.setupModeView.invalidate();
-                // 立即刷新
-                activity.setupModeView.postInvalidate();
-            }
-            
-            // 不再自动检查摆棋完成，由用户点击摆棋按钮结束
-            
-            // 检查和棋条件，确保摆棋模式下也能提示和棋
-            if (activity.controlsManager != null && activity.chessInfo != null && activity.chessInfo.status == 1) {
-                activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
-            }
-            
-            // 操作成功，不需要回滚
-            rollbackNeeded = false;
-        } catch (Exception e) {
-            LogUtils.e("PvMActivitySetup", "Error in placePiece", e);
-            rollbackNeeded = true;
-        } finally {
-            // 如果需要回滚，恢复原始状态
-            if (rollbackNeeded) {
-                try {
-                    // 恢复来源位置的棋子
-                    if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
-                        sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
-                        activity.chessInfo.piece[sourceY][sourceX] = originalSourcePiece;
+                // 重新绘制界面
+                if (activity.chessView != null) {
+                    activity.chessView.requestDraw();
+                    // 立即刷新
+                    activity.chessView.invalidate();
+                }
+                if (activity.setupModeView != null) {
+                    activity.setupModeView.invalidate();
+                    // 立即刷新
+                    activity.setupModeView.postInvalidate();
+                }
+                
+                // 不再自动检查摆棋完成，由用户点击摆棋按钮结束
+                
+                // 检查和棋条件，确保摆棋模式下也能提示和棋
+                if (activity.controlsManager != null && activity.chessInfo != null && activity.chessInfo.status == 1) {
+                    activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
+                }
+                
+                // 操作成功，不需要回滚
+                rollbackNeeded = false;
+            } catch (Exception e) {
+                LogUtils.e("PvMActivitySetup", "Error in placePiece", e);
+                rollbackNeeded = true;
+            } finally {
+                // 如果需要回滚，恢复原始状态
+                if (rollbackNeeded) {
+                    try {
+                        // 恢复来源位置的棋子
+                        if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
+                            sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
+                            activity.chessInfo.piece[sourceY][sourceX] = originalSourcePiece;
+                        }
+                        // 恢复目标位置的棋子
+                        if (activity.chessInfo.piece[y] != null) {
+                            activity.chessInfo.piece[y][x] = originalTargetPiece;
+                        }
+                        // 恢复攻击棋子数量
+                        activity.chessInfo.attackNum_B = originalAttackNum_B;
+                        activity.chessInfo.attackNum_R = originalAttackNum_R;
+                        LogUtils.d("PvMActivitySetup", "Rollback completed for placePiece operation");
+                    } catch (Exception rollbackException) {
+                        LogUtils.e("PvMActivitySetup", "Error during rollback", rollbackException);
                     }
-                    // 恢复目标位置的棋子
-                    if (activity.chessInfo.piece[y] != null) {
-                        activity.chessInfo.piece[y][x] = originalTargetPiece;
-                    }
-                    LogUtils.d("PvMActivitySetup", "Rollback completed for placePiece operation");
-                } catch (Exception rollbackException) {
-                    LogUtils.e("PvMActivitySetup", "Error during rollback", rollbackException);
                 }
             }
         }
@@ -275,47 +284,50 @@ public class PvMActivitySetup {
         if (pieceID == 0) return true; // 移除棋子总是允许的
         if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) return false;
         
-        int count = 0;
-        try {
-            for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
-                if (activity.chessInfo.piece[i] != null) {
-                    for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
-                        // 如果是来源位置或目标位置，不计入数量
-                        if ((i == sourceY && j == sourceX) || (i == targetY && j == targetX)) {
-                            continue;
-                        }
-                        if (activity.chessInfo.piece[i][j] == pieceID) {
-                            count++;
+        Object lock = activity.chessInfo.getLock();
+        synchronized (lock) {
+            int count = 0;
+            try {
+                for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
+                    if (activity.chessInfo.piece[i] != null) {
+                        for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
+                            // 如果是来源位置或目标位置，不计入数量
+                            if ((i == sourceY && j == sourceX) || (i == targetY && j == targetX)) {
+                                continue;
+                            }
+                            if (activity.chessInfo.piece[i][j] == pieceID) {
+                                count++;
+                            }
                         }
                     }
                 }
+            } catch (Exception e) {
+                LogUtils.e("PvMActivitySetup", "Error in checkPieceCountWithTarget", e);
+                return false;
             }
-        } catch (Exception e) {
-            LogUtils.e("PvMActivitySetup", "Error in checkPieceCountWithTarget", e);
-            return false;
-        }
-        
-        // 标准中国象棋棋子数量限制
-        switch (pieceID) {
-            case 1: // 黑将
-            case 8: // 红帅
-                return count < 1;
-            case 2: // 黑士
-            case 3: // 黑象
-            case 4: // 黑马
-            case 5: // 黑车
-            case 6: // 黑炮
-            case 9: // 红士
-            case 10: // 红相
-            case 11: // 红马
-            case 12: // 红车
-            case 13: // 红炮
-                return count < 2;
-            case 7: // 黑卒
-            case 14: // 红兵
-                return count < 5;
-            default:
-                return true;
+            
+            // 标准中国象棋棋子数量限制
+            switch (pieceID) {
+                case 1: // 黑将
+                case 8: // 红帅
+                    return count < 1;
+                case 2: // 黑士
+                case 3: // 黑象
+                case 4: // 黑马
+                case 5: // 黑车
+                case 6: // 黑炮
+                case 9: // 红士
+                case 10: // 红相
+                case 11: // 红马
+                case 12: // 红车
+                case 13: // 红炮
+                    return count < 2;
+                case 7: // 黑卒
+                case 14: // 红兵
+                    return count < 5;
+                default:
+                    return true;
+            }
         }
     }
 
@@ -352,29 +364,32 @@ public class PvMActivitySetup {
     public boolean checkSetupComplete() {
         if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) return false;
         
-        // 只检查基本合法性：双方都有将/帅
-        boolean hasRedKing = false;
-        boolean hasBlackKing = false;
-        
-        try {
-            for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
-                if (activity.chessInfo.piece[i] != null) {
-                    for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
-                        int piece = activity.chessInfo.piece[i][j];
-                        if (piece == 1) { // 黑将
-                            hasBlackKing = true;
-                        } else if (piece == 8) { // 红帅
-                            hasRedKing = true;
+        Object lock = activity.chessInfo.getLock();
+        synchronized (lock) {
+            // 只检查基本合法性：双方都有将/帅
+            boolean hasRedKing = false;
+            boolean hasBlackKing = false;
+            
+            try {
+                for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
+                    if (activity.chessInfo.piece[i] != null) {
+                        for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
+                            int piece = activity.chessInfo.piece[i][j];
+                            if (piece == 1) { // 黑将
+                                hasBlackKing = true;
+                            } else if (piece == 8) { // 红帅
+                                hasRedKing = true;
+                            }
                         }
                     }
                 }
+            } catch (Exception e) {
+                LogUtils.e("PvMActivitySetup", "Error in checkSetupComplete", e);
+                return false;
             }
-        } catch (Exception e) {
-            LogUtils.e("PvMActivitySetup", "Error in checkSetupComplete", e);
-            return false;
+            
+            return hasRedKing && hasBlackKing;
         }
-        
-        return hasRedKing && hasBlackKing;
     }
     
     // 结束摆棋并选择开局方
@@ -386,79 +401,85 @@ public class PvMActivitySetup {
             builder.setMessage("请选择由哪一方开始下棋");
             builder.setPositiveButton("红方开始", (dialog, which) -> {
                 if (activity != null && activity.chessInfo != null) {
-                    // 红方开始，设置IsRedGo为true
-                    activity.chessInfo.IsRedGo = true;
-                    // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
-                    FENHandler fenHandler = new FENHandler();
-                    String setupFEN = fenHandler.generateFEN(activity.chessInfo);
-                    if (activity.notationManager != null) {
-                        activity.notationManager.setSetupFEN(setupFEN);
-                        LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
-                    }
-                    // 退出摆棋模式
-                    activity.chessInfo.IsSetupMode = false;
-                    // 确保游戏状态为进行中
-                    activity.chessInfo.status = 1;
-                    // 重置infoSet，清空摆棋过程中的记录
-                    activity.infoSet = new InfoSet();
-                    // 将当前摆棋局面保存到infoSet中作为初始状态
-                    try {
-                        if (activity.infoSet != null) {
-                            activity.infoSet.pushInfo(activity.chessInfo);
+                    Object lock = activity.chessInfo.getLock();
+                    synchronized (lock) {
+                        // 红方开始，设置IsRedGo为true
+                        activity.chessInfo.IsRedGo = true;
+                        // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                        FENHandler fenHandler = new FENHandler();
+                        String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                        if (activity.notationManager != null) {
+                            activity.notationManager.setSetupFEN(setupFEN);
+                            LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
                         }
-                    } catch (CloneNotSupportedException e) {
-                        LogUtils.e("PvMActivitySetup", "操作失败", e);
-                    }
-                    // 重置时间
-                    activity.redTime = 0;
-                    activity.blackTime = 0;
-                    activity.currentTurnStartTime = 0;
-                    activity.updateTimeDisplay();
-                    // 重新绘制界面
-                    if (activity.chessView != null) {
-                        activity.chessView.requestDraw();
-                    }
-                    if (activity.roundView != null) {
-                        activity.roundView.requestDraw();
+                        // 退出摆棋模式
+                        activity.chessInfo.IsSetupMode = false;
+                        // 确保游戏状态为进行中
+                        activity.chessInfo.status = 1;
+                        // 重置infoSet，清空摆棋过程中的记录
+                        activity.infoSet = new InfoSet();
+                        // 将当前摆棋局面保存到infoSet中作为初始状态
+                        try {
+                            if (activity.infoSet != null) {
+                                activity.infoSet.pushInfo(activity.chessInfo);
+                            }
+                        } catch (CloneNotSupportedException e) {
+                            LogUtils.e("PvMActivitySetup", "操作失败", e);
+                        }
+                        // 重置时间
+                        activity.redTime = 0;
+                        activity.blackTime = 0;
+                        activity.currentTurnStartTime = 0;
+                        activity.updateTimeDisplay();
+                        // 重新绘制界面
+                        if (activity.chessView != null) {
+                            activity.chessView.requestDraw();
+                        }
+                        if (activity.roundView != null) {
+                            activity.roundView.requestDraw();
+                        }
                     }
                 }
             });
             builder.setNegativeButton("黑方开始", (dialog, which) -> {
                 if (activity != null && activity.chessInfo != null) {
-                    // 黑方开始，设置IsRedGo为false
-                    activity.chessInfo.IsRedGo = false;
-                    // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
-                    FENHandler fenHandler = new FENHandler();
-                    String setupFEN = fenHandler.generateFEN(activity.chessInfo);
-                    if (activity.notationManager != null) {
-                        activity.notationManager.setSetupFEN(setupFEN);
-                        LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
-                    }
-                    // 退出摆棋模式
-                    activity.chessInfo.IsSetupMode = false;
-                    // 确保游戏状态为进行中
-                    activity.chessInfo.status = 1;
-                    // 重置infoSet，清空摆棋过程中的记录
-                    activity.infoSet = new InfoSet();
-                    // 将当前摆棋局面保存到infoSet中作为初始状态
-                    try {
-                        if (activity.infoSet != null) {
-                            activity.infoSet.pushInfo(activity.chessInfo);
+                    Object lock = activity.chessInfo.getLock();
+                    synchronized (lock) {
+                        // 黑方开始，设置IsRedGo为false
+                        activity.chessInfo.IsRedGo = false;
+                        // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                        FENHandler fenHandler = new FENHandler();
+                        String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                        if (activity.notationManager != null) {
+                            activity.notationManager.setSetupFEN(setupFEN);
+                            LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
                         }
-                    } catch (CloneNotSupportedException e) {
-                        LogUtils.e("PvMActivitySetup", "操作失败", e);
-                    }
-                    // 重置时间
-                    activity.redTime = 0;
-                    activity.blackTime = 0;
-                    activity.currentTurnStartTime = 0;
-                    activity.updateTimeDisplay();
-                    // 重新绘制界面
-                    if (activity.chessView != null) {
-                        activity.chessView.requestDraw();
-                    }
-                    if (activity.roundView != null) {
-                        activity.roundView.requestDraw();
+                        // 退出摆棋模式
+                        activity.chessInfo.IsSetupMode = false;
+                        // 确保游戏状态为进行中
+                        activity.chessInfo.status = 1;
+                        // 重置infoSet，清空摆棋过程中的记录
+                        activity.infoSet = new InfoSet();
+                        // 将当前摆棋局面保存到infoSet中作为初始状态
+                        try {
+                            if (activity.infoSet != null) {
+                                activity.infoSet.pushInfo(activity.chessInfo);
+                            }
+                        } catch (CloneNotSupportedException e) {
+                            LogUtils.e("PvMActivitySetup", "操作失败", e);
+                        }
+                        // 重置时间
+                        activity.redTime = 0;
+                        activity.blackTime = 0;
+                        activity.currentTurnStartTime = 0;
+                        activity.updateTimeDisplay();
+                        // 重新绘制界面
+                        if (activity.chessView != null) {
+                            activity.chessView.requestDraw();
+                        }
+                        if (activity.roundView != null) {
+                            activity.roundView.requestDraw();
+                        }
                     }
                 }
             });

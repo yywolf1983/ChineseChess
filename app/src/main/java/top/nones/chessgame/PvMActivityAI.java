@@ -358,208 +358,212 @@ public class PvMActivityAI {
             return false;
         }
         
-        // 检查当前局面是否已经是重复局面，如果是则强制AI变着
-        if (this.activity.chessInfo.isThreefoldRepetition()) {
-            // 启用强制变着模式
-            this.activity.chessInfo.forceVariation = true;
-            this.activity.chessInfo.variationRandomness = 5; // 设置高随机性
-            
-            // 通知用户需要重新计算
-            if (this.activity != null) {
-                this.activity.runOnUiThread(() -> {
-                    // 移除Toast提示，避免频繁弹出
-                });
-            }
-            
-            // 重新触发AI计算
-            return triggerAIRecalculation();
-        }
-        
-        boolean redKingExists = false;
-        boolean blackKingExists = false;
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
-                if (this.activity.chessInfo.piece[i][j] == 1) {
-                    blackKingExists = true;
-                } else if (this.activity.chessInfo.piece[i][j] == 8) {
-                    redKingExists = true;
-                }
-            }
-        }
-        
-        if (!redKingExists) {
-            if (this.activity != null) {
-                // 移除Toast提示，通过界面显示胜利信息
-            }
-            return false;
-        }
-        if (!blackKingExists) {
-            if (this.activity != null) {
-                // 移除Toast提示，通过界面显示胜利信息
-            }
-            return false;
-        }
-        
-        if (move == null) {
-            // 移除胜利判断，只保留被将判断
-            return false;
-        }
-        
-        Pos fromPos = move.fromPos;
-        Pos toPos = move.toPos;
-        
-        if (fromPos == null || toPos == null) {
-            return false;
-        }
-        
-        if (fromPos.x < 0 || fromPos.x >= 9 || fromPos.y < 0 || fromPos.y >= 10 || toPos.x < 0 || toPos.x >= 9 || toPos.y < 0 || toPos.y >= 10) {
-            return false;
-        }
-        
-        if (this.activity.chessInfo.piece[fromPos.y][fromPos.x] == 0) {
-            return false;
-        }
-        
-        int tmp = this.activity.chessInfo.piece[toPos.y][toPos.x];
-        int piece = this.activity.chessInfo.piece[fromPos.y][fromPos.x];
-        boolean isRed = piece >= 8 && piece <= 14;
-        
-        if (isRed != this.activity.chessInfo.IsRedGo) {
-            return false;
-        }
-        
-        List<Pos> possibleMoves = Rule.PossibleMoves(this.activity.chessInfo.piece, fromPos.x, fromPos.y, piece);
-        if (!possibleMoves.contains(toPos)) {
-            return false;
-        }
-        
-        // 检查是否吃掉了对方的老将
-        boolean isCaptureKing = tmp == 1 || tmp == 8;
-        
-        this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
-        this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
-        
-        // 检查移动后是否会导致自己被将军（但如果吃掉了对方老将，则允许）
-        if (!isCaptureKing && Rule.isKingDanger(this.activity.chessInfo.piece, isRed)) {
-            // 移动会导致自己被将军，撤销移动
-            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
-            this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
-            LogUtils.e("PvMActivityAI", "AI移动会导致自己被将军，撤销移动");
-            return false;
-        }
-        
-        this.activity.chessInfo.IsChecked = Rule.isKingDanger(this.activity.chessInfo.piece, !isRed);
-        this.activity.chessInfo.Select = new int[]{-1, -1};
-        this.activity.chessInfo.ret.clear();
-        this.activity.chessInfo.prePos = fromPos;
-        this.activity.chessInfo.curPos = toPos;
-        
-        String moveString = this.activity.generateMoveString(this.activity.chessInfo, piece, fromPos, toPos, isRed);
-        if (moveString != null) {
-            Utils.LogUtils.i("Move", "AI走棋: " + moveString);
-        }
-        
-        this.activity.stopTurnTimer();
-        
-        boolean isCheck = this.activity.chessInfo.IsChecked;
-        this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
-        this.activity.chessInfo.isMachine = true;
-        
-        // 记录AI着法历史
-        String moveKey = fromPos.x + "," + fromPos.y + "->" + toPos.x + "," + toPos.y;
-        aiMoveHistory.add(moveKey);
-        // 只保留最近10个着法
-        if (aiMoveHistory.size() > 10) {
-            aiMoveHistory.remove(0);
-        }
-        
-        // 走棋后重置强制变着模式，因为局面已经改变
-        if (this.activity.chessInfo.forceVariation) {
-            this.activity.chessInfo.forceVariation = false;
-            this.activity.chessInfo.variationRandomness = 0;
-        }
-        
-        // 检查AI走棋后是否导致重复局面
-        if (checkIfMoveLeadsToRepetition(move)) {
-            // 撤销这个着法，因为它会导致重复局面
-            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
-            this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
-            
-            // 重新触发AI计算
-            new Thread(() -> {
-                try {
-                    Thread.sleep(100); // 短暂延迟
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+        // 获取锁对象
+        Object lock = this.activity.chessInfo.getLock();
+        synchronized (lock) {
+            // 检查当前局面是否已经是重复局面，如果是则强制AI变着
+            if (this.activity.chessInfo.isThreefoldRepetition()) {
+                // 启用强制变着模式
+                this.activity.chessInfo.forceVariation = true;
+                this.activity.chessInfo.variationRandomness = 5; // 设置高随机性
                 
-                // 在UI线程中重新触发AI计算
+                // 通知用户需要重新计算
                 if (this.activity != null) {
                     this.activity.runOnUiThread(() -> {
-                        checkAIMove();
+                        // 移除Toast提示，避免频繁弹出
                     });
                 }
-            }).start();
-            
-            return false;
-        }
-        
-        try {
-            this.activity.infoSet.pushInfo(this.activity.chessInfo);
-        } catch (CloneNotSupportedException e) {
-            LogUtils.e("PvMActivityAI", "操作失败", e);
-        }
-        
-        if (this.activity.roundView != null) {
-            // 直接使用当前分数，避免再次触发AI搜索
-            this.activity.roundView.setMoveScore(this.currentAIScore);
-        }
-        
-        if (this.activity.chessView != null) {
-            this.activity.chessView.requestDraw();
-        }
-        if (this.activity.roundView != null) {
-            this.activity.roundView.requestDraw();
-        }
-        
-        // AI落子后清除支招信息（只有获得支招的一方落子后才清除）
-        if (this.activity.gameManager != null) {
-            // 判断AI是否是获得支招的一方
-            // AI落子方是isRed，需要判断是否与suggestForRed一致
-            if (this.activity.gameManager.shouldClearSuggest(isRed)) {
-                this.activity.gameManager.clearSuggest();
+                
+                // 重新触发AI计算
+                return triggerAIRecalculation();
             }
-        } else if (this.activity.roundView != null) {
-            // 如果没有gameManager，直接清除
-            this.activity.roundView.setSuggestMoveText("");
+            
+            boolean redKingExists = false;
+            boolean blackKingExists = false;
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 9; j++) {
+                    if (this.activity.chessInfo.piece[i][j] == 1) {
+                        blackKingExists = true;
+                    } else if (this.activity.chessInfo.piece[i][j] == 8) {
+                        redKingExists = true;
+                    }
+                }
+            }
+            
+            if (!redKingExists) {
+                if (this.activity != null) {
+                    // 移除Toast提示，通过界面显示胜利信息
+                }
+                return false;
+            }
+            if (!blackKingExists) {
+                if (this.activity != null) {
+                    // 移除Toast提示，通过界面显示胜利信息
+                }
+                return false;
+            }
+            
+            if (move == null) {
+                // 移除胜利判断，只保留被将判断
+                return false;
+            }
+            
+            Pos fromPos = move.fromPos;
+            Pos toPos = move.toPos;
+            
+            if (fromPos == null || toPos == null) {
+                return false;
+            }
+            
+            if (fromPos.x < 0 || fromPos.x >= 9 || fromPos.y < 0 || fromPos.y >= 10 || toPos.x < 0 || toPos.x >= 9 || toPos.y < 0 || toPos.y >= 10) {
+                return false;
+            }
+            
+            if (this.activity.chessInfo.piece[fromPos.y][fromPos.x] == 0) {
+                return false;
+            }
+            
+            int tmp = this.activity.chessInfo.piece[toPos.y][toPos.x];
+            int piece = this.activity.chessInfo.piece[fromPos.y][fromPos.x];
+            boolean isRed = piece >= 8 && piece <= 14;
+            
+            if (isRed != this.activity.chessInfo.IsRedGo) {
+                return false;
+            }
+            
+            List<Pos> possibleMoves = Rule.PossibleMoves(this.activity.chessInfo.piece, fromPos.x, fromPos.y, piece);
+            if (!possibleMoves.contains(toPos)) {
+                return false;
+            }
+            
+            // 检查是否吃掉了对方的老将
+            boolean isCaptureKing = tmp == 1 || tmp == 8;
+            
+            this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
+            this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
+            
+            // 检查移动后是否会导致自己被将军（但如果吃掉了对方老将，则允许）
+            if (!isCaptureKing && Rule.isKingDanger(this.activity.chessInfo.piece, isRed)) {
+                // 移动会导致自己被将军，撤销移动
+                this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
+                this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
+                LogUtils.e("PvMActivityAI", "AI移动会导致自己被将军，撤销移动");
+                return false;
+            }
+            
+            this.activity.chessInfo.IsChecked = Rule.isKingDanger(this.activity.chessInfo.piece, !isRed);
+            this.activity.chessInfo.Select = new int[]{-1, -1};
+            this.activity.chessInfo.ret.clear();
+            this.activity.chessInfo.prePos = fromPos;
+            this.activity.chessInfo.curPos = toPos;
+            
+            String moveString = this.activity.generateMoveString(this.activity.chessInfo, piece, fromPos, toPos, isRed);
+            if (moveString != null) {
+                Utils.LogUtils.i("Move", "AI走棋: " + moveString);
+            }
+            
+            this.activity.stopTurnTimer();
+            
+            boolean isCheck = this.activity.chessInfo.IsChecked;
+            this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
+            this.activity.chessInfo.isMachine = true;
+        
+            // 记录AI着法历史
+            String moveKey = fromPos.x + "," + fromPos.y + "->" + toPos.x + "," + toPos.y;
+            aiMoveHistory.add(moveKey);
+            // 只保留最近10个着法
+            if (aiMoveHistory.size() > 10) {
+                aiMoveHistory.remove(0);
+            }
+            
+            // 走棋后重置强制变着模式，因为局面已经改变
+            if (this.activity.chessInfo.forceVariation) {
+                this.activity.chessInfo.forceVariation = false;
+                this.activity.chessInfo.variationRandomness = 0;
+            }
+            
+            // 检查AI走棋后是否导致重复局面
+            if (checkIfMoveLeadsToRepetition(move)) {
+                // 撤销这个着法，因为它会导致重复局面
+                this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
+                this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
+                
+                // 重新触发AI计算
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(100); // 短暂延迟
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                    }
+                    
+                    // 在UI线程中重新触发AI计算
+                    if (this.activity != null) {
+                        this.activity.runOnUiThread(() -> {
+                            checkAIMove();
+                        });
+                    }
+                }).start();
+                
+                return false;
+            }
+            
+            try {
+                this.activity.infoSet.pushInfo(this.activity.chessInfo);
+            } catch (CloneNotSupportedException e) {
+                LogUtils.e("PvMActivityAI", "操作失败", e);
+            }
+            
+            if (this.activity.roundView != null) {
+                // 直接使用当前分数，避免再次触发AI搜索
+                this.activity.roundView.setMoveScore(this.currentAIScore);
+            }
+            
+            if (this.activity.chessView != null) {
+                this.activity.chessView.requestDraw();
+            }
+            if (this.activity.roundView != null) {
+                this.activity.roundView.requestDraw();
+            }
+            
+            // AI落子后清除支招信息（只有获得支招的一方落子后才清除）
+            if (this.activity.gameManager != null) {
+                // 判断AI是否是获得支招的一方
+                // AI落子方是isRed，需要判断是否与suggestForRed一致
+                if (this.activity.gameManager.shouldClearSuggest(isRed)) {
+                    this.activity.gameManager.clearSuggest();
+                }
+            } else if (this.activity.roundView != null) {
+                // 如果没有gameManager，直接清除
+                this.activity.roundView.setSuggestMoveText("");
+            }
+            
+            this.activity.continueGameRoundCount++;
+            
+            this.activity.startTurnTimer();
+            
+            // 检查游戏状态，包括将死和和棋条件
+            if (this.activity.controlsManager != null) {
+                this.activity.controlsManager.checkGameStatus(isRed);
+            }
+            
+            stopAISearch();
+            
+            // 重置AI分析状态
+            finishAnalyzing();
+            
+            // 重置AI思考状态，确保AI行棋后不显示"AI正在思考"
+            if (this.activity != null && this.activity.roundView != null) {
+                this.activity.roundView.setSearchDepth(0, isRed);
+            }
+            
+            if (this.activity.gameMode == 3 && this.activity.chessInfo.status == 1 && this.activity.chessView != null) {
+                final PvMActivityAI aiInstance = this;
+                // 移除延迟，直接触发下一次AI计算
+                this.activity.chessView.post(new DoubleAIMoveRunnable(aiInstance));
+            }
+            
+            return true;
         }
-        
-        this.activity.continueGameRoundCount++;
-        
-        this.activity.startTurnTimer();
-        
-        // 检查游戏状态，包括将死和和棋条件
-        if (this.activity.controlsManager != null) {
-            this.activity.controlsManager.checkGameStatus(isRed);
-        }
-        
-        stopAISearch();
-        
-        // 重置AI分析状态
-        finishAnalyzing();
-        
-        // 重置AI思考状态，确保AI行棋后不显示"AI正在思考"
-        if (this.activity != null && this.activity.roundView != null) {
-            this.activity.roundView.setSearchDepth(0, isRed);
-        }
-        
-        if (this.activity.gameMode == 3 && this.activity.chessInfo.status == 1 && this.activity.chessView != null) {
-            final PvMActivityAI aiInstance = this;
-            // 移除延迟，直接触发下一次AI计算
-            this.activity.chessView.post(new DoubleAIMoveRunnable(aiInstance));
-        }
-        
-        return true;
     }
     
     // 重新触发AI计算
