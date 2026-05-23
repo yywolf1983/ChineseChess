@@ -316,7 +316,8 @@ public class ChessRecognitionService {
         Result result = clsSession.run(Collections.singletonMap("input", inputTensor));
         long t3 = System.currentTimeMillis();
 
-        // 4. 解析输出
+        // 4. 解析输出 - 获取所有概率
+        float[][][] allProbabilities = null;
         Object outputValue = result.get(0).getValue();
         int[][] classificationResults;
 
@@ -324,6 +325,9 @@ public class ChessRecognitionService {
             float[][][][] tensor = (float[][][][]) outputValue;
             int[] shape = getShape4D(tensor);
             Log.d(TAG, "Cls output shape: [" + shape[0] + "," + shape[1] + "," + shape[2] + "," + shape[3] + "]");
+
+            // 获取所有概率信息用于后续验证
+            allProbabilities = extractAllProbabilities(tensor, shape);
 
             if (shape[1] == NUM_CLASSES && shape[2] == BOARD_ROWS && shape[3] == BOARD_COLS) {
                 classificationResults = parseNCHWFormat(tensor);
@@ -333,7 +337,10 @@ public class ChessRecognitionService {
                 classificationResults = parseGenericFormat(tensor, shape);
             }
         } else if (outputValue instanceof float[][][]) {
-            classificationResults = parse3DTensor((float[][][]) outputValue);
+            float[][][] tensor = (float[][][]) outputValue;
+            // 获取所有概率信息用于后续验证
+            allProbabilities = extractAllProbabilitiesFrom3D(tensor);
+            classificationResults = parse3DTensor(tensor);
         } else {
             Log.w(TAG, "Unknown output type: " + outputValue.getClass().getName());
             return createSimulatedChessInfo();
@@ -342,18 +349,29 @@ public class ChessRecognitionService {
 
         // 5. 映射到 ChessInfo (row0=黑方顶部 → y=9黑方, row9=红方底部 → y=0红方)
         int nonEmptyCount = 0;
+        int[][] tempBoard = new int[10][9];
         for (int y = 0; y < BOARD_ROWS; y++) {
             for (int x = 0; x < BOARD_COLS; x++) {
                 int classIndex = classificationResults[y][x];
                 if (classIndex >= 0 && classIndex < CLASS_INDEX_MAP.length) {
                     String pieceChar = CLASS_INDEX_MAP[classIndex];
                     Integer pieceId = PIECE_MAP.get(pieceChar);
-                    chessInfo.piece[9 - y][x] = pieceId != null ? pieceId : 0;
+                    tempBoard[9 - y][x] = pieceId != null ? pieceId : 0;
                     if (pieceId != null && pieceId > 0) nonEmptyCount++;
                 } else {
-                    chessInfo.piece[9 - y][x] = 0;
+                    tempBoard[9 - y][x] = 0;
                 }
             }
+        }
+
+        // 6. 验证棋子数量，如果超出限制则调整
+        if (allProbabilities != null) {
+            tempBoard = validateAndAdjustPieceCounts(tempBoard, allProbabilities);
+        }
+
+        // 7. 将调整后的棋盘赋值给 chessInfo
+        for (int y = 0; y < 10; y++) {
+            System.arraycopy(tempBoard[y], 0, chessInfo.piece[y], 0, 9);
         }
 
         // 打印识别结果网格
@@ -376,9 +394,174 @@ public class ChessRecognitionService {
         Log.d(TAG, String.format("Cls timing: resize=%dms, prep=%dms, infer=%dms, parse=%dms, total=%dms",
             t1-t0, t2-t1, t3-t2, t4-t3, t5-t0));
 
-        // 6. 先手默认红方
+        // 8. 先手默认红方
         chessInfo.IsRedGo = true;
         return chessInfo;
+    }
+    
+    /**
+     * 从4D张量中提取所有位置的概率信息
+     */
+    private float[][][] extractAllProbabilities(float[][][][] tensor, int[] shape) {
+        float[][][] probabilities = new float[BOARD_ROWS][BOARD_COLS][NUM_CLASSES];
+        
+        if (shape[1] == NUM_CLASSES && shape[2] == BOARD_ROWS && shape[3] == BOARD_COLS) {
+            // NCHW格式
+            for (int y = 0; y < BOARD_ROWS; y++) {
+                for (int x = 0; x < BOARD_COLS; x++) {
+                    for (int c = 0; c < NUM_CLASSES; c++) {
+                        probabilities[y][x][c] = tensor[0][c][y][x];
+                    }
+                }
+            }
+        } else if (shape[1] == BOARD_ROWS && shape[2] == BOARD_COLS && shape[3] == NUM_CLASSES) {
+            // NHWC格式
+            for (int y = 0; y < BOARD_ROWS; y++) {
+                for (int x = 0; x < BOARD_COLS; x++) {
+                    for (int c = 0; c < NUM_CLASSES; c++) {
+                        probabilities[y][x][c] = tensor[0][y][x][c];
+                    }
+                }
+            }
+        } else {
+            // 通用格式
+            for (int y = 0; y < Math.min(BOARD_ROWS, shape[2]); y++) {
+                for (int x = 0; x < Math.min(BOARD_COLS, shape[3]); x++) {
+                    for (int c = 0; c < Math.min(NUM_CLASSES, shape[1]); c++) {
+                        probabilities[y][x][c] = tensor[0][c][y][x];
+                    }
+                }
+            }
+        }
+        
+        return probabilities;
+    }
+    
+    /**
+     * 从3D张量中提取所有位置的概率信息
+     */
+    private float[][][] extractAllProbabilitiesFrom3D(float[][][] tensor) {
+        float[][][] probabilities = new float[BOARD_ROWS][BOARD_COLS][NUM_CLASSES];
+        int dim0 = tensor.length, dim1 = tensor[0].length, dim2 = tensor[0][0].length;
+        
+        if (dim0 == NUM_CLASSES && dim1 == BOARD_ROWS && dim2 == BOARD_COLS) {
+            for (int y = 0; y < BOARD_ROWS; y++) {
+                for (int x = 0; x < BOARD_COLS; x++) {
+                    for (int c = 0; c < NUM_CLASSES; c++) {
+                        probabilities[y][x][c] = tensor[c][y][x];
+                    }
+                }
+            }
+        } else if (dim0 == BOARD_ROWS && dim1 == BOARD_COLS && dim2 == NUM_CLASSES) {
+            for (int y = 0; y < BOARD_ROWS; y++) {
+                for (int x = 0; x < BOARD_COLS; x++) {
+                    for (int c = 0; c < NUM_CLASSES; c++) {
+                        probabilities[y][x][c] = tensor[y][x][c];
+                    }
+                }
+            }
+        } else if (dim0 == 1 && dim1 == BOARD_ROWS * BOARD_COLS && dim2 == NUM_CLASSES) {
+            for (int p = 0; p < dim1; p++) {
+                int y = p / BOARD_COLS;
+                int x = p % BOARD_COLS;
+                for (int c = 0; c < NUM_CLASSES; c++) {
+                    probabilities[y][x][c] = tensor[0][p][c];
+                }
+            }
+        }
+        
+        return probabilities;
+    }
+    
+    /**
+     * 验证并调整棋子数量，确保不超出正常范围，保留概率最高的结果
+     */
+    private int[][] validateAndAdjustPieceCounts(int[][] board, float[][][] probabilities) {
+        int[][] resultBoard = new int[10][9];
+        for (int y = 0; y < 10; y++) {
+            System.arraycopy(board[y], 0, resultBoard[y], 0, 9);
+        }
+        
+        // 棋子数量限制
+        int[] maxCount = new int[15];
+        maxCount[1] = 1;  // 黑将
+        maxCount[8] = 1;  // 红帅
+        maxCount[2] = 2;  // 黑士
+        maxCount[3] = 2;  // 黑象
+        maxCount[4] = 2;  // 黑马
+        maxCount[5] = 2;  // 黑车
+        maxCount[6] = 2;  // 黑炮
+        maxCount[7] = 5;  // 黑卒
+        maxCount[9] = 2;  // 红士
+        maxCount[10] = 2; // 红相
+        maxCount[11] = 2; // 红马
+        maxCount[12] = 2; // 红车
+        maxCount[13] = 2; // 红炮
+        maxCount[14] = 5; // 红兵
+        
+        // 统计每种棋子的位置和概率
+        java.util.List<java.util.List<PieceCandidate>> pieceCandidates = new java.util.ArrayList<>();
+        for (int i = 0; i < 15; i++) {
+            pieceCandidates.add(new java.util.ArrayList<>());
+        }
+        
+        // 收集所有棋子候选
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int pieceId = resultBoard[y][x];
+                if (pieceId > 0 && pieceId < 15) {
+                    // 获取概率值（注意坐标转换）
+                    int modelY = 9 - y;
+                    // 根据 CLASS_INDEX_MAP 找到对应的 classIndex
+                    int classIndex = 0;
+                    for (int c = 0; c < CLASS_INDEX_MAP.length; c++) {
+                        Integer mappedPieceId = PIECE_MAP.get(CLASS_INDEX_MAP[c]);
+                        if (mappedPieceId != null && mappedPieceId == pieceId) {
+                            classIndex = c;
+                            break;
+                        }
+                    }
+                    float prob = 0;
+                    if (modelY >= 0 && modelY < BOARD_ROWS && classIndex < NUM_CLASSES) {
+                        prob = probabilities[modelY][x][classIndex];
+                    }
+                    pieceCandidates.get(pieceId).add(new PieceCandidate(x, y, prob));
+                }
+            }
+        }
+        
+        // 对每种棋子按概率降序排序，保留最多允许的数量
+        for (int pieceId = 1; pieceId < 15; pieceId++) {
+            if (maxCount[pieceId] > 0 && pieceCandidates.get(pieceId).size() > maxCount[pieceId]) {
+                // 按概率降序排序
+                java.util.Collections.sort(pieceCandidates.get(pieceId), (a, b) -> Float.compare(b.probability, a.probability));
+                
+                // 移除超出数量限制的棋子（从概率最低的开始）
+                for (int i = maxCount[pieceId]; i < pieceCandidates.get(pieceId).size(); i++) {
+                    PieceCandidate removed = pieceCandidates.get(pieceId).get(i);
+                    resultBoard[removed.y][removed.x] = 0;
+                    
+                    Log.d(TAG, "移除超出数量的棋子: piece=" + pieceId + " at (" + removed.x + "," + removed.y + ") prob=" + removed.probability);
+                }
+            }
+        }
+        
+        return resultBoard;
+    }
+    
+    /**
+     * 棋子候选类，用于保存棋子位置和概率信息
+     */
+    private static class PieceCandidate {
+        int x;
+        int y;
+        float probability;
+        
+        PieceCandidate(int x, int y, float probability) {
+            this.x = x;
+            this.y = y;
+            this.probability = probability;
+        }
     }
 
     /**

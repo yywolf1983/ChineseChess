@@ -37,21 +37,34 @@ public class PvMActivitySetup {
     }
     
     // 放置棋子
-    public void placePiece(int x, int y, int pieceID) {
+    public void placePiece(int x, int y, int pieceID, int sourceX, int sourceY) {
         if (activity.chessInfo != null && activity.chessInfo.piece != null && x >= 0 && x < 9 && y >= 0 && y < 10) {
-            // 检查棋子数量限制
-            if (!checkPieceCount(pieceID)) {
-                // 显示数量限制提示
-                return;
+            // 如果是移除棋子，不需要检查数量限制
+            if (pieceID != 0) {
+                // 检查棋子数量限制（如果来源位置相同的棋子，数量检查需要特殊处理）
+                if (!checkPieceCount(pieceID, sourceX, sourceY)) {
+                    // 显示数量限制提示
+                    return;
+                }
+                
+                // 检查位置合理性
+                if (!isValidPiecePosition(pieceID, x, y)) {
+                    // 显示位置不合理提示
+                    return;
+                }
             }
             
-            // 检查位置合理性
-            if (!isValidPiecePosition(pieceID, x, y)) {
-                // 显示位置不合理提示
-                return;
+            // 先临时保存原位置的棋子（如果有来源位置）
+            int originalPiece = 0;
+            if (sourceX != -1 && sourceY != -1) {
+                originalPiece = activity.chessInfo.piece[sourceY][sourceX];
+                // 先将原位置设为0，避免数量检查错误
+                activity.chessInfo.piece[sourceY][sourceX] = 0;
             }
             
+            // 放置新棋子
             activity.chessInfo.piece[y][x] = pieceID;
+            
             // 重新计算攻击棋子数量
             activity.chessInfo.attackNum_B = 0;
             activity.chessInfo.attackNum_R = 0;
@@ -91,6 +104,11 @@ public class PvMActivitySetup {
                 activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
             }
         }
+    }
+    
+    // 简化的放置棋子方法（不带来源位置）
+    public void placePiece(int x, int y, int pieceID) {
+        placePiece(x, y, pieceID, -1, -1);
     }
     
     // 检查棋子位置是否合理
@@ -202,8 +220,8 @@ public class PvMActivitySetup {
         }
     }
     
-    // 检查棋子数量是否符合标准
-    public boolean checkPieceCount(int pieceID) {
+    // 检查棋子数量是否符合标准（支持来源位置，来源位置的棋子不计入数量）
+    public boolean checkPieceCount(int pieceID, int sourceX, int sourceY) {
         if (pieceID == 0) return true; // 移除棋子总是允许的
         if (activity.chessInfo == null || activity.chessInfo.piece == null) return false;
         
@@ -211,6 +229,10 @@ public class PvMActivitySetup {
         for (int i = 0; i < 10; i++) {
             if (activity.chessInfo.piece[i] != null) {
                 for (int j = 0; j < 9; j++) {
+                    // 如果是来源位置，不计入数量
+                    if (i == sourceY && j == sourceX) {
+                        continue;
+                    }
                     if (activity.chessInfo.piece[i][j] == pieceID) {
                         count++;
                     }
@@ -240,6 +262,11 @@ public class PvMActivitySetup {
             default:
                 return true;
         }
+    }
+    
+    // 简化的棋子数量检查（不带来源位置）
+    public boolean checkPieceCount(int pieceID) {
+        return checkPieceCount(pieceID, -1, -1);
     }
     
     // 显示摆棋模式帮助信息
@@ -407,50 +434,30 @@ public class PvMActivitySetup {
                             
                             // 检查是否是点击原位置（下架）
                             if (i == selectedBoardPiecePos[0] && j == selectedBoardPiecePos[1]) {
-                                // 点击原位置，下架棋子
-                                if (pieceToOperate != 1 && pieceToOperate != 8) { // 老将不能下架
-                                    placePiece(selectedBoardPiecePos[0], selectedBoardPiecePos[1], 0);
+                                // 点击原位置，下架所有棋子（包括将/帅）
+                                placePiece(selectedBoardPiecePos[0], selectedBoardPiecePos[1], 0);
+                                // 重置选中状态
+                                selectedBoardPiecePos[0] = -1;
+                                selectedBoardPiecePos[1] = -1;
+                            }
+                            // 点击的是其他位置（移动或覆盖棋子）
+                            else {
+                                // 移动或覆盖棋子，先将原位置设为0，然后放置到新位置
+                                if (isValidPiecePosition(pieceToOperate, i, j)) {
+                                    // 使用新的 placePiece 方法，传递来源位置
+                                    placePiece(i, j, pieceToOperate, selectedBoardPiecePos[0], selectedBoardPiecePos[1]);
                                     // 重置选中状态
                                     selectedBoardPiecePos[0] = -1;
                                     selectedBoardPiecePos[1] = -1;
                                 }
                             }
-                            // 点击的是空白区域（移动棋子）
-                            else if (boardPieceID == 0) {
-                                // 检查是否是老将
-                                if (pieceToOperate == 1 || pieceToOperate == 8) {
-                                    // 老将不能下架，但可以移动到合法位置
-                                    // 检查新位置是否合理
-                                    if (isValidPiecePosition(pieceToOperate, i, j)) {
-                                        // 先将原位置设为0
-                                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > selectedBoardPiecePos[1] && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
-                                            activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
-                                            // 再将新位置设为棋子ID
-                                            placePiece(i, j, pieceToOperate);
-                                            // 重置选中状态
-                                            selectedBoardPiecePos[0] = -1;
-                                            selectedBoardPiecePos[1] = -1;
-                                        }
-                                    }
-                                } else {
-                                    // 不是老将，可以移动
-                                    // 检查新位置是否合理
-                                    if (isValidPiecePosition(pieceToOperate, i, j)) {
-                                        // 先将原位置设为0
-                                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > selectedBoardPiecePos[1] && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
-                                            activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]] = 0;
-                                            // 再将新位置设为棋子ID
-                                            placePiece(i, j, pieceToOperate);
-                                            // 重置选中状态
-                                            selectedBoardPiecePos[0] = -1;
-                                            selectedBoardPiecePos[1] = -1;
-                                        }
-                                    }
-                                }
-                            }
                         }
                         // 如果已经选中了棋子选择区域的棋子，放置到棋盘上
                         else if (selectedPieceID > 0) {
+                            // 如果目标位置有棋子，先移除（覆盖）
+                            if (boardPieceID != 0) {
+                                placePiece(i, j, 0);
+                            }
                             placePiece(i, j, selectedPieceID);
                             // 重置选中状态
                             selectedPieceID = 0;
