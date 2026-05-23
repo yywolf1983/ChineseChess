@@ -38,7 +38,15 @@ public class PvMActivitySetup {
     
     // 放置棋子
     public void placePiece(int x, int y, int pieceID, int sourceX, int sourceY) {
-        if (activity.chessInfo != null && activity.chessInfo.piece != null && x >= 0 && x < 9 && y >= 0 && y < 10) {
+        if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) {
+            return;
+        }
+        
+        if (x < 0 || x >= 9 || y < 0 || y >= 10) {
+            return;
+        }
+        
+        try {
             // 如果是移除棋子，不需要检查数量限制
             if (pieceID != 0) {
                 // 检查棋子数量限制（如果来源位置相同的棋子，数量检查需要特殊处理）
@@ -55,22 +63,23 @@ public class PvMActivitySetup {
             }
             
             // 先临时保存原位置的棋子（如果有来源位置）
-            int originalPiece = 0;
-            if (sourceX != -1 && sourceY != -1) {
-                originalPiece = activity.chessInfo.piece[sourceY][sourceX];
+            if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
+                sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
                 // 先将原位置设为0，避免数量检查错误
                 activity.chessInfo.piece[sourceY][sourceX] = 0;
             }
             
             // 放置新棋子
-            activity.chessInfo.piece[y][x] = pieceID;
+            if (activity.chessInfo.piece[y] != null) {
+                activity.chessInfo.piece[y][x] = pieceID;
+            }
             
             // 重新计算攻击棋子数量
             activity.chessInfo.attackNum_B = 0;
             activity.chessInfo.attackNum_R = 0;
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
                 if (activity.chessInfo.piece[i] != null) {
-                    for (int j = 0; j < 9; j++) {
+                    for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
                         int piece = activity.chessInfo.piece[i][j];
                         if (piece != 0) {
                             // 黑方攻击棋子：车(5)、马(4)、炮(6)、卒(7)
@@ -103,6 +112,8 @@ public class PvMActivitySetup {
             if (activity.controlsManager != null && activity.chessInfo != null && activity.chessInfo.status == 1) {
                 activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
             }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivitySetup", "Error in placePiece", e);
         }
     }
     
@@ -223,21 +234,26 @@ public class PvMActivitySetup {
     // 检查棋子数量是否符合标准（支持来源位置，来源位置的棋子不计入数量）
     public boolean checkPieceCount(int pieceID, int sourceX, int sourceY) {
         if (pieceID == 0) return true; // 移除棋子总是允许的
-        if (activity.chessInfo == null || activity.chessInfo.piece == null) return false;
+        if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) return false;
         
         int count = 0;
-        for (int i = 0; i < 10; i++) {
-            if (activity.chessInfo.piece[i] != null) {
-                for (int j = 0; j < 9; j++) {
-                    // 如果是来源位置，不计入数量
-                    if (i == sourceY && j == sourceX) {
-                        continue;
-                    }
-                    if (activity.chessInfo.piece[i][j] == pieceID) {
-                        count++;
+        try {
+            for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
+                if (activity.chessInfo.piece[i] != null) {
+                    for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
+                        // 如果是来源位置，不计入数量
+                        if (i == sourceY && j == sourceX) {
+                            continue;
+                        }
+                        if (activity.chessInfo.piece[i][j] == pieceID) {
+                            count++;
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivitySetup", "Error in checkPieceCount", e);
+            return false;
         }
         
         // 标准中国象棋棋子数量限制
@@ -290,23 +306,28 @@ public class PvMActivitySetup {
     
     // 检查摆棋是否完成
     public boolean checkSetupComplete() {
-        if (activity.chessInfo == null || activity.chessInfo.piece == null) return false;
+        if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) return false;
         
         // 只检查基本合法性：双方都有将/帅
         boolean hasRedKing = false;
         boolean hasBlackKing = false;
         
-        for (int i = 0; i < 10; i++) {
-            if (activity.chessInfo.piece[i] != null) {
-                for (int j = 0; j < 9; j++) {
-                    int piece = activity.chessInfo.piece[i][j];
-                    if (piece == 1) { // 黑将
-                        hasBlackKing = true;
-                    } else if (piece == 8) { // 红帅
-                        hasRedKing = true;
+        try {
+            for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
+                if (activity.chessInfo.piece[i] != null) {
+                    for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
+                        int piece = activity.chessInfo.piece[i][j];
+                        if (piece == 1) { // 黑将
+                            hasBlackKing = true;
+                        } else if (piece == 8) { // 红帅
+                            hasRedKing = true;
+                        }
                     }
                 }
             }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivitySetup", "Error in checkSetupComplete", e);
+            return false;
         }
         
         return hasRedKing && hasBlackKing;
@@ -408,9 +429,14 @@ public class PvMActivitySetup {
     
     // 处理摆棋模式的触摸事件
     public boolean handleSetupModeTouch(float x, float y, android.view.MotionEvent event) {
-        if (activity != null && activity.chessInfo != null && activity.chessInfo.IsSetupMode) {
+        if (activity == null || activity.chessInfo == null || !activity.chessInfo.IsSetupMode) {
+            return false;
+        }
+        
+        try {
             // 检查是否点击在棋盘上
-            if (activity.chessView != null && x >= 0 && x <= activity.chessView.Board_width && y >= 0 && y <= activity.chessView.Board_height) {
+            if (activity.chessView != null && x >= 0 && x <= activity.chessView.Board_width && 
+                y >= 0 && y <= activity.chessView.Board_height) {
                 int[] pos = activity.getPos(event);
                 if (pos != null && pos.length >= 2) {
                     activity.chessInfo.Select = pos;
@@ -420,15 +446,20 @@ public class PvMActivitySetup {
                     if (i >= 0 && i <= 8 && j >= 0 && j <= 9) {
                         // 获取点击位置的棋子ID
                         int boardPieceID = 0;
-                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > j && activity.chessInfo.piece[j] != null && activity.chessInfo.piece[j].length > i) {
+                        if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > j && 
+                            activity.chessInfo.piece[j] != null && activity.chessInfo.piece[j].length > i) {
                             boardPieceID = activity.chessInfo.piece[j][i];
                         }
                         
                         // 如果已经选中了棋盘上的棋子
-                        if (selectedBoardPiecePos[0] != -1 && selectedBoardPiecePos[1] != -1) {
+                        if (selectedBoardPiecePos != null && 
+                            selectedBoardPiecePos[0] != -1 && selectedBoardPiecePos[1] != -1) {
                             // 获取要操作的棋子ID
                             int pieceToOperate = 0;
-                            if (activity.chessInfo.piece != null && activity.chessInfo.piece.length > selectedBoardPiecePos[1] && activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
+                            if (activity.chessInfo.piece != null && 
+                                activity.chessInfo.piece.length > selectedBoardPiecePos[1] && 
+                                activity.chessInfo.piece[selectedBoardPiecePos[1]] != null && 
+                                activity.chessInfo.piece[selectedBoardPiecePos[1]].length > selectedBoardPiecePos[0]) {
                                 pieceToOperate = activity.chessInfo.piece[selectedBoardPiecePos[1]][selectedBoardPiecePos[0]];
                             }
                             
@@ -492,13 +523,19 @@ public class PvMActivitySetup {
                     }
                 }
             }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivitySetup", "Error in handleSetupModeTouch", e);
         }
         return false;
     }
     
     // 处理摆棋模式的切换
     public void toggleSetupMode() {
-        if (activity.chessInfo != null) {
+        if (activity == null || activity.chessInfo == null) {
+            return;
+        }
+        
+        try {
             if (activity.chessInfo.IsSetupMode) {
                 // 关闭摆棋模式，检查摆棋是否完成
                 finishSetup();
@@ -572,6 +609,8 @@ public class PvMActivitySetup {
                     activity.setupModeView.postInvalidate();
                 }
             }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivitySetup", "Error in toggleSetupMode", e);
         }
     }
 }
