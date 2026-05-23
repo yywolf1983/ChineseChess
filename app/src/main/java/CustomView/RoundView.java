@@ -476,19 +476,21 @@ public class RoundView extends View {
         if (suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
             // 保存原始字体大小
             float originalTextSize = infoTextPaint.getTextSize();
-            // 减小字体大小以适应长文本
-            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
+            boolean originalFakeBold = infoTextPaint.isFakeBoldText();
+            // 减小字体大小以适应长文本（第一步除外）
+            float normalSize = convertDpToPixel(14, getContext());
+            float firstSize = convertDpToPixel(18, getContext());
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
-            // 构建完整文本和对应颜色
-            StringBuilder allText = new StringBuilder();
-            for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
-                if (i > 0) allText.append(" ");
-                allText.append(suggestMoveTexts.get(i));
-            }
-            
             // 居中显示所有走法
-            float totalWidth = infoTextPaint.measureText(allText.toString());
+            float totalWidth = 0;
+            for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
+                infoTextPaint.setTextSize(i == 0 ? firstSize : normalSize);
+                totalWidth += infoTextPaint.measureText(suggestMoveTexts.get(i));
+                if (i < suggestMoveTexts.size() - 1) {
+                    totalWidth += infoTextPaint.measureText(" ");
+                }
+            }
             float startX = (width - totalWidth) / 2;
             
             // 逐个绘制带颜色的走法
@@ -504,16 +506,21 @@ public class RoundView extends View {
                     infoTextPaint.setColor(Color.BLACK);
                 }
                 
+                // 第一步加大加粗
+                infoTextPaint.setTextSize(i == 0 ? firstSize : normalSize);
+                infoTextPaint.setFakeBoldText(i == 0);
+                
                 // 绘制文本
                 canvas.drawText(text, x, currentY, infoTextPaint);
                 
                 // 更新下一个文本的x位置
-                x += infoTextPaint.measureText(text) + infoTextPaint.measureText(" ");
+                x += infoTextPaint.measureText(text) + (i == 0 ? infoTextPaint.measureText(" ") : convertDpToPixel(3, getContext()));
             }
             
             currentY += lineHeight;
-            // 恢复原始字体大小和颜色
+            // 恢复原始字体大小、颜色和粗体
             infoTextPaint.setTextSize(originalTextSize);
+            infoTextPaint.setFakeBoldText(originalFakeBold);
             infoTextPaint.setColor(Color.WHITE);
         }
         

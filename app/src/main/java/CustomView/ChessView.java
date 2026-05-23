@@ -289,21 +289,21 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         suggestPaint.setColor(Color.BLACK);
                     }
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(8);
+                    suggestPaint.setStrokeWidth(12);
                     suggestPaint.setPathEffect(null); // 实线
                     suggestPaint.setAlpha(255);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
                     // 先绘制数字
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setTextSize(Scale(30));
+                    suggestPaint.setTextSize(Scale(36));
                     suggestPaint.setAlpha(255);
                     if (isRedPiece) {
                         suggestPaint.setColor(Color.WHITE);
                     } else {
                         suggestPaint.setColor(Color.WHITE);
                     }
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(11), suggestPaint);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(13), suggestPaint);
                     
                     // 再绘制实心圆覆盖数字外围
                     if (isRedPiece) {
@@ -311,16 +311,16 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                     } else {
                         suggestPaint.setColor(Color.BLACK);
                     }
-                    suggestPaint.setAlpha(200);
-                    int circleRadius = Scale(18);
+                    suggestPaint.setAlpha(220);
+                    int circleRadius = Scale(22);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
                     // 最后再绘制数字在圆上
                     suggestPaint.setColor(Color.WHITE);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setTextSize(Scale(30));
+                    suggestPaint.setTextSize(Scale(36));
                     suggestPaint.setAlpha(255);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(11), suggestPaint);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(13), suggestPaint);
                 } else {
                     // 绘制箭头线
                     if (isRedPiece) {
