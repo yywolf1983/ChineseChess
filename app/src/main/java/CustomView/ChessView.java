@@ -280,7 +280,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
-                // 第一步用粗线实线，其他步用细线虚线
+                // 第一步用实线，其他步用细线虚线
                 if (i == 0) {
                     // 绘制箭头线
                     if (isRedPiece) {
@@ -289,21 +289,17 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         suggestPaint.setColor(Color.BLACK);
                     }
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(12);
+                    suggestPaint.setStrokeWidth(6);
                     suggestPaint.setPathEffect(null); // 实线
-                    suggestPaint.setAlpha(255);
+                    suggestPaint.setAlpha(220);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
                     // 先绘制数字
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setTextSize(Scale(36));
+                    suggestPaint.setTextSize(Scale(28));
                     suggestPaint.setAlpha(255);
-                    if (isRedPiece) {
-                        suggestPaint.setColor(Color.WHITE);
-                    } else {
-                        suggestPaint.setColor(Color.WHITE);
-                    }
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(13), suggestPaint);
+                    suggestPaint.setColor(Color.WHITE);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
                     
                     // 再绘制实心圆覆盖数字外围
                     if (isRedPiece) {
@@ -311,16 +307,16 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                     } else {
                         suggestPaint.setColor(Color.BLACK);
                     }
-                    suggestPaint.setAlpha(220);
-                    int circleRadius = Scale(22);
+                    suggestPaint.setAlpha(200);
+                    int circleRadius = Scale(16);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
                     // 最后再绘制数字在圆上
                     suggestPaint.setColor(Color.WHITE);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setTextSize(Scale(36));
+                    suggestPaint.setTextSize(Scale(28));
                     suggestPaint.setAlpha(255);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(13), suggestPaint);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
                 } else {
                     // 绘制箭头线
                     if (isRedPiece) {
@@ -329,17 +325,17 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         suggestPaint.setColor(Color.BLACK);
                     }
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(8);
+                    suggestPaint.setStrokeWidth(5);
                     suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{10, 10}, 0)); // 虚线
-                    suggestPaint.setAlpha(255);
+                    suggestPaint.setAlpha(120);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
                     // 先绘制数字
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setTextSize(Scale(26));
+                    suggestPaint.setTextSize(Scale(22));
                     suggestPaint.setAlpha(255);
                     suggestPaint.setColor(Color.WHITE);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(8), suggestPaint);
                     
                     // 再绘制实心圆覆盖数字外围
                     if (isRedPiece) {
@@ -347,16 +343,16 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                     } else {
                         suggestPaint.setColor(Color.BLACK);
                     }
-                    suggestPaint.setAlpha(180);
-                    int circleRadius = Scale(16);
+                    suggestPaint.setAlpha(100);
+                    int circleRadius = Scale(13);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
                     // 最后再绘制数字在圆上
                     suggestPaint.setColor(Color.WHITE);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setTextSize(Scale(26));
+                    suggestPaint.setTextSize(Scale(22));
                     suggestPaint.setAlpha(255);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(8), suggestPaint);
                 }
             }
         }

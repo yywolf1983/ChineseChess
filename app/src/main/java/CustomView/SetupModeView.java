@@ -26,6 +26,8 @@ public class SetupModeView extends View {
         void onPieceSelected(int pieceID);
         void onClearBoard();
         void onHelpClicked();
+        void onCameraClicked();
+        void onGalleryClicked();
     }
 
     public SetupModeView(Context context, ChessInfo chessInfo) {
@@ -259,33 +261,45 @@ public class SetupModeView extends View {
             }
         }
 
-        // 绘制清空棋盘按钮
-        int buttonWidth = (int) convertDpToPixel(100, getContext()); // 使用dp单位
-        int buttonHeight = (int) convertDpToPixel(25, getContext()); // 使用dp单位
-        int buttonYOffset = (int) convertDpToPixel(5, getContext()); // 使用dp单位
-        int buttonX = (windowWidth - buttonWidth) / 2;
+        // 绘制清空棋盘、拍照、图片按钮
+        int buttonWidth = (int) convertDpToPixel(90, getContext()); // 3个按钮，每个90dp
+        int buttonHeight = (int) convertDpToPixel(25, getContext());
+        int buttonYOffset = (int) convertDpToPixel(5, getContext());
+        int buttonSpacing = (int) convertDpToPixel(10, getContext());
+        int totalButtonsWidth = buttonWidth * 3 + buttonSpacing * 2;
+        int startX = (windowWidth - totalButtonsWidth) / 2;
         int buttonY = redStartY + pieceSize + buttonYOffset;
 
-        // 绘制按钮背景
-        paint.setColor(Color.parseColor("#E0E0E0"));
-        paint.setStyle(Paint.Style.FILL);
-        // 使用兼容API level 16的方法
-        android.graphics.RectF rectF = new android.graphics.RectF(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight);
-        canvas.drawRoundRect(rectF, 5, 5, paint);
+        // 按钮背景颜色
+        int[] buttonColors = {
+            Color.parseColor("#E0E0E0"), // 清空棋盘
+            Color.parseColor("#E8F5E9"), // 拍照
+            Color.parseColor("#E3F2FD")  // 图片
+        };
+        String[] buttonTexts = {"清空棋盘", "拍照", "图片"};
 
-        // 绘制按钮边框
-        paint.setColor(Color.parseColor("#333333"));
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(2);
-        // 使用兼容API level 16的方法
-        canvas.drawRoundRect(rectF, 5, 5, paint);
+        for (int i = 0; i < 3; i++) {
+            int buttonX = startX + i * (buttonWidth + buttonSpacing);
 
-        // 绘制按钮文本
-        paint.setStyle(Paint.Style.FILL);
-        float buttonTextSize = convertDpToPixel(10, getContext());
-        paint.setTextSize(buttonTextSize);
-        paint.setColor(Color.parseColor("#333333"));
-        canvas.drawText("清空棋盘", buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + buttonTextSize / 2, paint);
+            // 绘制按钮背景
+            paint.setColor(buttonColors[i]);
+            paint.setStyle(Paint.Style.FILL);
+            android.graphics.RectF rectF = new android.graphics.RectF(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight);
+            canvas.drawRoundRect(rectF, 5, 5, paint);
+
+            // 绘制按钮边框
+            paint.setColor(Color.parseColor("#333333"));
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(2);
+            canvas.drawRoundRect(rectF, 5, 5, paint);
+
+            // 绘制按钮文本
+            paint.setStyle(Paint.Style.FILL);
+            float buttonTextSize = convertDpToPixel(10, getContext());
+            paint.setTextSize(buttonTextSize);
+            paint.setColor(Color.parseColor("#333333"));
+            canvas.drawText(buttonTexts[i], buttonX + buttonWidth / 2, buttonY + buttonHeight / 2 + buttonTextSize / 2, paint);
+        }
     }
 
     // 获取每种棋子的最大数量
@@ -425,14 +439,28 @@ public class SetupModeView extends View {
             }
         }
 
-        // 检查清空棋盘按钮
-        int buttonX = (windowWidth - buttonWidth) / 2;
-        int buttonY = redStartY + pieceSize + buttonYOffset;
-        if (x >= buttonX && x <= buttonX + buttonWidth && y >= buttonY && y <= buttonY + buttonHeight) {
-            if (listener != null) {
-                listener.onClearBoard();
+        // 检查清空棋盘、拍照、图片按钮
+        int btnWidth = (int) convertDpToPixel(90, getContext());
+        int btnHeight = (int) convertDpToPixel(25, getContext());
+        int btnSpacing = (int) convertDpToPixel(10, getContext());
+        int totalBtnsWidth = btnWidth * 3 + btnSpacing * 2;
+        int btnStartX = (windowWidth - totalBtnsWidth) / 2;
+        int btnY = redStartY + pieceSize + buttonYOffset;
+
+        for (int i = 0; i < 3; i++) {
+            int buttonX = btnStartX + i * (btnWidth + btnSpacing);
+            if (x >= buttonX && x <= buttonX + btnWidth && y >= btnY && y <= btnY + btnHeight) {
+                if (listener != null) {
+                    if (i == 0) {
+                        listener.onClearBoard();
+                    } else if (i == 1) {
+                        listener.onCameraClicked();
+                    } else if (i == 2) {
+                        listener.onGalleryClicked();
+                    }
+                }
+                return true;
             }
-            return true;
         }
 
         // 未点击到任何元素，重置选中状态

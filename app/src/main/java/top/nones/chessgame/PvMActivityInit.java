@@ -370,6 +370,20 @@ public class PvMActivityInit {
                 activity.setupManager.showSetupHelp();
             }
         }
+
+        @Override
+        public void onCameraClicked() {
+            if (activity != null) {
+                activity.dispatchCameraIntent();
+            }
+        }
+
+        @Override
+        public void onGalleryClicked() {
+            if (activity != null) {
+                activity.dispatchGalleryIntent();
+            }
+        }
     }
     
     // 棋盘触摸监听器类

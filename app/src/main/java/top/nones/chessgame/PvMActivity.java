@@ -1,5 +1,6 @@
 package top.nones.chessgame;
 
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
@@ -107,6 +108,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public PvMActivityAI aiManager;
     public PvMActivityGame gameManager;
     
+    // 相机拍照临时文件
+    private java.io.File cameraImageFile;
+    
+    // 识别服务
+    private ChessRecognitionService recognitionService;
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -123,6 +130,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         init.init();
         init.initViews();
         init.initBackgroundTasks();
+        
+        // 初始化识别服务
+        initRecognitionService();
         
         // 初始化时间更新线程
         initTimeUpdateExecutor();
@@ -212,6 +222,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             } else if (viewId == R.id.btn_setup) {
                 // 切换摆棋模式
                 setupManager.toggleSetupMode();
+            } else if (viewId == R.id.btn_camera_recognize) {
+                // 拍照识别 - 直接打开相机
+                dispatchCameraIntent();
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "Error in button click handler", e);
@@ -445,6 +458,219 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         return pos;
     }
     
+    // 相机拍照
+    public void dispatchCameraIntent() {
+        Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
+        try {
+            cameraImageFile = createImageFile();
+            if (cameraImageFile != null) {
+                Uri photoURI = androidx.core.content.FileProvider.getUriForFile(this,
+                        "top.nones.chessgame.fileprovider",
+                        cameraImageFile);
+                takePictureIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, photoURI);
+                startActivityForResult(takePictureIntent, 1004);
+            }
+        } catch (Exception ex) {
+            android.util.Log.e("PvMActivity", "Error launching camera: " + ex.getMessage());
+            Toast.makeText(this, "无法启动相机: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    // 图片选择
+    public void dispatchGalleryIntent() {
+        Intent pickPhotoIntent = new Intent(Intent.ACTION_GET_CONTENT);
+        pickPhotoIntent.setType("image/*");
+        pickPhotoIntent.addCategory(Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(Intent.createChooser(pickPhotoIntent, "选择图片"), 1005);
+        } catch (Exception ex) {
+            Toast.makeText(this, "无法打开图片选择: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+    
+    // 创建临时图片文件
+    private java.io.File createImageFile() throws IOException {
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "CHESS_" + timeStamp + "_";
+        java.io.File storageDir = getExternalFilesDir(android.os.Environment.DIRECTORY_PICTURES);
+        java.io.File image = java.io.File.createTempFile(
+                imageFileName,
+                ".jpg",
+                storageDir
+        );
+        return image;
+    }
+
+    // 初始化识别服务
+    private volatile boolean recognitionInitDone = false;
+
+    private void initRecognitionService() {
+        if (recognitionService == null) {
+            new Thread(() -> {
+                try {
+                    recognitionService = new ChessRecognitionService(this);
+                    recognitionService.initialize();
+                    recognitionInitDone = true;
+                    android.util.Log.d("PvMActivity", "Recognition service initialized");
+                } catch (Exception e) {
+                    android.util.Log.e("PvMActivity", "Failed to init recognition: " + e.getMessage());
+                    recognitionInitDone = true; // 标记完成，避免死等
+                }
+            }).start();
+        }
+    }
+    
+    // 处理识别结果
+    private void processRecognitionResult(android.graphics.Bitmap bitmap) {
+        if (recognitionService == null) {
+            initRecognitionService();
+        }
+        
+        new Thread(() -> {
+            try {
+                // 等待初始化完成（最多等 10 秒）
+                int waited = 0;
+                while (!recognitionInitDone && waited < 100) {
+                    Thread.sleep(100);
+                    waited++;
+                }
+                if (recognitionService == null) {
+                    runOnUiThread(() -> Toast.makeText(this, "识别服务未就绪", Toast.LENGTH_SHORT).show());
+                    return;
+                }
+                
+                ChessInfo recognizedInfo = recognitionService.recognize(bitmap);
+                if (recognizedInfo != null) {
+                    runOnUiThread(() -> {
+                        applyRecognitionResult(recognizedInfo);
+                        Toast.makeText(PvMActivity.this, "识别成功", Toast.LENGTH_SHORT).show();
+                    });
+                } else {
+                    runOnUiThread(() -> Toast.makeText(this, "加载失败", Toast.LENGTH_SHORT).show());
+                }
+            } catch (Exception e) {
+                android.util.Log.e("PvMActivity", "Recognition error: " + e.getMessage());
+                runOnUiThread(() -> Toast.makeText(this, "出错: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+            }
+        }).start();
+    }
+    
+    // 应用识别结果到棋盘：识别结果 → FEN → chessInfo → 棋盘显示（链路一致）
+    private void applyRecognitionResult(ChessInfo recognizedInfo) {
+        if (recognizedInfo != null && chessInfo != null) {
+            FENHandler fenHandler = new FENHandler();
+            
+            // 1. 统计识别结果中的棋子数量
+            int recognizedPieceCount = 0;
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 9; j++) {
+                    if (recognizedInfo.piece[i][j] > 0) recognizedPieceCount++;
+                }
+            }
+            
+            // 2. 识别结果 → FEN
+            String fen = fenHandler.generateFEN(recognizedInfo);
+            android.util.Log.d("PvMActivity", "识别棋子数=" + recognizedPieceCount + ", FEN=" + fen);
+            
+            // 3. FEN → ChessInfo（验证 FEN 解析正确性）
+            ChessInfo parsedInfo = fenHandler.fenToChessInfo(fen);
+            
+            // 4. 自检：比对 FEN 往返是否一致
+            int matchCount = 0, mismatchCount = 0;
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 9; j++) {
+                    if (recognizedInfo.piece[i][j] == parsedInfo.piece[i][j]) {
+                        matchCount++;
+                    } else {
+                        mismatchCount++;
+                    }
+                }
+            }
+            android.util.Log.d("PvMActivity", "FEN往返自检: 匹配=" + matchCount + "/90, 不匹配=" + mismatchCount);
+            if (mismatchCount > 0) {
+                android.util.Log.e("PvMActivity", "FEN往返不一致！位置差异=" + mismatchCount);
+            }
+            
+            // 5. 复制 FEN 解析后的棋子到 chessInfo
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 9; j++) {
+                    chessInfo.piece[i][j] = parsedInfo.piece[i][j];
+                }
+            }
+            chessInfo.IsRedGo = parsedInfo.IsRedGo;
+            
+            // 6. 进入摆棋模式
+            if (!chessInfo.IsSetupMode) {
+                if (aiManager != null) {
+                    aiManager.stopAIAnalysis();
+                }
+                stopTurnTimer();
+                chessInfo.IsSetupMode = true;
+                if (setupModeView != null) {
+                    android.widget.RelativeLayout.LayoutParams paramsSetup = (android.widget.RelativeLayout.LayoutParams) setupModeView.getLayoutParams();
+                    if (paramsSetup != null) {
+                        paramsSetup.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
+                        paramsSetup.addRule(android.widget.RelativeLayout.BELOW, R.id.roundView);
+                        paramsSetup.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
+                        paramsSetup.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
+                        paramsSetup.setMargins(30, 10, 30, 10);
+                        setupModeView.setLayoutParams(paramsSetup);
+                    }
+                    setupModeView.setVisibility(View.VISIBLE);
+                    setupModeView.bringToFront();
+                }
+                if (roundView != null) {
+                    roundView.setVisibility(View.GONE);
+                }
+            }
+            
+            // 7. 重新计算攻击棋子数量
+            chessInfo.attackNum_B = 0;
+            chessInfo.attackNum_R = 0;
+            for (int i = 0; i < 10; i++) {
+                for (int j = 0; j < 9; j++) {
+                    int piece = chessInfo.piece[i][j];
+                    if (piece != 0) {
+                        if (piece == 4 || piece == 5 || piece == 6 || piece == 7) {
+                            chessInfo.attackNum_B++;
+                        }
+                        if (piece == 11 || piece == 12 || piece == 13 || piece == 14) {
+                            chessInfo.attackNum_R++;
+                        }
+                    }
+                }
+            }
+            
+            // 8. 更新所有视图
+            if (chessView != null) {
+                chessView.setChessInfo(chessInfo);
+                chessView.requestDraw();
+                chessView.invalidate();
+            }
+            if (roundView != null) {
+                roundView.setChessInfo(chessInfo);
+                roundView.requestDraw();
+            }
+            if (setupModeView != null) {
+                setupModeView.setChessInfo(chessInfo);
+                setupModeView.invalidate();
+                setupModeView.postInvalidate();
+            }
+            
+            chessInfo.suggestMoves = null;
+            chessInfo.suggestMoveNotations = new ArrayList<>();
+            
+            // 9. 验证显示：从 chessInfo 重新生成 FEN，确认显示与 FEN 一致
+            String displayFen = fenHandler.generateFEN(chessInfo);
+            if (!fen.equals(displayFen)) {
+                android.util.Log.e("PvMActivity", "FEN→显示不一致！原FEN=" + fen + ", 显示FEN=" + displayFen);
+            } else {
+                android.util.Log.d("PvMActivity", "FEN→显示验证通过 ✓, 棋子数=" + recognizedPieceCount 
+                    + ", 红攻击子=" + chessInfo.attackNum_R + ", 黑攻击子=" + chessInfo.attackNum_B);
+            }
+        }
+    }
+    
     // 处理Activity结果
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -471,6 +697,77 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             Uri uri = data.getData();
             if (uri != null) {
                 notationManager.saveChessNotationToUri(uri);
+            }
+        } else if ((requestCode == 1004 || requestCode == 1005) && resultCode == RESULT_OK) {
+            // 处理相机拍照或图片选择结果
+            android.graphics.Bitmap bitmap = null;
+            
+            if (requestCode == 1004) {
+                // 相机拍照结果 - 需要处理 EXIF 旋转
+                if (cameraImageFile != null && cameraImageFile.exists()) {
+                    bitmap = android.graphics.BitmapFactory.decodeFile(cameraImageFile.getAbsolutePath());
+                    if (bitmap != null) {
+                        // 读取 EXIF 方向并旋转图片到正方向
+                        try {
+                            android.media.ExifInterface exif = new android.media.ExifInterface(cameraImageFile.getAbsolutePath());
+                            int orientation = exif.getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, 
+                                    android.media.ExifInterface.ORIENTATION_NORMAL);
+                            android.graphics.Matrix matrix = new android.graphics.Matrix();
+                            switch (orientation) {
+                                case android.media.ExifInterface.ORIENTATION_ROTATE_90:
+                                    matrix.postRotate(90);
+                                    break;
+                                case android.media.ExifInterface.ORIENTATION_ROTATE_180:
+                                    matrix.postRotate(180);
+                                    break;
+                                case android.media.ExifInterface.ORIENTATION_ROTATE_270:
+                                    matrix.postRotate(270);
+                                    break;
+                                case android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
+                                    matrix.postScale(-1, 1);
+                                    break;
+                                case android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL:
+                                    matrix.postScale(1, -1);
+                                    break;
+                                default:
+                                    break;
+                            }
+                            if (orientation != android.media.ExifInterface.ORIENTATION_NORMAL 
+                                    && orientation != android.media.ExifInterface.ORIENTATION_UNDEFINED) {
+                                android.graphics.Bitmap rotated = android.graphics.Bitmap.createBitmap(
+                                        bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                                if (rotated != bitmap) {
+                                    bitmap.recycle();
+                                    bitmap = rotated;
+                                }
+                                android.util.Log.d("PvMActivity", "已旋转图片: orientation=" + orientation 
+                                        + ", 尺寸=" + bitmap.getWidth() + "x" + bitmap.getHeight());
+                            }
+                        } catch (Exception e) {
+                            android.util.Log.e("PvMActivity", "读取EXIF失败: " + e.getMessage());
+                        }
+                    }
+                }
+            } else if (requestCode == 1005 && data != null) {
+                // 图片选择结果
+                Uri imageUri = data.getData();
+                if (imageUri != null) {
+                    try {
+                        InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                        bitmap = android.graphics.BitmapFactory.decodeStream(inputStream);
+                        if (inputStream != null) {
+                            inputStream.close();
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.e("PvMActivity", "Error loading image: " + e.getMessage());
+                    }
+                }
+            }
+            
+            if (bitmap != null) {
+                processRecognitionResult(bitmap);
+            } else {
+                Toast.makeText(this, "无法加载图片", Toast.LENGTH_SHORT).show();
             }
         }
     }

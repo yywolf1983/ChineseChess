@@ -477,9 +477,9 @@ public class RoundView extends View {
             // 保存原始字体大小
             float originalTextSize = infoTextPaint.getTextSize();
             boolean originalFakeBold = infoTextPaint.isFakeBoldText();
-            // 减小字体大小以适应长文本（第一步除外）
-            float normalSize = convertDpToPixel(14, getContext());
-            float firstSize = convertDpToPixel(18, getContext());
+            // 减小字体大小以适应长文本（第一步稍大）
+            float normalSize = convertDpToPixel(13, getContext());
+            float firstSize = convertDpToPixel(16, getContext());
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
             // 居中显示所有走法
