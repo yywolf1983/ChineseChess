@@ -945,7 +945,7 @@ public class PvMActivityAI {
                 boolean currentIsRed = forRed;
                 int step = 1;
                 
-                for (int i = 0; i < 5; i++) {
+                for (int i = 0; i < 6; i++) {
                     PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(simulatedInfo);
                     if (moveWithScore == null || moveWithScore.move == null) {
                         break;
