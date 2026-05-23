@@ -2,6 +2,8 @@ package top.nones.chessgame;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Matrix;
 import android.util.Log;
 
@@ -16,7 +18,6 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.FloatBuffer;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +26,7 @@ import Info.ChessInfo;
 
 /**
  * 中国象棋棋盘识别服务
- * 使用 ONNX Runtime 进行模型推理
+ * 两步流水线：1) pose模型检测棋盘角点 → 2) 透视变换 → 3) 分类模型识别棋子
  */
 public class ChessRecognitionService {
     private static final String TAG = "ChessRecognitionService";
@@ -35,60 +36,44 @@ public class ChessRecognitionService {
     private static final String LAYOUT_MODEL = "nano_v3-0319.onnx"; // 棋局分类(10x9x16)
 
     // 模型输入尺寸
-    private static final int REG_INPUT_SIZE = 256;    // 分类模型输入尺寸
+    private static final int POSE_INPUT_SIZE = 256;    // pose模型输入尺寸
+    private static final int CLS_INPUT_WIDTH = 280;    // 分类模型输入宽度
+    private static final int CLS_INPUT_HEIGHT = 315;   // 分类模型输入高度
 
     // 棋盘尺寸
     private static final int BOARD_ROWS = 10;
     private static final int BOARD_COLS = 9;
     private static final int NUM_CLASSES = 16;        // 16分类
 
+    // 透视变换目标尺寸 (与原项目一致)
+    private static final int WARP_WIDTH = 450;
+    private static final int WARP_HEIGHT = 500;
+    private static final int WARP_PADDING = 50;
+
     // 棋子类别映射 (模型输出 -> ChessInfo)
     private static final Map<String, Integer> PIECE_MAP = new HashMap<>();
     static {
-        // 红方棋子 (ChessInfo: 8-14)
-        PIECE_MAP.put("K", 8);  // 红帅
-        PIECE_MAP.put("A", 9);  // 红仕
-        PIECE_MAP.put("B", 10); // 红相
-        PIECE_MAP.put("N", 11); // 红马
-        PIECE_MAP.put("R", 12); // 红车
-        PIECE_MAP.put("C", 13); // 红炮
-        PIECE_MAP.put("P", 14); // 红兵
-        // 黑方棋子 (ChessInfo: 1-7)
-        PIECE_MAP.put("k", 1);  // 黑将
-        PIECE_MAP.put("a", 2);  // 黑仕
-        PIECE_MAP.put("b", 3);  // 黑象
-        PIECE_MAP.put("n", 4);  // 黑马
-        PIECE_MAP.put("r", 5);  // 黑车
-        PIECE_MAP.put("c", 6);  // 黑炮
-        PIECE_MAP.put("p", 7);  // 黑卒
+        PIECE_MAP.put("K", 8);   PIECE_MAP.put("A", 9);   PIECE_MAP.put("B", 10);
+        PIECE_MAP.put("N", 11);  PIECE_MAP.put("R", 12);  PIECE_MAP.put("C", 13);
+        PIECE_MAP.put("P", 14);  PIECE_MAP.put("k", 1);   PIECE_MAP.put("a", 2);
+        PIECE_MAP.put("b", 3);   PIECE_MAP.put("n", 4);   PIECE_MAP.put("r", 5);
+        PIECE_MAP.put("c", 6);   PIECE_MAP.put("p", 7);
     }
 
-    // 类别索引映射 (模型输出索引 -> 字符)
+    // 类别索引映射 (与原始项目一致)
+    // 0:point("."), 1:other("x"), 2-8:red(K,A,B,N,R,C,P), 9-15:black(k,a,b,n,r,c,p)
     private static final String[] CLASS_INDEX_MAP = {
-        ".",  // 0: 空位
-        "k",  // 1: 黑将
-        "a",  // 2: 黑仕
-        "b",  // 3: 黑象
-        "n",  // 4: 黑马
-        "r",  // 5: 黑车
-        "c",  // 6: 黑炮
-        "p",  // 7: 黑卒
-        "K",  // 8: 红帅
-        "A",  // 9: 红仕
-        "B",  // 10: 红相
-        "N",  // 11: 红马
-        "R",  // 12: 红车
-        "C",  // 13: 红炮
-        "P",  // 14: 红兵
-        "x"   // 15: 其他/未知
+        ".", "x", "K", "A", "B", "N", "R", "C", "P",
+        "k", "a", "b", "n", "r", "c", "p"
     };
 
     private Context context;
     private boolean initialized = false;
 
-    // ONNX Runtime session
+    // ONNX Runtime
     private OrtEnvironment ortEnv;
-    private OrtSession regSession;
+    private OrtSession poseSession;    // pose模型
+    private OrtSession clsSession;     // 分类模型
 
     public ChessRecognitionService(Context context) {
         this.context = context;
@@ -102,63 +87,50 @@ public class ChessRecognitionService {
         Log.d(TAG, "Initializing ONNX models...");
 
         try {
-            // 创建 ONNX Runtime 环境
             ortEnv = OrtEnvironment.getEnvironment();
-
-            // 设置 session 选项
             SessionOptions sessionOptions = new SessionOptions();
             sessionOptions.setOptimizationLevel(SessionOptions.OptLevel.ALL_OPT);
 
-            // 加载布局分类模型（核心模型）
-            File regModelFile = extractModelFile(LAYOUT_MODEL);
-            Log.d(TAG, "Loading layout model from: " + regModelFile.getAbsolutePath());
-            regSession = ortEnv.createSession(regModelFile.getAbsolutePath(), sessionOptions);
-            Log.d(TAG, "Layout model loaded successfully, inputs=" + regSession.getNumInputs() 
-                + ", outputs=" + regSession.getNumOutputs());
+            // 加载 pose 模型（棋盘角点检测）
+            File poseModelFile = extractModelFile(POSE_MODEL);
+            Log.d(TAG, "Loading pose model: " + poseModelFile.getAbsolutePath());
+            poseSession = ortEnv.createSession(poseModelFile.getAbsolutePath(), sessionOptions);
+            Log.d(TAG, "Pose model loaded: inputs=" + poseSession.getNumInputs() + ", outputs=" + poseSession.getNumOutputs());
+
+            // 加载分类模型（棋局识别）
+            File clsModelFile = extractModelFile(LAYOUT_MODEL);
+            Log.d(TAG, "Loading layout model: " + clsModelFile.getAbsolutePath());
+            clsSession = ortEnv.createSession(clsModelFile.getAbsolutePath(), sessionOptions);
+            Log.d(TAG, "Layout model loaded: inputs=" + clsSession.getNumInputs() + ", outputs=" + clsSession.getNumOutputs());
 
             initialized = true;
-            Log.d(TAG, "ONNX models initialized successfully");
+            Log.d(TAG, "All ONNX models initialized successfully");
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize ONNX models: " + e.getMessage(), e);
-            // 如果 ONNX Runtime 不可用，使用模拟模式
             initialized = true;
-            Log.d(TAG, "Using fallback mode (no ONNX model inference)");
         }
     }
 
-    /**
-     * 从 assets 提取模型文件到缓存目录
-     */
     private File extractModelFile(String modelName) throws IOException {
         File cacheDir = context.getCacheDir();
         File modelFile = new File(cacheDir, modelName);
-
-        if (modelFile.exists()) {
-            Log.d(TAG, "Model file already exists: " + modelFile.getAbsolutePath() 
-                + " (" + modelFile.length() + " bytes)");
-            return modelFile;
-        }
+        if (modelFile.exists()) return modelFile;
 
         Log.d(TAG, "Extracting model from assets: " + modelName);
         try (InputStream is = context.getAssets().open(modelName);
              FileOutputStream fos = new FileOutputStream(modelFile)) {
             byte[] buffer = new byte[4096];
             int bytesRead;
-            long total = 0;
             while ((bytesRead = is.read(buffer)) != -1) {
                 fos.write(buffer, 0, bytesRead);
-                total += bytesRead;
             }
-            Log.d(TAG, "Model extracted: " + modelName + " (" + total + " bytes)");
         }
         return modelFile;
     }
 
     /**
-     * 识别棋盘
-     * @param bitmap 输入图片
-     * @return ChessInfo 棋盘信息
+     * 识别棋盘（完整流水线）
      */
     public ChessInfo recognize(Bitmap bitmap) {
         if (!initialized) {
@@ -167,23 +139,34 @@ public class ChessRecognitionService {
         }
 
         try {
-            Log.d(TAG, "Starting recognition...");
+            Log.d(TAG, "=== Starting recognition pipeline ===");
             long startTime = System.currentTimeMillis();
 
-            ChessInfo chessInfo;
+            // Step 1: 检测棋盘4个角点
+            float[][] keypoints = detectKeypoints(bitmap);
+            long t1 = System.currentTimeMillis();
+            Log.d(TAG, "Step1 keypoints: " + (keypoints != null ? "OK" : "FAILED") + " (" + (t1 - startTime) + "ms)");
 
-            // 使用 ONNX Runtime 进行推理
-            if (regSession != null && ortEnv != null) {
-                chessInfo = runInference(bitmap);
+            Bitmap warpedBoard = null;
+            if (keypoints != null) {
+                // Step 2: 透视变换
+                warpedBoard = warpPerspective(bitmap, keypoints);
+                long t2 = System.currentTimeMillis();
+                Log.d(TAG, "Step2 warp: " + (warpedBoard != null ? "OK" : "FAILED") + " (" + (t2 - t1) + "ms)");
+            }
+
+            ChessInfo chessInfo;
+            if (warpedBoard != null) {
+                // Step 3: 在变换后的标准棋盘图上分类
+                chessInfo = runClassification(warpedBoard);
             } else {
-                // 使用模拟模式（开发/测试用）
-                Log.d(TAG, "Using simulated recognition (model not loaded)");
-                chessInfo = createSimulatedChessInfo();
+                // 降级：直接在原图上分类（效果会差）
+                Log.w(TAG, "Pose/warp failed, falling back to direct classification");
+                chessInfo = runClassification(bitmap);
             }
 
             long endTime = System.currentTimeMillis();
-            Log.d(TAG, "Recognition completed in " + (endTime - startTime) + "ms");
-
+            Log.d(TAG, "=== Recognition completed in " + (endTime - startTime) + "ms ===");
             return chessInfo;
 
         } catch (Exception e) {
@@ -193,154 +176,248 @@ public class ChessRecognitionService {
     }
 
     /**
-     * 运行 ONNX 模型推理
+     * Step 1: 用 pose 模型检测棋盘4个角点 (A0, A8, J0, J8)
+     * @return float[4][2] 关键点坐标 (原图坐标系)，失败返回 null
      */
-    private ChessInfo runInference(Bitmap bitmap) throws OrtException {
+    private float[][] detectKeypoints(Bitmap bitmap) {
+        if (poseSession == null) return null;
+
+        try {
+            int origW = bitmap.getWidth();
+            int origH = bitmap.getHeight();
+
+            // 1. 缩放到 256x256
+            Bitmap resized = Bitmap.createScaledBitmap(bitmap, POSE_INPUT_SIZE, POSE_INPUT_SIZE, true);
+
+            // 2. 准备输入 [1, 3, 256, 256]
+            float[][][][] input = prepareNCHWInput(resized, POSE_INPUT_SIZE, POSE_INPUT_SIZE);
+            OnnxTensor inputTensor = OnnxTensor.createTensor(ortEnv, input);
+
+            // 3. 运行 pose 模型
+            Result result = poseSession.run(Collections.singletonMap("input", inputTensor));
+
+            // 4. 解析 SimCC 输出
+            // 输出: simcc_x [1, 4, 512], simcc_y [1, 4, 512]
+            float[][][] simccX = (float[][][]) result.get(0).getValue();
+            float[][][] simccY = (float[][][]) result.get(1).getValue();
+
+            int numKpt = simccX[0].length;     // 4 个关键点
+            int mapSizeX = simccX[0][0].length; // 512
+            int mapSizeY = simccY[0][0].length; // 512
+
+            Log.d(TAG, "Pose output: numKpt=" + numKpt + ", mapSizeX=" + mapSizeX + ", mapSizeY=" + mapSizeY);
+
+            // 5. 解码 SimCC: argmax → 归一化坐标 → 原图坐标
+            float[][] keypoints = new float[numKpt][2];
+            for (int k = 0; k < numKpt; k++) {
+                // 找 argmax
+                int maxX = 0, maxY = 0;
+                float maxValX = simccX[0][k][0];
+                float maxValY = simccY[0][k][0];
+                for (int i = 1; i < mapSizeX; i++) {
+                    if (simccX[0][k][i] > maxValX) {
+                        maxValX = simccX[0][k][i];
+                        maxX = i;
+                    }
+                }
+                for (int i = 1; i < mapSizeY; i++) {
+                    if (simccY[0][k][i] > maxValY) {
+                        maxValY = simccY[0][k][i];
+                        maxY = i;
+                    }
+                }
+
+                // 归一化到 [0, 1]
+                float normX = (float) maxX / mapSizeX;
+                float normY = (float) maxY / mapSizeY;
+
+                // 映射回原图坐标
+                keypoints[k][0] = normX * origW;
+                keypoints[k][1] = normY * origH;
+
+                Log.d(TAG, String.format("  kpt[%d] = (%.1f, %.1f) conf=(%.3f, %.3f)",
+                    k, keypoints[k][0], keypoints[k][1], maxValX, maxValY));
+            }
+
+            inputTensor.close();
+            result.close();
+            return keypoints;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Pose detection failed: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Step 2: 透视变换 - 将倾斜棋盘拉伸为标准俯视图
+     * @param bitmap 原图
+     * @param keypoints 4个角点 [A0, A8, J0, J8]
+     * @return 变换后的标准棋盘图 (450x500)
+     */
+    private Bitmap warpPerspective(Bitmap bitmap, float[][] keypoints) {
+        try {
+            // 关键点顺序: A0(左上), A8(右上), J0(左下), J8(右下)
+            float ax0 = keypoints[0][0], ay0 = keypoints[0][1]; // A0: 左上
+            float ax8 = keypoints[1][0], ay8 = keypoints[1][1]; // A8: 右上
+            float jx0 = keypoints[2][0], jy0 = keypoints[2][1]; // J0: 左下
+            float jx8 = keypoints[3][0], jy8 = keypoints[3][1]; // J8: 右下
+
+            // 目标点 (标准棋盘，带 padding)
+            float dstAx0 = WARP_PADDING, dstAy0 = WARP_PADDING;                       // 左上
+            float dstAx8 = WARP_WIDTH - WARP_PADDING, dstAy8 = WARP_PADDING;           // 右上
+            float dstJx0 = WARP_PADDING, dstJy0 = WARP_HEIGHT - WARP_PADDING;         // 左下
+            float dstJx8 = WARP_WIDTH - WARP_PADDING, dstJy8 = WARP_HEIGHT - WARP_PADDING; // 右下
+
+            // 源点和目标点
+            float[] src = {ax0, ay0, ax8, ay8, jx0, jy0, jx8, jy8};
+            float[] dst = {dstAx0, dstAy0, dstAx8, dstAy8, dstJx0, dstJy0, dstJx8, dstJy8};
+
+            // 使用 Android Matrix 做透视变换
+            Matrix matrix = new Matrix();
+            boolean success = matrix.setPolyToPoly(src, 0, dst, 0, 4);
+            if (!success) {
+                Log.e(TAG, "setPolyToPoly failed");
+                return null;
+            }
+
+            // 创建变换后的图像
+            Bitmap warped = Bitmap.createBitmap(WARP_WIDTH, WARP_HEIGHT, Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(warped);
+            canvas.drawColor(Color.BLACK);
+            canvas.drawBitmap(bitmap, matrix, null);
+
+            Log.d(TAG, "Perspective transform done: " + WARP_WIDTH + "x" + WARP_HEIGHT);
+            return warped;
+
+        } catch (Exception e) {
+            Log.e(TAG, "Perspective transform failed: " + e.getMessage(), e);
+            return null;
+        }
+    }
+
+    /**
+     * Step 3: 在标准棋盘图上运行分类模型
+     */
+    private ChessInfo runClassification(Bitmap bitmap) throws OrtException {
         ChessInfo chessInfo = new ChessInfo();
         long t0 = System.currentTimeMillis();
 
-        // 1. 调整图片尺寸
-        Bitmap resizedBitmap = resizeBitmap(bitmap, REG_INPUT_SIZE, REG_INPUT_SIZE);
+        // 1. 缩放到模型输入尺寸 (280x315)
+        Bitmap resized = Bitmap.createScaledBitmap(bitmap, CLS_INPUT_WIDTH, CLS_INPUT_HEIGHT, true);
         long t1 = System.currentTimeMillis();
 
-        // 2. 准备输入数据 (CHW 格式, 归一化到 [0,1])
-        float[][][] inputHWC = prepareInputHWC(resizedBitmap);
+        // 2. 准备输入
+        float[][][][] input = prepareNCHWInput(resized, CLS_INPUT_WIDTH, CLS_INPUT_HEIGHT);
         long t2 = System.currentTimeMillis();
 
-        // 转换为 CHW 格式的 float[1][3][256][256] 或 float[1][256][256][3]
-        // 根据模型期望的格式
-        // 先尝试 NCHW 格式 [1, 3, 256, 256]
-        float[][][][] inputNCHW = new float[1][3][REG_INPUT_SIZE][REG_INPUT_SIZE];
-        for (int c = 0; c < 3; c++) {
-            for (int y = 0; y < REG_INPUT_SIZE; y++) {
-                for (int x = 0; x < REG_INPUT_SIZE; x++) {
-                    inputNCHW[0][c][y][x] = inputHWC[c][y][x];
-                }
-            }
-        }
+        // 3. 推理
+        OnnxTensor inputTensor = OnnxTensor.createTensor(ortEnv, input);
+        Result result = clsSession.run(Collections.singletonMap("input", inputTensor));
         long t3 = System.currentTimeMillis();
 
-        // 3. 运行模型推理
-        OnnxTensor inputTensor = OnnxTensor.createTensor(ortEnv, inputNCHW);
-        Result result = regSession.run(Collections.singletonMap("input", inputTensor));
-        long t4 = System.currentTimeMillis();
-
-        // 4. 处理输出
-        // 输出可能是多种格式：[1, 16, 10, 9] 或 [1, 10, 9, 16]
+        // 4. 解析输出
         Object outputValue = result.get(0).getValue();
         int[][] classificationResults;
 
         if (outputValue instanceof float[][][][]) {
-            // 格式 [1, C, H, W] 或 [1, H, W, C]
             float[][][][] tensor = (float[][][][]) outputValue;
             int[] shape = getShape4D(tensor);
-
-            Log.d(TAG, "Output tensor shape: [" + shape[0] + "," + shape[1] + "," + shape[2] + "," + shape[3] + "]");
+            Log.d(TAG, "Cls output shape: [" + shape[0] + "," + shape[1] + "," + shape[2] + "," + shape[3] + "]");
 
             if (shape[1] == NUM_CLASSES && shape[2] == BOARD_ROWS && shape[3] == BOARD_COLS) {
-                // [1, 16, 10, 9] - correct format
                 classificationResults = parseNCHWFormat(tensor);
             } else if (shape[1] == BOARD_ROWS && shape[2] == BOARD_COLS && shape[3] == NUM_CLASSES) {
-                // [1, 10, 9, 16] - NHWC format
                 classificationResults = parseNHWCFormat(tensor);
             } else {
-                Log.w(TAG, "Unexpected tensor shape, using argmax on last dim");
                 classificationResults = parseGenericFormat(tensor, shape);
             }
         } else if (outputValue instanceof float[][][]) {
-            float[][][] tensor = (float[][][]) outputValue;
-            classificationResults = parse3DTensor(tensor);
+            classificationResults = parse3DTensor((float[][][]) outputValue);
         } else {
             Log.w(TAG, "Unknown output type: " + outputValue.getClass().getName());
             return createSimulatedChessInfo();
         }
-        long t5 = System.currentTimeMillis();
+        long t4 = System.currentTimeMillis();
 
-        // 5. 转换结果到 ChessInfo 格式
-        // 直接映射：classificationResults[y][x] → piece[y][x]
-        // 不翻转 Y 轴，让 generateFEN + ChessView (drawY=9-i) 自动处理方向
+        // 5. 映射到 ChessInfo (row0=黑方顶部 → y=9黑方, row9=红方底部 → y=0红方)
         int nonEmptyCount = 0;
-        int[] classCounts = new int[NUM_CLASSES];
         for (int y = 0; y < BOARD_ROWS; y++) {
             for (int x = 0; x < BOARD_COLS; x++) {
                 int classIndex = classificationResults[y][x];
-                classCounts[classIndex]++;
                 if (classIndex >= 0 && classIndex < CLASS_INDEX_MAP.length) {
                     String pieceChar = CLASS_INDEX_MAP[classIndex];
                     Integer pieceId = PIECE_MAP.get(pieceChar);
-                    chessInfo.piece[y][x] = pieceId != null ? pieceId : 0;
+                    chessInfo.piece[9 - y][x] = pieceId != null ? pieceId : 0;
                     if (pieceId != null && pieceId > 0) nonEmptyCount++;
                 } else {
-                    chessInfo.piece[y][x] = 0;
+                    chessInfo.piece[9 - y][x] = 0;
                 }
             }
         }
-        Log.d(TAG, "推理结果: 非空格子=" + nonEmptyCount + "/90, 各类别分布: ");
-        for (int c = 0; c < NUM_CLASSES; c++) {
-            if (classCounts[c] > 0) {
-                Log.d(TAG, "  类别[" + c + "]=" + CLASS_INDEX_MAP[c] + " x" + classCounts[c]);
-            }
-        }
-        // 采样打印前2行和后2行的预测，方便核对方向
-        StringBuilder sample = new StringBuilder("预测采样: ");
-        for (int y = 0; y < Math.min(2, BOARD_ROWS); y++) {
-            sample.append("\n  row").append(y).append(": ");
+
+        // 打印识别结果网格
+        String[] pieceNames = {"空", "黑将", "黑士", "黑象", "黑马", "黑车", "黑炮", "黑卒", "红帅", "红仕", "红相", "红马", "红车", "红炮", "红兵"};
+        StringBuilder grid = new StringBuilder("=== 识别结果 ===");
+        grid.append("\n  非空格子=").append(nonEmptyCount).append("/90");
+        for (int y = 0; y < BOARD_ROWS; y++) {
+            grid.append("\n  y=").append(y).append(": ");
             for (int x = 0; x < BOARD_COLS; x++) {
-                sample.append(CLASS_INDEX_MAP[classificationResults[y][x]]);
+                int p = chessInfo.piece[y][x];
+                grid.append(p > 0 && p < pieceNames.length ? pieceNames[p] : ".").append(" ");
             }
         }
-        sample.append("\n  ...");
-        for (int y = Math.max(0, BOARD_ROWS - 2); y < BOARD_ROWS; y++) {
-            sample.append("\n  row").append(y).append(": ");
-            for (int x = 0; x < BOARD_COLS; x++) {
-                sample.append(CLASS_INDEX_MAP[classificationResults[y][x]]);
-            }
-        }
-        Log.d(TAG, sample.toString());
+        Log.d(TAG, grid.toString());
 
         inputTensor.close();
         result.close();
-        long t6 = System.currentTimeMillis();
+        long t5 = System.currentTimeMillis();
 
-        Log.d(TAG, String.format("Inference timing: resize=%dms, prep=%dms, convert=%dms, infer=%dms, parse=%dms, total=%dms",
-            t1 - t0, t2 - t1, t3 - t2, t4 - t3, t5 - t4, t6 - t0));
+        Log.d(TAG, String.format("Cls timing: resize=%dms, prep=%dms, infer=%dms, parse=%dms, total=%dms",
+            t1-t0, t2-t1, t3-t2, t4-t3, t5-t0));
 
-        // 6. 确定谁先手
-        int redCount = 0, blackCount = 0;
-        for (int y = 0; y < BOARD_ROWS; y++) {
-            for (int x = 0; x < BOARD_COLS; x++) {
-                int piece = chessInfo.piece[y][x];
-                if (piece >= 8) redCount++;
-                else if (piece >= 1) blackCount++;
-            }
-        }
+        // 6. 先手默认红方
         chessInfo.IsRedGo = true;
-
         return chessInfo;
     }
 
+    /**
+     * 准备 NCHW 输入 [1, 3, height, width]
+     * 使用 ImageNet 标准化
+     */
+    private float[][][][] prepareNCHWInput(Bitmap bitmap, int width, int height) {
+        float[] mean = {123.675f, 116.28f, 103.53f};
+        float[] std = {58.395f, 57.12f, 57.375f};
+
+        float[][][][] input = new float[1][3][height][width];
+        int[] pixels = new int[width * height];
+        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
+
+        for (int i = 0; i < pixels.length; i++) {
+            int pixel = pixels[i];
+            int y = i / width;
+            int x = i % width;
+            input[0][0][y][x] = (((pixel >> 16) & 0xFF) - mean[0]) / std[0]; // R
+            input[0][1][y][x] = (((pixel >> 8) & 0xFF) - mean[1]) / std[1];  // G
+            input[0][2][y][x] = ((pixel & 0xFF) - mean[2]) / std[2];         // B
+        }
+        return input;
+    }
+
+    // ========== 输出解析方法 ==========
+
     private int[] getShape4D(float[][][][] tensor) {
-        return new int[]{
-            tensor.length,
-            tensor[0].length,
-            tensor[0][0].length,
-            tensor[0][0][0].length
-        };
+        return new int[]{tensor.length, tensor[0].length, tensor[0][0].length, tensor[0][0][0].length};
     }
 
     private int[][] parseNCHWFormat(float[][][][] tensor) {
-        // [1, 16, 10, 9] -> argmax over dim 1
         int[][] results = new int[BOARD_ROWS][BOARD_COLS];
         for (int y = 0; y < BOARD_ROWS; y++) {
             for (int x = 0; x < BOARD_COLS; x++) {
                 int maxClass = 0;
                 float maxVal = tensor[0][0][y][x];
                 for (int c = 1; c < NUM_CLASSES; c++) {
-                    float val = tensor[0][c][y][x];
-                    if (val > maxVal) {
-                        maxVal = val;
-                        maxClass = c;
-                    }
+                    if (tensor[0][c][y][x] > maxVal) { maxVal = tensor[0][c][y][x]; maxClass = c; }
                 }
                 results[y][x] = maxClass;
             }
@@ -349,18 +426,13 @@ public class ChessRecognitionService {
     }
 
     private int[][] parseNHWCFormat(float[][][][] tensor) {
-        // [1, 10, 9, 16] -> argmax over dim 3
         int[][] results = new int[BOARD_ROWS][BOARD_COLS];
         for (int y = 0; y < BOARD_ROWS; y++) {
             for (int x = 0; x < BOARD_COLS; x++) {
                 int maxClass = 0;
                 float maxVal = tensor[0][y][x][0];
                 for (int c = 1; c < NUM_CLASSES; c++) {
-                    float val = tensor[0][y][x][c];
-                    if (val > maxVal) {
-                        maxVal = val;
-                        maxClass = c;
-                    }
+                    if (tensor[0][y][x][c] > maxVal) { maxVal = tensor[0][y][x][c]; maxClass = c; }
                 }
                 results[y][x] = maxClass;
             }
@@ -369,20 +441,14 @@ public class ChessRecognitionService {
     }
 
     private int[][] parseGenericFormat(float[][][][] tensor, int[] shape) {
-        Log.w(TAG, "Using generic argmax over last dimension: [" 
-            + shape[0] + "," + shape[1] + "," + shape[2] + "," + shape[3] + "]");
-        // Try to figure out the layout
+        Log.w(TAG, "Generic argmax: [" + shape[0] + "," + shape[1] + "," + shape[2] + "," + shape[3] + "]");
         int[][] results = new int[BOARD_ROWS][BOARD_COLS];
         for (int y = 0; y < Math.min(BOARD_ROWS, shape[2]); y++) {
             for (int x = 0; x < Math.min(BOARD_COLS, shape[3]); x++) {
                 int maxClass = 0;
                 float maxVal = 0;
                 for (int c = 0; c < Math.min(NUM_CLASSES, shape[1]); c++) {
-                    float val = tensor[0][c][y][x];
-                    if (val > maxVal) {
-                        maxVal = val;
-                        maxClass = c;
-                    }
+                    if (tensor[0][c][y][x] > maxVal) { maxVal = tensor[0][c][y][x]; maxClass = c; }
                 }
                 results[y][x] = maxClass;
             }
@@ -391,178 +457,56 @@ public class ChessRecognitionService {
     }
 
     private int[][] parse3DTensor(float[][][] tensor) {
-        int dim0 = tensor.length;
-        int dim1 = tensor[0].length;
-        int dim2 = tensor[0][0].length;
-
-        Log.d(TAG, "3D Tensor shape: [" + dim0 + "," + dim1 + "," + dim2 + "]");
-
+        int dim0 = tensor.length, dim1 = tensor[0].length, dim2 = tensor[0][0].length;
+        Log.d(TAG, "3D Tensor: [" + dim0 + "," + dim1 + "," + dim2 + "]");
         int[][] results = new int[BOARD_ROWS][BOARD_COLS];
 
         if (dim0 == NUM_CLASSES && dim1 == BOARD_ROWS && dim2 == BOARD_COLS) {
-            // [16, 10, 9]
-            for (int y = 0; y < BOARD_ROWS; y++) {
+            for (int y = 0; y < BOARD_ROWS; y++)
                 for (int x = 0; x < BOARD_COLS; x++) {
-                    int maxClass = 0;
-                    float maxVal = tensor[0][y][x];
-                    for (int c = 1; c < NUM_CLASSES; c++) {
-                        float val = tensor[c][y][x];
-                        if (val > maxVal) {
-                            maxVal = val;
-                            maxClass = c;
-                        }
-                    }
-                    results[y][x] = maxClass;
+                    int maxC = 0; float maxV = tensor[0][y][x];
+                    for (int c = 1; c < NUM_CLASSES; c++) if (tensor[c][y][x] > maxV) { maxV = tensor[c][y][x]; maxC = c; }
+                    results[y][x] = maxC;
                 }
-            }
         } else if (dim0 == BOARD_ROWS && dim1 == BOARD_COLS && dim2 == NUM_CLASSES) {
-            // [10, 9, 16]
-            for (int y = 0; y < BOARD_ROWS; y++) {
+            for (int y = 0; y < BOARD_ROWS; y++)
                 for (int x = 0; x < BOARD_COLS; x++) {
-                    int maxClass = 0;
-                    float maxVal = tensor[y][x][0];
-                    for (int c = 1; c < NUM_CLASSES; c++) {
-                        float val = tensor[y][x][c];
-                        if (val > maxVal) {
-                            maxVal = val;
-                            maxClass = c;
-                        }
-                    }
-                    results[y][x] = maxClass;
+                    int maxC = 0; float maxV = tensor[y][x][0];
+                    for (int c = 1; c < NUM_CLASSES; c++) if (tensor[y][x][c] > maxV) { maxV = tensor[y][x][c]; maxC = c; }
+                    results[y][x] = maxC;
                 }
-            }
         } else if (dim0 == 1 && dim1 == BOARD_ROWS * BOARD_COLS && dim2 == NUM_CLASSES) {
-            // [1, 90, 16] - 展平后的位置×类别
             for (int p = 0; p < dim1; p++) {
-                int y = p / BOARD_COLS;
-                int x = p % BOARD_COLS;
-                int maxClass = 0;
-                float maxVal = tensor[0][p][0];
-                for (int c = 1; c < NUM_CLASSES; c++) {
-                    float val = tensor[0][p][c];
-                    if (val > maxVal) {
-                        maxVal = val;
-                        maxClass = c;
-                    }
-                }
-                results[y][x] = maxClass;
+                int y = p / BOARD_COLS, x = p % BOARD_COLS;
+                int maxC = 0; float maxV = tensor[0][p][0];
+                for (int c = 1; c < NUM_CLASSES; c++) if (tensor[0][p][c] > maxV) { maxV = tensor[0][p][c]; maxC = c; }
+                results[y][x] = maxC;
             }
-        } else {
-            Log.w(TAG, "Unknown 3D tensor layout");
         }
         return results;
     }
 
-    /**
-     * 准备 HWC 输入数据
-     */
-    private float[][][] prepareInputHWC(Bitmap bitmap) {
-        int width = bitmap.getWidth();
-        int height = bitmap.getHeight();
-        float[][][] data = new float[3][height][width];
+    // ========== 模拟数据 ==========
 
-        int[] pixels = new int[width * height];
-        bitmap.getPixels(pixels, 0, width, 0, 0, width, height);
-
-        for (int i = 0; i < pixels.length; i++) {
-            int pixel = pixels[i];
-            int y = i / width;
-            int x = i % width;
-
-            // ARGB -> RGB，归一化到 [0, 1]
-            data[0][y][x] = ((pixel >> 16) & 0xFF) / 255.0f; // R
-            data[1][y][x] = ((pixel >> 8) & 0xFF) / 255.0f;  // G
-            data[2][y][x] = (pixel & 0xFF) / 255.0f;         // B
-        }
-
-        return data;
-    }
-
-    /**
-     * 创建模拟棋盘信息（用于开发/测试）
-     */
     private ChessInfo createSimulatedChessInfo() {
         ChessInfo chessInfo = new ChessInfo();
-
-        // 初始化棋盘为空（对齐 ChessInfo.init() 坐标：y=0=红方底线，y=9=黑方底线）
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
-                chessInfo.piece[y][x] = 0;
-            }
-        }
-
-        // 红方棋子（y=0 红方底线，y=9 红方兵线）
-        chessInfo.piece[0][0] = 12; // 红车
-        chessInfo.piece[0][1] = 11; // 红马
-        chessInfo.piece[0][2] = 10; // 红相
-        chessInfo.piece[0][3] = 9;  // 红仕
-        chessInfo.piece[0][4] = 8;  // 红帅
-        chessInfo.piece[0][5] = 9;  // 红仕
-        chessInfo.piece[0][6] = 10; // 红相
-        chessInfo.piece[0][7] = 11; // 红马
-        chessInfo.piece[0][8] = 12; // 红车
-        chessInfo.piece[2][1] = 13; // 红炮
-        chessInfo.piece[2][7] = 13; // 红炮
-        chessInfo.piece[3][0] = 14; // 红兵
-        chessInfo.piece[3][2] = 14; // 红兵
-        chessInfo.piece[3][4] = 14; // 红兵
-        chessInfo.piece[3][6] = 14; // 红兵
-        chessInfo.piece[3][8] = 14; // 红兵
-
-        // 黑方棋子（y=6 黑方兵线，y=9 黑方底线）
-        chessInfo.piece[9][0] = 5;  // 黑车
-        chessInfo.piece[9][1] = 4;  // 黑马
-        chessInfo.piece[9][2] = 3;  // 黑象
-        chessInfo.piece[9][3] = 2;  // 黑士
-        chessInfo.piece[9][4] = 1;  // 黑将
-        chessInfo.piece[9][5] = 2;  // 黑士
-        chessInfo.piece[9][6] = 3;  // 黑象
-        chessInfo.piece[9][7] = 4;  // 黑马
-        chessInfo.piece[9][8] = 5;  // 黑车
-        chessInfo.piece[7][1] = 6;  // 黑炮
-        chessInfo.piece[7][7] = 6;  // 黑炮
-        chessInfo.piece[6][0] = 7;  // 黑卒
-        chessInfo.piece[6][2] = 7;  // 黑卒
-        chessInfo.piece[6][4] = 7;  // 黑卒
-        chessInfo.piece[6][6] = 7;  // 黑卒
-        chessInfo.piece[6][8] = 7;  // 黑卒
-
+        for (int y = 0; y < 10; y++) for (int x = 0; x < 9; x++) chessInfo.piece[y][x] = 0;
+        // 红方
+        chessInfo.piece[0][0] = 12; chessInfo.piece[0][1] = 11; chessInfo.piece[0][2] = 10;
+        chessInfo.piece[0][3] = 9;  chessInfo.piece[0][4] = 8;  chessInfo.piece[0][5] = 9;
+        chessInfo.piece[0][6] = 10; chessInfo.piece[0][7] = 11; chessInfo.piece[0][8] = 12;
+        chessInfo.piece[2][1] = 13; chessInfo.piece[2][7] = 13;
+        chessInfo.piece[3][0] = 14; chessInfo.piece[3][2] = 14; chessInfo.piece[3][4] = 14;
+        chessInfo.piece[3][6] = 14; chessInfo.piece[3][8] = 14;
+        // 黑方
+        chessInfo.piece[9][0] = 5;  chessInfo.piece[9][1] = 4;  chessInfo.piece[9][2] = 3;
+        chessInfo.piece[9][3] = 2;  chessInfo.piece[9][4] = 1;  chessInfo.piece[9][5] = 2;
+        chessInfo.piece[9][6] = 3;  chessInfo.piece[9][7] = 4;  chessInfo.piece[9][8] = 5;
+        chessInfo.piece[7][1] = 6;  chessInfo.piece[7][7] = 6;
+        chessInfo.piece[6][0] = 7;  chessInfo.piece[6][2] = 7;  chessInfo.piece[6][4] = 7;
+        chessInfo.piece[6][6] = 7;  chessInfo.piece[6][8] = 7;
         chessInfo.IsRedGo = true;
         return chessInfo;
-    }
-
-    /**
-     * 将 Bitmap 调整为固定尺寸（保持长宽比，黑边填充）
-     */
-    private Bitmap resizeBitmap(Bitmap bitmap, int targetWidth, int targetHeight) {
-        if (bitmap.getWidth() == targetWidth && bitmap.getHeight() == targetHeight) {
-            return bitmap;
-        }
-        
-        // 计算缩放比例，保持长宽比
-        float scale = Math.min(
-            (float) targetWidth / bitmap.getWidth(),
-            (float) targetHeight / bitmap.getHeight()
-        );
-        int scaledW = Math.round(bitmap.getWidth() * scale);
-        int scaledH = Math.round(bitmap.getHeight() * scale);
-        
-        // 缩放
-        Bitmap scaled = Bitmap.createScaledBitmap(bitmap, scaledW, scaledH, true);
-        
-        // 创建目标尺寸的画布，居中放置
-        Bitmap result = Bitmap.createBitmap(targetWidth, targetHeight, Bitmap.Config.ARGB_8888);
-        android.graphics.Canvas canvas = new android.graphics.Canvas(result);
-        canvas.drawColor(android.graphics.Color.BLACK); // 黑边填充
-        int offsetX = (targetWidth - scaledW) / 2;
-        int offsetY = (targetHeight - scaledH) / 2;
-        canvas.drawBitmap(scaled, offsetX, offsetY, null);
-        
-        if (scaled != bitmap) {
-            scaled.recycle();
-        }
-        
-        return result;
     }
 
     /**
@@ -570,14 +514,9 @@ public class ChessRecognitionService {
      */
     public void close() {
         initialized = false;
-        if (regSession != null) {
-            try { regSession.close(); } catch (OrtException e) { }
-            regSession = null;
-        }
-        if (ortEnv != null) {
-            try { ortEnv.close(); } catch (Exception e) { }
-            ortEnv = null;
-        }
+        if (poseSession != null) { try { poseSession.close(); } catch (OrtException e) {} poseSession = null; }
+        if (clsSession != null) { try { clsSession.close(); } catch (OrtException e) {} clsSession = null; }
+        if (ortEnv != null) { try { ortEnv.close(); } catch (Exception e) {} ortEnv = null; }
         Log.d(TAG, "Resources released");
     }
 }

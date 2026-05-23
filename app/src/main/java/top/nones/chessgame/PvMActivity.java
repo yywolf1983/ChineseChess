@@ -543,7 +543,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 if (recognizedInfo != null) {
                     runOnUiThread(() -> {
                         applyRecognitionResult(recognizedInfo);
-                        Toast.makeText(PvMActivity.this, "识别成功", Toast.LENGTH_SHORT).show();
+                        String side = chessInfo.IsRedGo ? "红方先行" : "黑方先行";
+                        Toast.makeText(PvMActivity.this, "识别成功，" + side, Toast.LENGTH_SHORT).show();
                     });
                 } else {
                     runOnUiThread(() -> Toast.makeText(this, "加载失败", Toast.LENGTH_SHORT).show());

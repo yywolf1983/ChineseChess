@@ -343,7 +343,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                     } else {
                         suggestPaint.setColor(Color.BLACK);
                     }
-                    suggestPaint.setAlpha(100);
+                    suggestPaint.setAlpha(180);
                     int circleRadius = Scale(13);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
