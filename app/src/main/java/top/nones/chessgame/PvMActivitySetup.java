@@ -46,11 +46,25 @@ public class PvMActivitySetup {
             return;
         }
         
+        // 保存操作前的状态，用于回滚
+        int originalSourcePiece = 0;
+        int originalTargetPiece = 0;
+        boolean rollbackNeeded = false;
+        
         try {
+            // 保存原始状态
+            if (activity.chessInfo.piece[y] != null) {
+                originalTargetPiece = activity.chessInfo.piece[y][x];
+            }
+            if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
+                sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
+                originalSourcePiece = activity.chessInfo.piece[sourceY][sourceX];
+            }
+            
             // 如果是移除棋子，不需要检查数量限制
             if (pieceID != 0) {
-                // 检查棋子数量限制（如果来源位置相同的棋子，数量检查需要特殊处理）
-                if (!checkPieceCount(pieceID, sourceX, sourceY)) {
+                // 检查棋子数量限制时，需要考虑目标位置的原棋子
+                if (!checkPieceCountWithTarget(pieceID, sourceX, sourceY, x, y)) {
                     // 显示数量限制提示
                     return;
                 }
@@ -61,6 +75,9 @@ public class PvMActivitySetup {
                     return;
                 }
             }
+            
+            // 标记需要回滚
+            rollbackNeeded = true;
             
             // 先临时保存原位置的棋子（如果有来源位置）
             if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
@@ -112,8 +129,30 @@ public class PvMActivitySetup {
             if (activity.controlsManager != null && activity.chessInfo != null && activity.chessInfo.status == 1) {
                 activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
             }
+            
+            // 操作成功，不需要回滚
+            rollbackNeeded = false;
         } catch (Exception e) {
             LogUtils.e("PvMActivitySetup", "Error in placePiece", e);
+            rollbackNeeded = true;
+        } finally {
+            // 如果需要回滚，恢复原始状态
+            if (rollbackNeeded) {
+                try {
+                    // 恢复来源位置的棋子
+                    if (sourceX != -1 && sourceY != -1 && sourceX >= 0 && sourceX < 9 && 
+                        sourceY >= 0 && sourceY < 10 && activity.chessInfo.piece[sourceY] != null) {
+                        activity.chessInfo.piece[sourceY][sourceX] = originalSourcePiece;
+                    }
+                    // 恢复目标位置的棋子
+                    if (activity.chessInfo.piece[y] != null) {
+                        activity.chessInfo.piece[y][x] = originalTargetPiece;
+                    }
+                    LogUtils.d("PvMActivitySetup", "Rollback completed for placePiece operation");
+                } catch (Exception rollbackException) {
+                    LogUtils.e("PvMActivitySetup", "Error during rollback", rollbackException);
+                }
+            }
         }
     }
     
@@ -231,8 +270,8 @@ public class PvMActivitySetup {
         }
     }
     
-    // 检查棋子数量是否符合标准（支持来源位置，来源位置的棋子不计入数量）
-    public boolean checkPieceCount(int pieceID, int sourceX, int sourceY) {
+    // 检查棋子数量是否符合标准（支持来源位置和目标位置）
+    public boolean checkPieceCountWithTarget(int pieceID, int sourceX, int sourceY, int targetX, int targetY) {
         if (pieceID == 0) return true; // 移除棋子总是允许的
         if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) return false;
         
@@ -241,8 +280,8 @@ public class PvMActivitySetup {
             for (int i = 0; i < 10 && i < activity.chessInfo.piece.length; i++) {
                 if (activity.chessInfo.piece[i] != null) {
                     for (int j = 0; j < 9 && j < activity.chessInfo.piece[i].length; j++) {
-                        // 如果是来源位置，不计入数量
-                        if (i == sourceY && j == sourceX) {
+                        // 如果是来源位置或目标位置，不计入数量
+                        if ((i == sourceY && j == sourceX) || (i == targetY && j == targetX)) {
                             continue;
                         }
                         if (activity.chessInfo.piece[i][j] == pieceID) {
@@ -252,7 +291,7 @@ public class PvMActivitySetup {
                 }
             }
         } catch (Exception e) {
-            LogUtils.e("PvMActivitySetup", "Error in checkPieceCount", e);
+            LogUtils.e("PvMActivitySetup", "Error in checkPieceCountWithTarget", e);
             return false;
         }
         
@@ -278,6 +317,11 @@ public class PvMActivitySetup {
             default:
                 return true;
         }
+    }
+
+    // 检查棋子数量是否符合标准（支持来源位置，来源位置的棋子不计入数量）
+    public boolean checkPieceCount(int pieceID, int sourceX, int sourceY) {
+        return checkPieceCountWithTarget(pieceID, sourceX, sourceY, -1, -1);
     }
     
     // 简化的棋子数量检查（不带来源位置）
@@ -485,11 +529,9 @@ public class PvMActivitySetup {
                         }
                         // 如果已经选中了棋子选择区域的棋子，放置到棋盘上
                         else if (selectedPieceID > 0) {
-                            // 如果目标位置有棋子，先移除（覆盖）
-                            if (boardPieceID != 0) {
-                                placePiece(i, j, 0);
-                            }
-                            placePiece(i, j, selectedPieceID);
+                            // 直接使用新的放置逻辑，placePiece方法内部已经处理了目标位置的棋子
+                            // 使用 checkPieceCountWithTarget 来检查数量时会排除目标位置的原棋子
+                            placePiece(i, j, selectedPieceID, -1, -1);
                             // 重置选中状态
                             selectedPieceID = 0;
                         }
