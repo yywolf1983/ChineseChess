@@ -500,6 +500,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
         lastCameraLaunchTime = now;
         
+        // 检查相机权限
+        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) 
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            // 请求相机权限
+            androidx.core.app.ActivityCompat.requestPermissions(this, 
+                    new String[]{android.Manifest.permission.CAMERA}, 1006);
+            isLaunchingCamera.set(false);
+            return;
+        }
+        
         try {
             cameraImageFile = createImageFile();
             if (cameraImageFile == null) {
@@ -930,6 +940,21 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 processRecognitionResult(bitmap);
             } else {
                 Toast.makeText(this, "无法加载图片", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+    
+    // 处理权限请求结果
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == 1006) {
+            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                // 相机权限已授予，重新启动相机
+                android.util.Log.d("PvMActivity", "相机权限已授予，重新启动相机");
+                dispatchCameraIntent();
+            } else {
+                Toast.makeText(this, "需要相机权限才能拍照识别", Toast.LENGTH_SHORT).show();
             }
         }
     }
