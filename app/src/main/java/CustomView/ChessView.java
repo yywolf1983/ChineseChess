@@ -251,33 +251,114 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             }
         }
 
-        // 绘制支招提示线
-        if (chessInfo.suggestFromPos != null && chessInfo.suggestToPos != null) {
-            // 反转y坐标，确保提示线显示在正确的位置
-            int fromX = chessInfo.suggestFromPos.x;
-            int fromY = 9 - chessInfo.suggestFromPos.y;
-            int toX = chessInfo.suggestToPos.x;
-            int toY = 9 - chessInfo.suggestToPos.y;
+        // 绘制多步支招提示线（在所有棋子之上）
+        if (chessInfo.suggestMoves != null && !chessInfo.suggestMoves.isEmpty() && chessInfo.suggestMoveLabels != null) {
+            Paint suggestPaint = new Paint();
+            suggestPaint.setAntiAlias(true);
+            suggestPaint.setTextAlign(Paint.Align.CENTER);
             
-            // 计算棋子中心点坐标
-            int fromCenterX = Scale(fromX * 85 + 43); // 3 + 80/2
-            int fromCenterY = Scale(fromY * 85 + 81); // 41 + 80/2
-            int toCenterX = Scale(toX * 85 + 43);
-            int toCenterY = Scale(toY * 85 + 81);
-            
-            // 设置画笔样式
-            paint.setColor(Color.RED);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(8); // 线宽减半
-            paint.setAlpha(150); // 半透明效果
-            
-            // 绘制带箭头的提示线
-            drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, paint);
-            
-            // 重置画笔样式
-            paint.setStyle(Paint.Style.FILL);
-            paint.setStrokeWidth(1);
-            paint.setAlpha(255);
+            for (int i = 0; i < chessInfo.suggestMoves.size() && i < chessInfo.suggestMoveLabels.size(); i++) {
+                ChessMove.Move move = chessInfo.suggestMoves.get(i);
+                if (move == null || move.fromPos == null || move.toPos == null) continue;
+                
+                // 获取起始位置的棋子颜色，判断是红方还是黑方
+                int fromPiece = chessInfo.piece[move.fromPos.y][move.fromPos.x];
+                boolean isRedPiece = fromPiece >= 8;
+                
+                // 起始位置坐标
+                int fromX = move.fromPos.x;
+                int fromY = 9 - move.fromPos.y;
+                
+                // 目标位置坐标
+                int toX = move.toPos.x;
+                int toY = 9 - move.toPos.y;
+                
+                int fromCenterX = Scale(fromX * 85 + 43);
+                int fromCenterY = Scale(fromY * 85 + 81);
+                int toCenterX = Scale(toX * 85 + 43);
+                int toCenterY = Scale(toY * 85 + 81);
+                
+                String label = chessInfo.suggestMoveLabels.get(i);
+                
+                // 第一步用粗线实线，其他步用细线虚线
+                if (i == 0) {
+                    // 绘制箭头线
+                    if (isRedPiece) {
+                        suggestPaint.setColor(Color.RED);
+                    } else {
+                        suggestPaint.setColor(Color.BLACK);
+                    }
+                    suggestPaint.setStyle(Paint.Style.STROKE);
+                    suggestPaint.setStrokeWidth(8);
+                    suggestPaint.setPathEffect(null); // 实线
+                    suggestPaint.setAlpha(255);
+                    drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
+                    
+                    // 先绘制数字
+                    suggestPaint.setStyle(Paint.Style.FILL);
+                    suggestPaint.setTextSize(Scale(28));
+                    suggestPaint.setAlpha(255);
+                    if (isRedPiece) {
+                        suggestPaint.setColor(Color.WHITE);
+                    } else {
+                        suggestPaint.setColor(Color.WHITE);
+                    }
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
+                    
+                    // 再绘制实心圆覆盖数字外围
+                    if (isRedPiece) {
+                        suggestPaint.setColor(Color.RED);
+                    } else {
+                        suggestPaint.setColor(Color.BLACK);
+                    }
+                    suggestPaint.setAlpha(200);
+                    int circleRadius = Scale(16);
+                    canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
+                    
+                    // 最后再绘制数字在圆上
+                    suggestPaint.setColor(Color.WHITE);
+                    suggestPaint.setStyle(Paint.Style.FILL);
+                    suggestPaint.setTextSize(Scale(28));
+                    suggestPaint.setAlpha(255);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
+                } else {
+                    // 绘制箭头线
+                    if (isRedPiece) {
+                        suggestPaint.setColor(Color.RED);
+                    } else {
+                        suggestPaint.setColor(Color.BLACK);
+                    }
+                    suggestPaint.setStyle(Paint.Style.STROKE);
+                    suggestPaint.setStrokeWidth(4);
+                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{10, 10}, 0)); // 虚线
+                    suggestPaint.setAlpha(255);
+                    drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
+                    
+                    // 先绘制数字
+                    suggestPaint.setStyle(Paint.Style.FILL);
+                    suggestPaint.setTextSize(Scale(24));
+                    suggestPaint.setAlpha(255);
+                    suggestPaint.setColor(Color.WHITE);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(9), suggestPaint);
+                    
+                    // 再绘制实心圆覆盖数字外围
+                    if (isRedPiece) {
+                        suggestPaint.setColor(Color.RED);
+                    } else {
+                        suggestPaint.setColor(Color.BLACK);
+                    }
+                    suggestPaint.setAlpha(180);
+                    int circleRadius = Scale(14);
+                    canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
+                    
+                    // 最后再绘制数字在圆上
+                    suggestPaint.setColor(Color.WHITE);
+                    suggestPaint.setStyle(Paint.Style.FILL);
+                    suggestPaint.setTextSize(Scale(24));
+                    suggestPaint.setAlpha(255);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(9), suggestPaint);
+                }
+            }
         }
 
         if (chessInfo.status == 1) {

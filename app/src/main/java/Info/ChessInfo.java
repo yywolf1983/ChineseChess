@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import ChessMove.Move;
 import ChessMove.Rule;
 
 public class ChessInfo implements Cloneable, Serializable {
@@ -34,6 +35,14 @@ public class ChessInfo implements Cloneable, Serializable {
     // 支招相关字段
     public Pos suggestFromPos;
     public Pos suggestToPos;
+    // 多步支招路线：每条路线是一个Move对象列表（包含from和to）
+    public List<Move> suggestMoves;
+    // 支招步数标注：格式 "1", "2", "3", "4", "5"（用于棋盘圆圈显示）
+    public List<String> suggestMoveLabels;
+    // 支招每步是否红方：用于颜色区分
+    public List<Boolean> suggestMovesIsRed;
+    // 支招走法中文记谱：格式 "炮二平五", "士4进5"等（用于头部显示）
+    public List<String> suggestMoveNotations;
     
     // 和棋判断相关字段
     public Map<String, Integer> positionHistory; // 局面历史记录，用于检测重复局面
@@ -123,6 +132,10 @@ public class ChessInfo implements Cloneable, Serializable {
         // 初始化支招相关字段
         suggestFromPos = null;
         suggestToPos = null;
+        suggestMoves = new ArrayList<>();
+        suggestMoveLabels = new ArrayList<>();
+        suggestMovesIsRed = new ArrayList<>();
+        suggestMoveNotations = new ArrayList<>();
         
         // 初始化和棋判断相关字段
         positionHistory = new PositionHistoryMap();
@@ -178,6 +191,17 @@ public class ChessInfo implements Cloneable, Serializable {
         this.setting = info.setting;
         this.suggestFromPos = info.suggestFromPos != null ? (Pos) info.suggestFromPos.clone() : null;
         this.suggestToPos = info.suggestToPos != null ? (Pos) info.suggestToPos.clone() : null;
+        // 复制多步支招相关字段
+        this.suggestMoves = new ArrayList<>();
+        if (info.suggestMoves != null) {
+            for (Move move : info.suggestMoves) {
+                this.suggestMoves.add(new Move(move.fromPos != null ? (Pos) move.fromPos.clone() : null,
+                                               move.toPos != null ? (Pos) move.toPos.clone() : null));
+            }
+        }
+        this.suggestMoveLabels = new ArrayList<>(info.suggestMoveLabels);
+        this.suggestMovesIsRed = new ArrayList<>(info.suggestMovesIsRed);
+        this.suggestMoveNotations = new ArrayList<>(info.suggestMoveNotations);
         
         // 复制和棋判断相关字段
         this.positionHistory = new PositionHistoryMap();
@@ -205,6 +229,10 @@ public class ChessInfo implements Cloneable, Serializable {
         // 清除支招提示线
         suggestFromPos = null;
         suggestToPos = null;
+        suggestMoves.clear();
+        suggestMoveLabels.clear();
+        suggestMovesIsRed.clear();
+        suggestMoveNotations.clear();
         
         // 增加总走步数
         totalMoves++;
@@ -480,7 +508,7 @@ public class ChessInfo implements Cloneable, Serializable {
     }
 
     @Override
-    protected Object clone() throws CloneNotSupportedException {
+    public Object clone() throws CloneNotSupportedException {
         ChessInfo info = (ChessInfo) super.clone();
         info.piece = new int[10][9];
         for (int i = 0; i < 10; i++) {
@@ -508,6 +536,17 @@ public class ChessInfo implements Cloneable, Serializable {
         info.setting = this.setting;
         info.suggestFromPos = this.suggestFromPos != null ? (Pos) this.suggestFromPos.clone() : null;
         info.suggestToPos = this.suggestToPos != null ? (Pos) this.suggestToPos.clone() : null;
+        // 复制多步支招相关字段
+        info.suggestMoves = new ArrayList<>();
+        if (this.suggestMoves != null) {
+            for (Move move : this.suggestMoves) {
+                info.suggestMoves.add(new Move(move.fromPos != null ? (Pos) move.fromPos.clone() : null,
+                                               move.toPos != null ? (Pos) move.toPos.clone() : null));
+            }
+        }
+        info.suggestMoveLabels = new ArrayList<>(this.suggestMoveLabels);
+        info.suggestMovesIsRed = new ArrayList<>(this.suggestMovesIsRed);
+        info.suggestMoveNotations = new ArrayList<>(this.suggestMoveNotations);
         
         // 复制和棋判断相关字段
         info.positionHistory = new PositionHistoryMap();

@@ -43,6 +43,13 @@ public class PvMActivityGame {
             activity.roundView.setSuggestMoveText("");
         }
         suggestForRed = null;
+        // 清除ChessInfo中的支招数据
+        if (activity.chessInfo != null) {
+            activity.chessInfo.suggestMoves.clear();
+            activity.chessInfo.suggestMoveLabels.clear();
+            activity.chessInfo.suggestFromPos = null;
+            activity.chessInfo.suggestToPos = null;
+        }
     }
     
     // 检查双方老将是否见面

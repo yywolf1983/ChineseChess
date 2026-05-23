@@ -900,34 +900,101 @@ public class PvMActivityAI {
             aiInstance.stopAISearch();
             
             if (move != null && move.fromPos != null && move.toPos != null) {
+                // 生成多步预测（5步）
+                generateMultiStepSuggestions(isRed);
+                
                 int piece = 0;
                 if (activity.chessInfo != null && activity.chessInfo.piece != null && move.fromPos != null) {
                     piece = activity.chessInfo.piece[move.fromPos.y][move.fromPos.x];
                 }
                 
-                activity.chessInfo.suggestFromPos = move.fromPos;
-                activity.chessInfo.suggestToPos = move.toPos;
                 List<Pos> possibleMoves = Rule.PossibleMoves(activity.chessInfo.piece, move.fromPos.x, move.fromPos.y, piece);
                 activity.chessInfo.ret = possibleMoves;
                 activity.chessView.requestDraw();
                 
                 // 在RoundView中显示支招走法信息
-                // 判断支招是给哪一方的（传入的isRed参数）
                 boolean suggestForRed = isRed;
-                String moveText = convertMoveToChineseNotation(move, piece);
                 
                 // 清空步数信息，只显示支招内容
                 if (activity.roundView != null) {
                     activity.roundView.setMoveInfoText("");
                 }
                 
-                // 使用PvPActivityGame的setSuggestMove方法（如果存在）
-                if (activity.gameManager != null) {
-                    activity.gameManager.setSuggestMove(moveText, suggestForRed);
-                } else if (activity.roundView != null) {
-                    // 直接设置到RoundView
-                    activity.roundView.setSuggestMoveText(moveText);
+                // 显示多步走法，用颜色区分
+                if (activity.roundView != null && activity.chessInfo.suggestMoveNotations != null && activity.chessInfo.suggestMovesIsRed != null) {
+                    activity.roundView.setSuggestMoveTextWithColor(
+                        activity.chessInfo.suggestMoveNotations,
+                        activity.chessInfo.suggestMovesIsRed
+                    );
                 }
+            }
+        }
+        
+        private void generateMultiStepSuggestions(boolean forRed) {
+            if (activity == null || activity.chessInfo == null || activity.pikafishAI == null || !activity.pikafishAI.isInitialized()) {
+                return;
+            }
+            
+            try {
+                java.util.List<Move> moves = new java.util.ArrayList<>();
+                java.util.List<String> labels = new java.util.ArrayList<>();
+                java.util.List<Boolean> isRedList = new java.util.ArrayList<>();
+                java.util.List<String> notations = new java.util.ArrayList<>();
+                
+                ChessInfo simulatedInfo = (ChessInfo) activity.chessInfo.clone();
+                boolean currentIsRed = forRed;
+                int step = 1;
+                
+                for (int i = 0; i < 5; i++) {
+                    PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(simulatedInfo);
+                    if (moveWithScore == null || moveWithScore.move == null) {
+                        break;
+                    }
+                    
+                    Move move = moveWithScore.move;
+                    
+                    // 获取棋子
+                    int piece = 0;
+                    if (move.fromPos != null && move.fromPos.y >= 0 && move.fromPos.y < 10 && move.fromPos.x >= 0 && move.fromPos.x < 9) {
+                        piece = simulatedInfo.piece[move.fromPos.y][move.fromPos.x];
+                    }
+                    
+                    // 生成中文记谱格式的走法
+                    String notation = convertMoveToChineseNotation(move, piece);
+                    
+                    moves.add(move);
+                    labels.add(String.valueOf(step)); // 存储步数 1, 2, 3, 4, 5
+                    notations.add(notation); // 存储中文记谱
+                    isRedList.add(currentIsRed);
+                    
+                    if (move.fromPos != null && move.toPos != null &&
+                        move.fromPos.y >= 0 && move.fromPos.y < 10 && move.fromPos.x >= 0 && move.fromPos.x < 9 &&
+                        move.toPos.y >= 0 && move.toPos.y < 10 && move.toPos.x >= 0 && move.toPos.x < 9) {
+                        int movedPiece = simulatedInfo.piece[move.fromPos.y][move.fromPos.x];
+                        simulatedInfo.piece[move.toPos.y][move.toPos.x] = movedPiece;
+                        simulatedInfo.piece[move.fromPos.y][move.fromPos.x] = 0;
+                        // 切换回合
+                        simulatedInfo.IsRedGo = !simulatedInfo.IsRedGo;
+                    }
+                    
+                    currentIsRed = !currentIsRed;
+                    step++;
+                }
+                
+                activity.chessInfo.suggestMoves.clear();
+                activity.chessInfo.suggestMoves.addAll(moves);
+                activity.chessInfo.suggestMoveLabels.clear();
+                activity.chessInfo.suggestMoveLabels.addAll(labels);
+                activity.chessInfo.suggestMovesIsRed.clear();
+                activity.chessInfo.suggestMovesIsRed.addAll(isRedList);
+                activity.chessInfo.suggestMoveNotations.clear();
+                activity.chessInfo.suggestMoveNotations.addAll(notations);
+                
+                activity.chessInfo.suggestFromPos = null;
+                activity.chessInfo.suggestToPos = null;
+                
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityAI", "多步支招生成异常: " + e.getMessage());
             }
         }
         

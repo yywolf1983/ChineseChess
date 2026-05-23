@@ -6,6 +6,8 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.view.View;
 
+import java.util.List;
+
 import Info.ChessInfo;
 import ChessMove.Rule;
 import top.nones.chessgame.PvMActivity;
@@ -28,6 +30,8 @@ public class RoundView extends View {
     private int aiThinkingProgress = 0; // AI思考动画进度
     private boolean isSuggestMode = false; // 是否处于支招模式
     private String suggestMoveText = ""; // 支招走法文本
+    private List<String> suggestMoveTexts = null; // 彩色支招文本列表
+    private List<Boolean> suggestMoveIsRed = null; // 彩色支招是否红方
     private String moveInfoText = ""; // 步数信息文本
     private String cachedBoardKey = "";
     private boolean cachedRedKingExists = true;
@@ -147,6 +151,16 @@ public class RoundView extends View {
     // 设置支招走法文本
     public void setSuggestMoveText(String moveText) {
         this.suggestMoveText = moveText;
+        this.suggestMoveTexts = null; // 清空彩色文本
+        this.suggestMoveIsRed = null;
+        invalidate();
+    }
+    
+    // 设置带颜色的支招走法文本
+    public void setSuggestMoveTextWithColor(List<String> texts, List<Boolean> isRedList) {
+        this.suggestMoveTexts = texts;
+        this.suggestMoveIsRed = isRedList;
+        this.suggestMoveText = ""; // 清空普通文本
         invalidate();
     }
     
@@ -447,9 +461,60 @@ public class RoundView extends View {
         
         // 显示支招走法信息
         if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
+            // 保存原始字体大小
+            float originalTextSize = infoTextPaint.getTextSize();
+            // 减小字体大小以适应长文本
+            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
             currentY += lineHeight;
+            // 恢复原始字体大小
+            infoTextPaint.setTextSize(originalTextSize);
+        }
+        
+        // 显示彩色支招走法信息（红黑方分开显示，不显示前缀）
+        if (suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
+            // 保存原始字体大小
+            float originalTextSize = infoTextPaint.getTextSize();
+            // 减小字体大小以适应长文本
+            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
+            infoTextPaint.setTextAlign(Paint.Align.LEFT);
+            
+            // 构建完整文本和对应颜色
+            StringBuilder allText = new StringBuilder();
+            for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
+                if (i > 0) allText.append(" ");
+                allText.append(suggestMoveTexts.get(i));
+            }
+            
+            // 居中显示所有走法
+            float totalWidth = infoTextPaint.measureText(allText.toString());
+            float startX = (width - totalWidth) / 2;
+            
+            // 逐个绘制带颜色的走法
+            float x = startX;
+            for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
+                String text = suggestMoveTexts.get(i);
+                boolean isRed = suggestMoveIsRed.get(i);
+                
+                // 设置颜色
+                if (isRed) {
+                    infoTextPaint.setColor(Color.RED);
+                } else {
+                    infoTextPaint.setColor(Color.BLACK);
+                }
+                
+                // 绘制文本
+                canvas.drawText(text, x, currentY, infoTextPaint);
+                
+                // 更新下一个文本的x位置
+                x += infoTextPaint.measureText(text) + infoTextPaint.measureText(" ");
+            }
+            
+            currentY += lineHeight;
+            // 恢复原始字体大小和颜色
+            infoTextPaint.setTextSize(originalTextSize);
+            infoTextPaint.setColor(Color.WHITE);
         }
         
         // 只在没有AI信息和支招信息时显示步数信息
