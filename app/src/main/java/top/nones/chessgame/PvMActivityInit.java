@@ -825,10 +825,114 @@ public class PvMActivityInit {
             try {
                 if (activity != null) {
                     activity.pikafishAI = new PikafishAI(activity);
-                    Log.d("PvMActivity", "PikafishAI初始化完成");
+                    
+                    // 设置初始化监听器 - 使用独立的监听器类
+                    activity.pikafishAI.setInitializationListener(new AIInitListener(activity));
+                    
+                    Log.d("PvMActivity", "PikafishAI初始化启动");
                 }
             } catch (Exception e) {
                 LogUtils.e("PvMActivityInit", "操作失败", e);
+                if (activity != null && activity.roundView != null) {
+                    activity.runOnUiThread(new AIInitFailureRunnable(activity));
+                }
+            }
+        }
+    }
+    
+    // AI初始化监听器类
+    private static class AIInitListener implements PikafishAI.InitializationListener {
+        private final PvMActivity activity;
+        
+        public AIInitListener(PvMActivity activity) {
+            this.activity = activity;
+        }
+        
+        @Override
+        public void onInitializationStarted() {
+            if (activity != null && activity.roundView != null) {
+                activity.runOnUiThread(new AILoadingStartRunnable(activity));
+            }
+        }
+        
+        @Override
+        public void onInitializationCompleted() {
+            if (activity != null && activity.roundView != null) {
+                activity.runOnUiThread(new AILoadingCompleteRunnable(activity));
+            }
+        }
+        
+        @Override
+        public void onInitializationFailed() {
+            if (activity != null && activity.roundView != null) {
+                activity.runOnUiThread(new AILoadingFailureRunnable(activity));
+            }
+        }
+    }
+    
+    // UI更新 - AI开始加载
+    private static class AILoadingStartRunnable implements Runnable {
+        private final PvMActivity activity;
+        
+        public AILoadingStartRunnable(PvMActivity activity) {
+            this.activity = activity;
+        }
+        
+        @Override
+        public void run() {
+            if (activity != null && activity.roundView != null) {
+                activity.roundView.setAILoading(true);
+                LogUtils.i("PvMActivity", "AI开始加载");
+            }
+        }
+    }
+    
+    // UI更新 - AI加载完成
+    private static class AILoadingCompleteRunnable implements Runnable {
+        private final PvMActivity activity;
+        
+        public AILoadingCompleteRunnable(PvMActivity activity) {
+            this.activity = activity;
+        }
+        
+        @Override
+        public void run() {
+            if (activity != null && activity.roundView != null) {
+                activity.roundView.setAILoading(false);
+                LogUtils.i("PvMActivity", "AI加载完成");
+            }
+        }
+    }
+    
+    // UI更新 - AI加载失败
+    private static class AILoadingFailureRunnable implements Runnable {
+        private final PvMActivity activity;
+        
+        public AILoadingFailureRunnable(PvMActivity activity) {
+            this.activity = activity;
+        }
+        
+        @Override
+        public void run() {
+            if (activity != null && activity.roundView != null) {
+                activity.roundView.setAILoading(false);
+                LogUtils.e("PvMActivity", "AI加载失败");
+            }
+        }
+    }
+    
+    // UI更新 - AI初始化异常
+    private static class AIInitFailureRunnable implements Runnable {
+        private final PvMActivity activity;
+        
+        public AIInitFailureRunnable(PvMActivity activity) {
+            this.activity = activity;
+        }
+        
+        @Override
+        public void run() {
+            if (activity != null && activity.roundView != null) {
+                activity.roundView.setAILoading(false);
             }
         }
     }

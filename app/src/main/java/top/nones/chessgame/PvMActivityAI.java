@@ -766,6 +766,9 @@ public class PvMActivityAI {
         private final PvMActivity activity;
         private final boolean isRed;
         
+        // 保存 pv 序列，避免重复计算
+        private PikafishAI.PvSequenceWithScore cachedPvSequence = null;
+        
         public ShowAIMoveRunnable(PvMActivityAI aiInstance, PvMActivity activity, boolean isRed) {
             this.aiInstance = aiInstance;
             this.activity = activity;
@@ -796,7 +799,7 @@ public class PvMActivityAI {
             int currentDepth = 0;
 
             // 使用Future和超时机制来避免长时间阻塞
-            java.util.concurrent.Future<PikafishAI.MoveWithScore> future = null;
+            java.util.concurrent.Future<PikafishAI.PvSequenceWithScore> future = null;
 
             // 计算超时时间：设置的时间 + 缓冲时间
             int thinkingTime = 10; // 默认10秒
@@ -808,22 +811,26 @@ public class PvMActivityAI {
 
             try {
                 if (activity.pikafishAI != null && activity.pikafishAI.isInitialized() && activity.chessInfo != null && aiInstance.executorService != null) {
-                    // 在单独的线程中执行AI计算
+                    // 在单独的线程中执行AI计算（一次性获取完整 pv 序列）
                     future = aiInstance.executorService.submit(
-                        (java.util.concurrent.Callable<PikafishAI.MoveWithScore>) () -> {
+                        (java.util.concurrent.Callable<PikafishAI.PvSequenceWithScore>) () -> {
                             if (activity == null || activity.chessInfo == null || activity.pikafishAI == null || !activity.pikafishAI.isInitialized()) {
                                 return null;
                             }
-                            return activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
+                            return activity.pikafishAI.getPvSequenceWithScore(activity.chessInfo);
                         }
                     );
 
                     try {
                         // 等待AI计算结果，设置超时（根据设置动态计算）
-                        PikafishAI.MoveWithScore moveWithScore = future.get(aiTimeoutMs, TimeUnit.MILLISECONDS);
-                        if (moveWithScore != null && activity.chessInfo != null) {
-                            move = moveWithScore.move;
-                            score = moveWithScore.score;
+                        PikafishAI.PvSequenceWithScore pvSequenceWithScore = future.get(aiTimeoutMs, TimeUnit.MILLISECONDS);
+                        if (pvSequenceWithScore != null && activity.chessInfo != null) {
+                            cachedPvSequence = pvSequenceWithScore;
+                            // 从 pv 序列中获取第一步走法
+                            if (pvSequenceWithScore.pvSequence != null && !pvSequenceWithScore.pvSequence.isEmpty()) {
+                                move = pvSequenceWithScore.pvSequence.get(0);
+                            }
+                            score = pvSequenceWithScore.score;
                             score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
                             aiInstance.currentAIScore = score;
                         }
@@ -875,7 +882,7 @@ public class PvMActivityAI {
                 final Move finalMove = move;
                 PvMActivity currentActivity = aiInstance.activity;
                 if (currentActivity != null) {
-                    currentActivity.runOnUiThread(new ShowAIMoveUIRunnable(aiInstance, currentActivity, finalMove, isRed));
+                    currentActivity.runOnUiThread(new ShowAIMoveUIRunnable(aiInstance, currentActivity, finalMove, isRed, cachedPvSequence));
                 }
                 LogUtils.i("Perf", "showAIMove worker total cost=" + (System.currentTimeMillis() - suggestStartMs) + "ms");
             }
@@ -887,12 +894,14 @@ public class PvMActivityAI {
         private final PvMActivity activity;
         private final Move move;
         private final boolean isRed;
+        private final PikafishAI.PvSequenceWithScore cachedPvSequence; // 接收已缓存的 pv 序列
         
-        public ShowAIMoveUIRunnable(PvMActivityAI aiInstance, PvMActivity activity, Move move, boolean isRed) {
+        public ShowAIMoveUIRunnable(PvMActivityAI aiInstance, PvMActivity activity, Move move, boolean isRed, PikafishAI.PvSequenceWithScore cachedPvSequence) {
             this.aiInstance = aiInstance;
             this.activity = activity;
             this.move = move;
             this.isRed = isRed;
+            this.cachedPvSequence = cachedPvSequence;
         }
         
         @Override
@@ -904,8 +913,8 @@ public class PvMActivityAI {
             aiInstance.stopAISearch();
             
             if (move != null && move.fromPos != null && move.toPos != null) {
-                // 生成多步预测（5步）
-                generateMultiStepSuggestions(isRed);
+                // 生成多步预测（使用已缓存的 pv 序列，避免重复计算）
+                generateMultiStepSuggestions(isRed, cachedPvSequence);
                 
                 int piece = 0;
                 if (activity.chessInfo != null && activity.chessInfo.piece != null && move.fromPos != null) {
@@ -934,8 +943,13 @@ public class PvMActivityAI {
             }
         }
         
-        private void generateMultiStepSuggestions(boolean forRed) {
-            if (activity == null || activity.chessInfo == null || activity.pikafishAI == null || !activity.pikafishAI.isInitialized()) {
+        private void generateMultiStepSuggestions(boolean forRed, PikafishAI.PvSequenceWithScore pvSequenceWithScore) {
+            if (activity == null || activity.chessInfo == null) {
+                return;
+            }
+            
+            if (pvSequenceWithScore == null || pvSequenceWithScore.pvSequence == null) {
+                LogUtils.e("PvMActivityAI", "使用的 pv 序列无效");
                 return;
             }
             
@@ -945,17 +959,21 @@ public class PvMActivityAI {
                 java.util.List<Boolean> isRedList = new java.util.ArrayList<>();
                 java.util.List<String> notations = new java.util.ArrayList<>();
                 
-                ChessInfo simulatedInfo = (ChessInfo) activity.chessInfo.clone();
-                boolean currentIsRed = forRed;
-                int step = 1;
+                java.util.List<Move> pvSequence = pvSequenceWithScore.pvSequence;
+                LogUtils.i("PvMActivityAI", "使用已缓存的 pv 序列，长度: " + pvSequence.size());
                 
-                for (int i = 0; i < 6; i++) {
-                    PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(simulatedInfo);
-                    if (moveWithScore == null || moveWithScore.move == null) {
+                // 只取前 6 步（如果有的话）
+                int maxSteps = Math.min(6, pvSequence.size());
+                boolean currentIsRed = forRed;
+                
+                ChessInfo simulatedInfo = (ChessInfo) activity.chessInfo.clone();
+                
+                for (int i = 0; i < maxSteps; i++) {
+                    Move move = pvSequence.get(i);
+                    
+                    if (move == null) {
                         break;
                     }
-                    
-                    Move move = moveWithScore.move;
                     
                     // 获取棋子
                     int piece = 0;
@@ -967,22 +985,21 @@ public class PvMActivityAI {
                     String notation = convertMoveToChineseNotation(move, piece);
                     
                     moves.add(move);
-                    labels.add(String.valueOf(step)); // 存储步数 1, 2, 3, 4, 5
+                    labels.add(String.valueOf(i + 1)); // 存储步数 1, 2, 3, 4, 5, 6
                     notations.add(notation); // 存储中文记谱
                     isRedList.add(currentIsRed);
                     
+                    // 更新模拟棋盘
                     if (move.fromPos != null && move.toPos != null &&
                         move.fromPos.y >= 0 && move.fromPos.y < 10 && move.fromPos.x >= 0 && move.fromPos.x < 9 &&
                         move.toPos.y >= 0 && move.toPos.y < 10 && move.toPos.x >= 0 && move.toPos.x < 9) {
                         int movedPiece = simulatedInfo.piece[move.fromPos.y][move.fromPos.x];
                         simulatedInfo.piece[move.toPos.y][move.toPos.x] = movedPiece;
                         simulatedInfo.piece[move.fromPos.y][move.fromPos.x] = 0;
-                        // 切换回合
                         simulatedInfo.IsRedGo = !simulatedInfo.IsRedGo;
                     }
                     
                     currentIsRed = !currentIsRed;
-                    step++;
                 }
                 
                 activity.chessInfo.suggestMoves.clear();
@@ -996,6 +1013,8 @@ public class PvMActivityAI {
                 
                 activity.chessInfo.suggestFromPos = null;
                 activity.chessInfo.suggestToPos = null;
+                
+                LogUtils.i("PvMActivityAI", "多步支招生成完成，共 " + moves.size() + " 步");
                 
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "多步支招生成异常: " + e.getMessage());

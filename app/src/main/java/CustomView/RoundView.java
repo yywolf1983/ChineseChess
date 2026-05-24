@@ -33,6 +33,10 @@ public class RoundView extends View {
     private List<String> suggestMoveTexts = null; // 彩色支招文本列表
     private List<Boolean> suggestMoveIsRed = null; // 彩色支招是否红方
     private String moveInfoText = ""; // 步数信息文本
+    private boolean isAILoading = false; // AI 是否正在加载
+    private int aiLoadingProgress = 0; // AI 加载动画进度
+    private boolean isShowLoadingComplete = false; // 是否显示加载完成
+    private long showLoadingCompleteTime = 0; // 显示加载完成的开始时间
     private String cachedBoardKey = "";
     private boolean cachedRedKingExists = true;
     private boolean cachedBlackKingExists = true;
@@ -134,6 +138,43 @@ public class RoundView extends View {
             // 不重置isRedTurn，保持为黑方，这样深度信息会正确显示
         }
         invalidate();
+    }
+    
+    // 设置 AI 加载状态
+    public void setAILoading(boolean loading) {
+        if (this.isAILoading && !loading) {
+            // 从加载中变为加载完成，显示加载完成提示
+            this.isShowLoadingComplete = true;
+            this.showLoadingCompleteTime = System.currentTimeMillis();
+            invalidate();
+            // 延迟2秒后隐藏加载完成提示
+            postDelayed(new HideLoadingCompleteRunnable(this), 2000);
+        }
+        this.isAILoading = loading;
+        // 如果正在加载，启动动画
+        if (loading) {
+            aiLoadingProgress = 0;
+            // 使用 postInvalidateDelayed 来持续更新加载动画
+            invalidate();
+        }
+        invalidate();
+    }
+    
+    // 内部类：隐藏加载完成提示的Runnable
+    private static class HideLoadingCompleteRunnable implements Runnable {
+        private RoundView view;
+        
+        public HideLoadingCompleteRunnable(RoundView view) {
+            this.view = view;
+        }
+        
+        @Override
+        public void run() {
+            if (view != null) {
+                view.isShowLoadingComplete = false;
+                view.invalidate();
+            }
+        }
     }
     
     // 设置ChessInfo对象
@@ -430,10 +471,39 @@ public class RoundView extends View {
         float currentY = aiTextY;
         
         // 检查是否有AI信息或支招信息
-        boolean hasAIOrSuggestInfo = shouldShowAIInfo || (suggestMoveText != null && !suggestMoveText.isEmpty());
+        boolean hasAIOrSuggestInfo = shouldShowAIInfo || (suggestMoveText != null && !suggestMoveText.isEmpty()) || isAILoading || isShowLoadingComplete;
         
-        // 绘制AI信息
-        if (shouldShowAIInfo) {
+        // 绘制AI加载中、加载完成或AI信息
+        if (isAILoading) {
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            
+            String dots = "";
+            for (int i = 0; i < aiLoadingProgress; i++) {
+                dots += ".";
+            }
+            String loadingText = "AI加载中" + dots;
+            
+            // 绘制文本
+            canvas.drawText(loadingText, width / 2, currentY, infoTextPaint);
+            
+            // 更新加载动画进度
+            aiLoadingProgress = (aiLoadingProgress + 1) % 4;
+            
+            // 调整当前位置
+            currentY += lineHeight;
+            
+            // 继续动画
+            postInvalidateDelayed(300);
+        } else if (isShowLoadingComplete) {
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            
+            // 绘制加载完成文本
+            String completeText = "AI加载完成！";
+            canvas.drawText(completeText, width / 2, currentY, infoTextPaint);
+            
+            // 调整当前位置
+            currentY += lineHeight;
+        } else if (shouldShowAIInfo) {
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             
             String aiText = "";
