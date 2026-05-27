@@ -708,6 +708,10 @@ public class PvMActivityAI {
         if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.status != 1) {
             return;
         }
+        // 摆棋模式下不允许 AI 走棋
+        if (this.activity.chessInfo.IsSetupMode) {
+            return;
+        }
 
         if (!tryStartAnalyzing()) {
             return;
@@ -720,6 +724,10 @@ public class PvMActivityAI {
     
     public void checkAIMove() {
         if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.status != 1) {
+            return;
+        }
+        // 摆棋模式下不允许 AI 走棋
+        if (this.activity.chessInfo.IsSetupMode) {
             return;
         }
         long checkStartMs = System.currentTimeMillis();

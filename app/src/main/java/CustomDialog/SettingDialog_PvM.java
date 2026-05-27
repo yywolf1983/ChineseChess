@@ -282,12 +282,6 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                     multiPV++;
                     multiPVSeekBar.setProgress(multiPV - 1);
                     multiPVValue.setText(multiPV + "变");
-                    // MultiPV>1 时提示会降低走棋质量
-                    if (multiPV > 1) {
-                        android.widget.Toast.makeText(getContext(), 
-                            "注意：多主变会分散算力，降低AI最佳着法质量（Pikafish官方建议设为1）", 
-                            android.widget.Toast.LENGTH_LONG).show();
-                    }
                 }
             }
         }
@@ -398,11 +392,6 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
         // 停止拖动时的处理
-        if (seekBar == multiPVSeekBar && multiPV > 1) {
-            android.widget.Toast.makeText(getContext(), 
-                "注意：多主变会分散算力，降低AI最佳着法质量（Pikafish官方建议设为1）", 
-                android.widget.Toast.LENGTH_LONG).show();
-        }
     }
 
     public interface OnClickBottomListener {

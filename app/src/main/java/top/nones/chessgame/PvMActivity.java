@@ -719,6 +719,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 }
                 stopTurnTimer();
                 chessInfo.IsSetupMode = true;
+                gameMode = 0; // 重置为双人模式，防止 AI 在摆棋模式下触发
                 if (setupModeView != null) {
                     android.widget.RelativeLayout.LayoutParams paramsSetup = (android.widget.RelativeLayout.LayoutParams) setupModeView.getLayoutParams();
                     if (paramsSetup != null) {
