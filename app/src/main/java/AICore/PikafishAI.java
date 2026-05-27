@@ -677,9 +677,11 @@ public class PikafishAI {
                 // 设置 Contempt 值为 0，让引擎更客观地评估局面
                 sendCommand("setoption name Contempt value 0");
                 
-                // 强制变着模式：增加 MultiPV 到 5，让引擎考虑更多可能的走法
-                sendCommand("setoption name MultiPV value 5");
-                LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=5");
+                // 强制变着模式：增加 MultiPV 到 3，让引擎考虑更多可能的走法
+                // 注意：MultiPV 过高会显著降低最佳着法质量（Pikafish 官方建议设为1）
+                // 使用 3 而非 5，在提供多样性的同时保持合理的走棋质量
+                sendCommand("setoption name MultiPV value 3");
+                LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=3");
                 
                 // 强制变着模式：技能拉到最大（20）
                 sendCommand("setoption name Skill Level value 20");
@@ -795,6 +797,19 @@ public class PikafishAI {
                             if (line.startsWith("info")) {
                                 // 只在深度变化时输出日志
                                 String[] parts = line.split(" ");
+                                int infoMultiPV = 1; // 默认 multipv 索引为 1
+                                // 先解析 multipv 索引
+                                for (int i = 0; i < parts.length; i++) {
+                                    if (parts[i].equals("multipv") && i + 1 < parts.length) {
+                                        try {
+                                            infoMultiPV = Integer.parseInt(parts[i + 1]);
+                                        } catch (NumberFormatException e) {
+                                            // 忽略解析错误
+                                        }
+                                        break;
+                                    }
+                                }
+                                // 只处理 multipv 1 的行（主变），避免 MultiPV>1 时 score 被错误覆盖
                                 for (int i = 0; i < parts.length; i++) {
                                     if (parts[i].equals("depth") && i + 1 < parts.length) {
                                         try {
@@ -806,7 +821,7 @@ public class PikafishAI {
                                         } catch (NumberFormatException e) {
                                             // 忽略解析错误
                                         }
-                                    } else if (parts[i].equals("score") && i + 2 < parts.length) {
+                                    } else if (infoMultiPV == 1 && parts[i].equals("score") && i + 2 < parts.length) {
                                         if (parts[i + 1].equals("cp")) {
                                             try {
                                                 score = Integer.parseInt(parts[i + 2]);
@@ -828,13 +843,15 @@ public class PikafishAI {
                                                 // 忽略解析错误
                                             }
                                         }
-                                    } else if (parts[i].equals("pv") && i + 1 < parts.length) {
-                                        // 提取pv中的第一个走法
+                                    } else if (infoMultiPV == 1 && parts[i].equals("pv") && i + 1 < parts.length) {
+                                        // 提取pv中的第一个走法（仅 multipv 1）
                                         String move = parts[i + 1];
                                         if (bestMoveHolder[0] == null) {
                                             bestMoveHolder[0] = move;
                                         }
-                                        // 在强制变着模式下，保存所有可能的走法
+                                    } else if (parts[i].equals("pv") && i + 1 < parts.length) {
+                                        // 在强制变着模式下，保存所有可能的走法（包括所有 multipv）
+                                        String move = parts[i + 1];
                                         if (chessInfo != null && chessInfo.forceVariation) {
                                             if (!possibleMoves.contains(move)) {
                                                 possibleMoves.add(move);
@@ -1270,7 +1287,8 @@ public class PikafishAI {
                 LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
                 
                 sendCommand("setoption name Contempt value 0");
-                sendCommand("setoption name MultiPV value 5");
+                // 强制变着模式：MultiPV=3（从5降低到3，减少算力分散）
+                sendCommand("setoption name MultiPV value 3");
                 sendCommand("setoption name Skill Level value 20");
             } else {
                 int multiPV = 1;
