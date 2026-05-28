@@ -1,5 +1,6 @@
 package top.nones.chessgame;
 
+import android.media.MediaPlayer;
 import android.widget.Toast;
 
 import java.util.List;
@@ -34,6 +35,21 @@ public class PvMActivityAI {
         this.activity = activity;
         this.aiMoveHistory = new java.util.ArrayList<>();
         initExecutorService();
+    }
+    
+    // 播放音效
+    private void playEffect(MediaPlayer mediaPlayer) {
+        if (mediaPlayer != null) {
+            // 如果setting为null，默认播放音效；否则检查isEffectPlay设置
+            if (PvMActivity.setting == null || PvMActivity.setting.isEffectPlay) {
+                try {
+                    mediaPlayer.seekTo(0);
+                    mediaPlayer.start();
+                } catch (Exception e) {
+                    LogUtils.e("PvMActivityAI", "播放音效失败", e);
+                }
+            }
+        }
     }
     
     // 初始化线程池
@@ -467,6 +483,12 @@ public class PvMActivityAI {
             boolean isCheck = this.activity.chessInfo.IsChecked;
             this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
             this.activity.chessInfo.isMachine = true;
+            
+            // 播放AI落子音效
+            playEffect(this.activity.clickMusic);
+            if (isCheck) {
+                playEffect(this.activity.checkMusic);
+            }
         
             // 记录AI着法历史
             String moveKey = fromPos.x + "," + fromPos.y + "->" + toPos.x + "," + toPos.y;

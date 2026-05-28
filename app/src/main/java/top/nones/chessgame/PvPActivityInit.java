@@ -110,6 +110,9 @@ public class PvPActivityInit {
 
         RelativeLayout.LayoutParams paramsChess = (RelativeLayout.LayoutParams) chessView.getLayoutParams();
         paramsChess.addRule(RelativeLayout.BELOW, R.id.roundView);
+        paramsChess.width = RelativeLayout.LayoutParams.MATCH_PARENT;
+        paramsChess.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
+        paramsChess.setMargins(10, 10, 10, 10);
         chessView.setLayoutParams(paramsChess);
         chessView.setId(R.id.chessView);
     }

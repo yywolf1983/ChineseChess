@@ -88,8 +88,45 @@ public class PvMActivityInit {
             Log.e("PvMActivityInit", "Error initializing default values: " + e.getMessage());
         }
 
+        // 在主线程初始化音效（与PvP模式一致，避免后台线程MediaPlayer.create返回null）
+        initMusic();
+
         // 检查是否有从棋谱管理界面传递过来的棋谱数据
         checkIntentData();
+    }
+    
+    // 在主线程初始化音效
+    private void initMusic() {
+        if (activity == null) {
+            Log.e("PvMActivityInit", "Activity is null, cannot init music");
+            return;
+        }
+        try {
+            if (PvMActivity.selectMusic == null) {
+                PvMActivity.selectMusic = MediaPlayer.create(activity, R.raw.select);
+                if (PvMActivity.selectMusic != null) {
+                    PvMActivity.selectMusic.setVolume(5f, 5f);
+                }
+            }
+            if (PvMActivity.clickMusic == null) {
+                PvMActivity.clickMusic = MediaPlayer.create(activity, R.raw.click);
+                if (PvMActivity.clickMusic != null) {
+                    PvMActivity.clickMusic.setVolume(5f, 5f);
+                }
+            }
+            if (PvMActivity.checkMusic == null) {
+                PvMActivity.checkMusic = MediaPlayer.create(activity, R.raw.checkmate);
+                if (PvMActivity.checkMusic != null) {
+                    PvMActivity.checkMusic.setVolume(5f, 5f);
+                }
+            }
+            if (PvMActivity.winMusic == null) {
+                PvMActivity.winMusic = MediaPlayer.create(activity, R.raw.win);
+            }
+            Log.d("PvMActivity", "音效初始化完成 selectMusic=" + PvMActivity.selectMusic + " clickMusic=" + PvMActivity.clickMusic + " checkMusic=" + PvMActivity.checkMusic);
+        } catch (Exception e) {
+            Log.e("PvMActivityInit", "音效初始化失败: " + e.getMessage());
+        }
     }
     
     private void checkIntentData() {
@@ -202,7 +239,7 @@ public class PvMActivityInit {
                         paramsChess.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
                         paramsChess.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsChess.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsChess.setMargins(30, 10, 30, 10);
+                        paramsChess.setMargins(10, 10, 10, 10);
                         activity.chessView.setLayoutParams(paramsChess);
                         activity.chessView.setId(R.id.chessView);
                     }
@@ -767,43 +804,7 @@ public class PvMActivityInit {
                     }
                 }
                 
-                // 初始化音效
-                if (PvMActivity.selectMusic == null) {
-                    try {
-                        if (activity != null) {
-                            PvMActivity.selectMusic = MediaPlayer.create(activity, R.raw.select);
-                        }
-                    } catch (Exception e) {
-                        LogUtils.e("PvMActivityInit", "操作失败", e);
-                    }
-                }
-                if (PvMActivity.clickMusic == null) {
-                    try {
-                        if (activity != null) {
-                            PvMActivity.clickMusic = MediaPlayer.create(activity, R.raw.click);
-                        }
-                    } catch (Exception e) {
-                        LogUtils.e("PvMActivityInit", "操作失败", e);
-                    }
-                }
-                if (PvMActivity.checkMusic == null) {
-                    try {
-                        if (activity != null) {
-                            PvMActivity.checkMusic = MediaPlayer.create(activity, R.raw.checkmate);
-                        }
-                    } catch (Exception e) {
-                        LogUtils.e("PvMActivityInit", "操作失败", e);
-                    }
-                }
-                if (PvMActivity.winMusic == null) {
-                    try {
-                        if (activity != null) {
-                            PvMActivity.winMusic = MediaPlayer.create(activity, R.raw.win);
-                        }
-                    } catch (Exception e) {
-                        LogUtils.e("PvMActivityInit", "操作失败", e);
-                    }
-                }
+                // 音效已在主线程initMusic()中初始化，此处不再重复初始化
             } catch (Exception e) {
                 LogUtils.e("PvMActivityInit", "操作失败", e);
             }

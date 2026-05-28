@@ -212,52 +212,68 @@ public class RoundView extends View {
     }
 
     private void initPaints() {
-        // 背景画笔
+        // 背景画笔 - 使用渐变效果
         backgroundPaint = new Paint();
         backgroundPaint.setStyle(Paint.Style.FILL);
-        backgroundPaint.setColor(Color.rgb(205, 133, 63)); // 更深的棕色背景，提高对比度
+        backgroundPaint.setColor(Color.rgb(180, 110, 50)); // 温暖的棕色背景
 
-        // 边框画笔
+        // 边框画笔 - 使用dp单位确保不同屏幕一致性
         borderPaint = new Paint();
         borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setColor(Color.rgb(160, 82, 45)); // 深棕色边框
-        borderPaint.setStrokeWidth(3);
+        borderPaint.setColor(Color.rgb(140, 70, 35)); // 深棕色边框
+        borderPaint.setStrokeWidth(convertDpToPixel(1.5f, getContext()));
         borderPaint.setAntiAlias(true);
 
-        // 将dp转换为像素，统一文字大小
-        float textSize = convertDpToPixel(16, getContext());
+        // 统一文字大小 - 使用dp单位
+        float textSize = convertDpToPixel(14, getContext());
 
-        // 红色文本画笔（红方回合）
+        // 红色文本画笔（红方回合）- 使用更醒目的红色
         redTextPaint = new Paint();
-        redTextPaint.setTextSize(textSize); // 使用dp单位
-        redTextPaint.setStrokeWidth(2);
+        redTextPaint.setTextSize(textSize);
+        redTextPaint.setStrokeWidth(convertDpToPixel(0.5f, getContext()));
         redTextPaint.setAntiAlias(true);
-        redTextPaint.setColor(Color.RED);
-        redTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+        redTextPaint.setColor(Color.rgb(220, 30, 30)); // 更鲜艳的红色
+        redTextPaint.setFakeBoldText(true);
+        redTextPaint.setShadowLayer(convertDpToPixel(1.5f, getContext()), 
+            convertDpToPixel(0.5f, getContext()), 
+            convertDpToPixel(0.5f, getContext()), 
+            Color.argb(100, 0, 0, 0));
 
-        // 黑色文本画笔（黑方回合）
+        // 黑色文本画笔（黑方回合）- 使用深灰色避免纯黑
         blackTextPaint = new Paint();
-        blackTextPaint.setTextSize(textSize); // 使用dp单位
-        blackTextPaint.setStrokeWidth(2);
+        blackTextPaint.setTextSize(textSize);
+        blackTextPaint.setStrokeWidth(convertDpToPixel(0.5f, getContext()));
         blackTextPaint.setAntiAlias(true);
-        blackTextPaint.setColor(Color.BLACK); // 黑方使用黑色
-        blackTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+        blackTextPaint.setColor(Color.rgb(40, 40, 40)); // 深灰色，避免纯黑
+        blackTextPaint.setFakeBoldText(true);
+        blackTextPaint.setShadowLayer(convertDpToPixel(1.5f, getContext()), 
+            convertDpToPixel(0.5f, getContext()), 
+            convertDpToPixel(0.5f, getContext()), 
+            Color.argb(80, 255, 255, 255));
 
         // 模式文本画笔（突出显示模式）
         modeTextPaint = new Paint();
-        modeTextPaint.setTextSize(textSize + 2); // 模式文本稍大一点，突出显示
-        modeTextPaint.setStrokeWidth(2);
+        modeTextPaint.setTextSize(convertDpToPixel(11, getContext()));
+        modeTextPaint.setStrokeWidth(convertDpToPixel(0.3f, getContext()));
         modeTextPaint.setAntiAlias(true);
-        modeTextPaint.setColor(Color.WHITE); // 模式文本使用白色，与背景对比更明显
-        modeTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+        modeTextPaint.setColor(Color.rgb(255, 245, 220)); // 米白色，与棕色背景对比好
+        modeTextPaint.setFakeBoldText(true);
+        modeTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
+            convertDpToPixel(0.3f, getContext()), 
+            convertDpToPixel(0.3f, getContext()), 
+            Color.argb(60, 0, 0, 0));
 
         // 信息文本画笔（评分和搜索深度）
         infoTextPaint = new Paint();
-        infoTextPaint.setTextSize(textSize); // 使用dp单位
-        infoTextPaint.setStrokeWidth(2);
+        infoTextPaint.setTextSize(textSize);
+        infoTextPaint.setStrokeWidth(convertDpToPixel(0.3f, getContext()));
         infoTextPaint.setAntiAlias(true);
-        infoTextPaint.setColor(Color.WHITE); // 信息文本使用白色，与背景对比更明显
-        infoTextPaint.setFakeBoldText(true); // 加粗字体，美化效果
+        infoTextPaint.setColor(Color.rgb(255, 250, 240)); // 象牙白，柔和不刺眼
+        infoTextPaint.setFakeBoldText(true);
+        infoTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
+            convertDpToPixel(0.3f, getContext()), 
+            convertDpToPixel(0.3f, getContext()), 
+            Color.argb(60, 0, 0, 0));
     }
     
     // 将dp转换为像素
@@ -280,25 +296,55 @@ public class RoundView extends View {
         // 绘制背景
         canvas.drawRect(0, 0, width, height, backgroundPaint);
         
-        // 绘制边框
-        android.graphics.RectF rectF = new android.graphics.RectF(5, 5, width - 5, height - 5);
-        canvas.drawRoundRect(rectF, 10, 10, borderPaint);
+        // 绘制边框 - 使用dp单位确保不同屏幕一致性
+        float borderPadding = convertDpToPixel(3, getContext());
+        float cornerRadius = convertDpToPixel(6, getContext());
+        android.graphics.RectF rectF = new android.graphics.RectF(
+            borderPadding, borderPadding, 
+            width - borderPadding, height - borderPadding);
+        canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint);
         
-        // 计算垂直间距，调整为更美观的布局
-        float paddingTop = convertDpToPixel(4, getContext());
-        float lineHeight = convertDpToPixel(24, getContext());
+        // 计算垂直间距
+        float paddingTop = convertDpToPixel(5, getContext());
+        float lineHeight = convertDpToPixel(20, getContext());
         
-        // 绘制对战模式（突出显示）
+        // ========== 第1行：游戏模式（左） | 当前行棋方（居中突出） | 回合数（右） ==========
+        float row1Y = paddingTop + lineHeight * 0.8f;
+        
+        // 游戏模式（左侧）
         String modeText = getGameModeName(gameMode);
-        float modeX = width / 2;
-        float modeY = paddingTop + lineHeight * 0.8f; // 调整垂直位置
-        modeTextPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(modeText, modeX, modeY, modeTextPaint);
+        float modeTextSize = convertDpToPixel(12, getContext());
+        modeTextPaint.setTextSize(modeTextSize);
+        modeTextPaint.setTextAlign(Paint.Align.LEFT);
+        canvas.drawText(modeText, convertDpToPixel(10, getContext()), row1Y, modeTextPaint);
         
-        // 绘制评分和回合信息（居中显示）
-        float infoY = modeY + lineHeight; // 中间部分，调整位置
+        // 当前行棋方（居中，突出显示）- 包含深度信息
+        int currentDepthForTurn = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
+        String turnText;
+        if (currentDepthForTurn > 0) {
+            turnText = chessInfo.IsRedGo ? "红方-" + currentDepthForTurn : "黑方-" + currentDepthForTurn;
+        } else {
+            turnText = chessInfo.IsRedGo ? "红方" : "黑方";
+        }
+        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
+        float turnTextSize = convertDpToPixel(16, getContext());
+        turnPaint.setTextSize(turnTextSize);
+        turnPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(turnText, width / 2, row1Y, turnPaint);
         
-        // 绘制评分（左侧）
+        // 回合数（右侧）
+        int totalMoves = chessInfo.totalMoves;
+        int roundCount = (totalMoves + 1) / 2;
+        String stepText = "第" + roundCount + "回合";
+        float stepTextSize = convertDpToPixel(13, getContext());
+        infoTextPaint.setTextSize(stepTextSize);
+        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
+        canvas.drawText(stepText, width - convertDpToPixel(10, getContext()), row1Y, infoTextPaint);
+        
+        // ========== 第2行：红方时间（左） | 评分（居中） | 黑方时间（右） ==========
+        float row2Y = row1Y + lineHeight + convertDpToPixel(2, getContext());
+        
+        // 评分计算
         String scoreText;
         
         String currentBoardKey = buildBoardKey();
@@ -325,16 +371,13 @@ public class RoundView extends View {
         } else if (!cachedBlackKingExists) {
             scoreText = "红方胜利！";
         } else if (isDraw) {
-            // 和棋
             scoreText = "和棋！";
         } else if (isGameOver || cachedRedCheckmated || cachedBlackCheckmated || cachedRedStalemated || cachedBlackStalemated) {
-            // 游戏结束或被将死或被困毙，根据情况判断胜利者
             if (cachedRedCheckmated || cachedRedStalemated) {
                 scoreText = "黑方胜利！";
             } else if (cachedBlackCheckmated || cachedBlackStalemated) {
                 scoreText = "红方胜利！";
             } else {
-                // 游戏结束，根据行棋方判断胜利者
                 if (chessInfo.IsRedGo) {
                     scoreText = "黑方胜利！";
                 } else {
@@ -346,17 +389,13 @@ public class RoundView extends View {
             if (moveScore != targetMoveScore) {
                 int diff = targetMoveScore - moveScore;
                 if (Math.abs(diff) <= 5) {
-                    // 差异较小时直接设置
                     moveScore = targetMoveScore;
                 } else {
-                    // 差异较大时使用平滑过渡
                     moveScore += diff / 5;
                 }
-                // 触发下一次重绘，增加延迟时间
                 postInvalidateDelayed(100);
             }
             
-            // 显示优势方积分
             if (Math.abs(moveScore) > 0) {
                 if (moveScore > 0) {
                     scoreText = "红方:" + moveScore;
@@ -364,117 +403,38 @@ public class RoundView extends View {
                     scoreText = "黑方:" + Math.abs(moveScore);
                 }
             } else {
-                scoreText = "0";
+                scoreText = "均势";
             }
         }
-        float scoreX = width * 1 / 3; // 左侧
+        
+        // 红方时间（左侧）
+        redTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        redTextPaint.setTextAlign(Paint.Align.LEFT);
+        String redText = "红 " + formatTime(redTime);
+        canvas.drawText(redText, convertDpToPixel(10, getContext()), row2Y, redTextPaint);
+        
+        // 评分（居中）
+        float scoreTextSize = convertDpToPixel(14, getContext());
+        infoTextPaint.setTextSize(scoreTextSize);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(scoreText, scoreX, infoY, infoTextPaint);
+        canvas.drawText(scoreText, width / 2, row2Y, infoTextPaint);
         
-        // 绘制回合数（右侧）
-        int totalMoves = chessInfo.totalMoves;
-        int roundCount = (totalMoves + 1) / 2;
-        String stepText = "第" + roundCount + "回合";
-        float stepX = width * 2 / 3; // 右侧
-        infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(stepText, stepX, infoY, infoTextPaint);
+        // 黑方时间（右侧）
+        blackTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        blackTextPaint.setTextAlign(Paint.Align.RIGHT);
+        String blackText = "黑 " + formatTime(blackTime);
+        canvas.drawText(blackText, width - convertDpToPixel(10, getContext()), row2Y, blackTextPaint);
         
-        // 绘制红方和黑方时间（居中显示）
-        float textY = infoY + lineHeight; // 下半部分，调整位置
+        // ========== 第3行（可选）：AI加载信息 / 支招信息 ==========
+        float row3Y = row2Y + lineHeight;
+        float currentY = row3Y;
         
-        // 红方时间（左半部分居中）
-        float redCenterX = width * 1 / 3;
-        // 绘制时间
-        redTextPaint.setTextAlign(Paint.Align.CENTER);
-        String redText = formatTime(redTime);
-        canvas.drawText(redText, redCenterX, textY, redTextPaint);
+        boolean hasAIOrSuggestInfo = (suggestMoveText != null && !suggestMoveText.isEmpty()) || isAILoading || isShowLoadingComplete || isAIThinking;
         
-        // 显示当前行棋方（中间位置）
-        float turnCenterX = width * 1 / 2;
-        String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
-        // 使用相应的颜色
-        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        turnPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(turnText, turnCenterX, textY, turnPaint);
-        
-        // 黑方时间（右半部分居中）
-        float blackCenterX = width * 2 / 3;
-        // 绘制时间
-        blackTextPaint.setTextAlign(Paint.Align.CENTER);
-        String blackText = formatTime(blackTime);
-        canvas.drawText(blackText, blackCenterX, textY, blackTextPaint);
-        
-        // 绘制AI思考提示（在时间行下面）
-        boolean shouldShowAIInfo = false;
-        int currentDepth = 0;
-        
-        // 检查是否应该显示AI信息
-        if (isSuggestMode) {
-            // 支招模式：总是显示
-            shouldShowAIInfo = true;
-            // 支招模式下，使用当前行棋方的深度
-            currentDepth = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
-        } else if (gameMode == 1) {
-            // 人机对战（玩家红）：显示黑方（AI）的深度
-            shouldShowAIInfo = true;
-            // 显示黑方的深度
-            currentDepth = blackSearchDepth;
-        } else if (gameMode == 2) {
-            // 人机对战（玩家黑）：显示红方（AI）的深度
-            shouldShowAIInfo = true;
-            // 显示红方的深度
-            currentDepth = redSearchDepth;
-        } else if (gameMode == 3) {
-            // 双机对战：总是显示
-            shouldShowAIInfo = true;
-            // 双机对战下，使用AI的颜色对应的深度
-            currentDepth = isRedTurn ? redSearchDepth : blackSearchDepth;
-        } else if (gameMode == 0) {
-            // 双人模式：只在有深度信息时显示
-            // 检查是否有深度信息
-            int redDepth = redSearchDepth;
-            int blackDepth = blackSearchDepth;
-            if (redDepth > 0 || blackDepth > 0) {
-                shouldShowAIInfo = true;
-                // 双人模式下，使用当前行棋方的深度
-                currentDepth = chessInfo.IsRedGo ? redDepth : blackDepth;
-            } else {
-                shouldShowAIInfo = false;
-            }
-        }
-        
-        // 额外检查：如果有深度信息且不是双人模式，强制显示深度
-        if (!shouldShowAIInfo && gameMode != 0) {
-            // 检查是否有深度信息
-            int redDepth = redSearchDepth;
-            int blackDepth = blackSearchDepth;
-            if (redDepth > 0 || blackDepth > 0) {
-                shouldShowAIInfo = true;
-                // 根据游戏模式选择显示哪个深度
-                if (gameMode == 1) {
-                    currentDepth = blackDepth;
-                } else if (gameMode == 2) {
-                    currentDepth = redDepth;
-                } else if (gameMode == 3) {
-                    currentDepth = isRedTurn ? redDepth : blackDepth;
-                } else if (isSuggestMode) {
-                    currentDepth = chessInfo.IsRedGo ? redDepth : blackDepth;
-                }
-            }
-        }
-        
-        // 检查是否有深度信息需要显示
-        shouldShowAIInfo = shouldShowAIInfo && currentDepth > 0;
-        
-        // 计算文本位置
-        float aiTextY = textY + lineHeight;
-        float currentY = aiTextY;
-        
-        // 检查是否有AI信息或支招信息
-        boolean hasAIOrSuggestInfo = shouldShowAIInfo || (suggestMoveText != null && !suggestMoveText.isEmpty()) || isAILoading || isShowLoadingComplete;
-        
-        // 绘制AI加载中、加载完成或AI信息
+        // 绘制AI加载中、加载完成或AI思考动画
+        float aiTextSize = convertDpToPixel(11, getContext());
         if (isAILoading) {
+            infoTextPaint.setTextSize(aiTextSize);
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             
             String dots = "";
@@ -482,77 +442,51 @@ public class RoundView extends View {
                 dots += ".";
             }
             String loadingText = "AI加载中" + dots;
-            
-            // 绘制文本
             canvas.drawText(loadingText, width / 2, currentY, infoTextPaint);
             
-            // 更新加载动画进度
             aiLoadingProgress = (aiLoadingProgress + 1) % 4;
-            
-            // 调整当前位置
             currentY += lineHeight;
-            
-            // 继续动画
             postInvalidateDelayed(300);
         } else if (isShowLoadingComplete) {
+            infoTextPaint.setTextSize(aiTextSize);
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            
-            // 绘制加载完成文本
-            String completeText = "AI加载完成！";
-            canvas.drawText(completeText, width / 2, currentY, infoTextPaint);
-            
-            // 调整当前位置
+            canvas.drawText("AI加载完成！", width / 2, currentY, infoTextPaint);
             currentY += lineHeight;
-        } else if (shouldShowAIInfo) {
+        } else if (isAIThinking) {
+            // AI思考动画
+            infoTextPaint.setTextSize(aiTextSize);
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             
-            String aiText = "";
-            
-            // 如果AI正在思考，显示思考提示
-            if (isAIThinking) {
-                String dots = "";
-                for (int i = 0; i < aiThinkingProgress; i++) {
-                    dots += ".";
-                }
-                aiText = "AI正在思考" + dots;
-                // 添加行棋层数，用竖线分开
-                aiText += " | 深度: " + currentDepth;
-            } else {
-                // AI思考完成，只显示深度信息
-                aiText = "深度: " + currentDepth;
+            String dots = "";
+            for (int i = 0; i < aiThinkingProgress; i++) {
+                dots += ".";
             }
+            String thinkingText = "AI思考中" + dots;
+            canvas.drawText(thinkingText, width / 2, currentY, infoTextPaint);
             
-            // 绘制文本
-            canvas.drawText(aiText, width / 2, currentY, infoTextPaint);
-            
-            // 调整当前位置
+            aiThinkingProgress = (aiThinkingProgress + 1) % 4;
             currentY += lineHeight;
+            postInvalidateDelayed(800);
         }
         
-        // 显示支招走法信息
-        if (suggestMoveText != null && !suggestMoveText.isEmpty()) {
-            // 保存原始字体大小
+        // 显示支招走法信息（AI思考时不显示，避免覆盖）
+        if (!isAIThinking && suggestMoveText != null && !suggestMoveText.isEmpty()) {
             float originalTextSize = infoTextPaint.getTextSize();
-            // 减小字体大小以适应长文本
-            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
+            infoTextPaint.setTextSize(convertDpToPixel(10, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
             currentY += lineHeight;
-            // 恢复原始字体大小
             infoTextPaint.setTextSize(originalTextSize);
         }
         
-        // 显示彩色支招走法信息（红黑方分开显示，不显示前缀）
-        if (suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
-            // 保存原始字体大小
+        // 显示彩色支招走法信息（AI思考时不显示，避免覆盖）
+        if (!isAIThinking && suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
             float originalTextSize = infoTextPaint.getTextSize();
             boolean originalFakeBold = infoTextPaint.isFakeBoldText();
-            // 减小字体大小以适应长文本（第一步稍大）
-            float normalSize = convertDpToPixel(13, getContext());
-            float firstSize = convertDpToPixel(16, getContext());
+            float normalSize = convertDpToPixel(11, getContext());
+            float firstSize = convertDpToPixel(13, getContext());
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
-            // 居中显示所有走法
             float totalWidth = 0;
             for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
                 infoTextPaint.setTextSize(i == 0 ? firstSize : normalSize);
@@ -563,32 +497,24 @@ public class RoundView extends View {
             }
             float startX = (width - totalWidth) / 2;
             
-            // 逐个绘制带颜色的走法
             float x = startX;
             for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
                 String text = suggestMoveTexts.get(i);
                 boolean isRed = suggestMoveIsRed.get(i);
                 
-                // 设置颜色
                 if (isRed) {
                     infoTextPaint.setColor(Color.RED);
                 } else {
                     infoTextPaint.setColor(Color.BLACK);
                 }
                 
-                // 第一步加大加粗
                 infoTextPaint.setTextSize(i == 0 ? firstSize : normalSize);
                 infoTextPaint.setFakeBoldText(i == 0);
-                
-                // 绘制文本
                 canvas.drawText(text, x, currentY, infoTextPaint);
-                
-                // 更新下一个文本的x位置
                 x += infoTextPaint.measureText(text) + (i == 0 ? infoTextPaint.measureText(" ") : convertDpToPixel(3, getContext()));
             }
             
             currentY += lineHeight;
-            // 恢复原始字体大小、颜色和粗体
             infoTextPaint.setTextSize(originalTextSize);
             infoTextPaint.setFakeBoldText(originalFakeBold);
             infoTextPaint.setColor(Color.WHITE);
@@ -596,6 +522,7 @@ public class RoundView extends View {
         
         // 只在没有AI信息和支招信息时显示步数信息
         if (!hasAIOrSuggestInfo && moveInfoText != null && !moveInfoText.isEmpty()) {
+            infoTextPaint.setTextSize(aiTextSize);
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText(moveInfoText, width / 2, currentY, infoTextPaint);
         }
@@ -637,13 +564,13 @@ public class RoundView extends View {
         // 获取宽度
         int width = MeasureSpec.getSize(widthMeasureSpec);
         
-        // 计算高度
+        // 计算高度 - 使用更紧凑的布局
         int height;
         if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(130, getContext()); // 调整高度，适应更大的行间距
+            height = (int) convertDpToPixel(80, getContext()); // 适度增大高度，容纳支招信息
         }
         
         viewWidth = width;

@@ -199,8 +199,9 @@ public class SetupModeView extends View {
                     // 使用与API级别16兼容的drawRoundRect方法
                     int borderOffset = (int) convertDpToPixel(2, getContext());
                     float strokeWidth = convertDpToPixel(1.5f, getContext());
+                    float selectCornerRadius = convertDpToPixel(3, getContext());
                     android.graphics.RectF rectF = new android.graphics.RectF(x - borderOffset, y - borderOffset, x + pieceSize + borderOffset, y + pieceSize + borderOffset);
-                    canvas.drawRoundRect(rectF, 5, 5, paint);
+                    canvas.drawRoundRect(rectF, selectCornerRadius, selectCornerRadius, paint);
 
                     // 绘制选中边框
                     paint.setColor(Color.parseColor("#FFD700"));
@@ -208,7 +209,7 @@ public class SetupModeView extends View {
                     paint.setStrokeWidth(strokeWidth);
                     paint.setAlpha(255); // 边框不透明
                     // 直接使用已定义的rectF变量
-                    canvas.drawRoundRect(rectF, 5, 5, paint);
+                    canvas.drawRoundRect(rectF, selectCornerRadius, selectCornerRadius, paint);
                     paint.setStyle(Paint.Style.FILL);
                     paint.setAlpha(255); // 恢复不透明状态
                 }
@@ -243,8 +244,9 @@ public class SetupModeView extends View {
                     // 使用与API级别16兼容的drawRoundRect方法
                     int borderOffset = (int) convertDpToPixel(2, getContext());
                     float strokeWidth = convertDpToPixel(1.5f, getContext());
+                    float selectCornerRadius = convertDpToPixel(3, getContext());
                     android.graphics.RectF rectF = new android.graphics.RectF(x - borderOffset, y - borderOffset, x + pieceSize + borderOffset, y + pieceSize + borderOffset);
-                    canvas.drawRoundRect(rectF, 5, 5, paint);
+                    canvas.drawRoundRect(rectF, selectCornerRadius, selectCornerRadius, paint);
 
                     // 绘制选中边框
                     paint.setColor(Color.parseColor("#FFD700"));
@@ -252,7 +254,7 @@ public class SetupModeView extends View {
                     paint.setStrokeWidth(strokeWidth);
                     paint.setAlpha(255); // 边框不透明
                     // 直接使用已定义的rectF变量
-                    canvas.drawRoundRect(rectF, 5, 5, paint);
+                    canvas.drawRoundRect(rectF, selectCornerRadius, selectCornerRadius, paint);
                     paint.setStyle(Paint.Style.FILL);
                     paint.setAlpha(255); // 恢复不透明状态
                 }
@@ -285,13 +287,14 @@ public class SetupModeView extends View {
             paint.setColor(buttonColors[i]);
             paint.setStyle(Paint.Style.FILL);
             android.graphics.RectF rectF = new android.graphics.RectF(buttonX, buttonY, buttonX + buttonWidth, buttonY + buttonHeight);
-            canvas.drawRoundRect(rectF, 5, 5, paint);
+            float buttonCornerRadius = convertDpToPixel(3, getContext());
+            canvas.drawRoundRect(rectF, buttonCornerRadius, buttonCornerRadius, paint);
 
             // 绘制按钮边框
             paint.setColor(Color.parseColor("#333333"));
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(2);
-            canvas.drawRoundRect(rectF, 5, 5, paint);
+            paint.setStrokeWidth(convertDpToPixel(1, getContext()));
+            canvas.drawRoundRect(rectF, buttonCornerRadius, buttonCornerRadius, paint);
 
             // 绘制按钮文本
             paint.setStyle(Paint.Style.FILL);

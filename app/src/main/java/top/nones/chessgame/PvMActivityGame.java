@@ -1,6 +1,6 @@
 package top.nones.chessgame;
 
-import android.util.Log;
+import android.media.MediaPlayer;
 import android.view.MotionEvent;
 
 import java.util.List;
@@ -17,6 +17,21 @@ public class PvMActivityGame {
     
     public PvMActivityGame(PvMActivity activity) {
         this.activity = activity;
+    }
+    
+    // 播放音效
+    private void playEffect(MediaPlayer mediaPlayer) {
+        if (mediaPlayer != null) {
+            boolean shouldPlay = PvMActivity.setting == null || PvMActivity.setting.isEffectPlay;
+            if (shouldPlay) {
+                try {
+                    mediaPlayer.seekTo(0);
+                    mediaPlayer.start();
+                } catch (Exception e) {
+                    LogUtils.e("PvMActivityGame", "播放音效失败", e);
+                }
+            }
+        }
     }
     
     // 设置支招信息，并记录是给哪一方的
@@ -227,6 +242,9 @@ public class PvMActivityGame {
                                             
                                             activity.chessInfo.ret = possibleMoves;
                                             
+                                            // 播放选中音效
+                                            playEffect(activity.selectMusic);
+                                            
                                             // 重新绘制界面，显示选中效果
                                             if (activity.chessView != null) {
                                                 activity.chessView.requestDraw();
@@ -283,6 +301,9 @@ public class PvMActivityGame {
                             activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
                             activity.chessInfo.ret.clear(); // 清空可移动位置
 
+                            // 播放落子音效
+                            playEffect(activity.clickMusic);
+
                             // 生成并记录标准象棋记谱走法
                             String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
                             if (moveString != null) {
@@ -291,6 +312,9 @@ public class PvMActivityGame {
 
                             // 检查是否将军
                             boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
+                            if (isCheck) {
+                                playEffect(activity.checkMusic);
+                            }
                             activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
 
                             // 保存移动后的状态到栈中
@@ -355,6 +379,8 @@ public class PvMActivityGame {
                                         if (canSelect && canDefendCheck) {
                                             activity.chessInfo.prePos = new Pos(i, j);
                                             activity.chessInfo.ret = Rule.PossibleMoves(activity.chessInfo.piece, i, j, pieceID);
+                                            // 播放选中音效
+                                            playEffect(activity.selectMusic);
                                             // 重新绘制界面，显示选中效果
                                             if (activity.chessView != null) {
                                                 activity.chessView.requestDraw();

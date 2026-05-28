@@ -67,25 +67,25 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 android.util.Log.i("ChessView", "Successfully loaded chessboard image: " + ChessBoard.getWidth() + "x" + ChessBoard.getHeight());
             }
 
-            B_box = decodeSampledBitmapFromResource(getResources(), R.drawable.b_box, 80, 80);
-            R_box = decodeSampledBitmapFromResource(getResources(), R.drawable.r_box, 80, 80);
-            Pot = decodeSampledBitmapFromResource(getResources(), R.drawable.pot, 80, 80);
+            B_box = decodeSampledBitmapFromResource(getResources(), R.drawable.b_box, 92, 92);
+            R_box = decodeSampledBitmapFromResource(getResources(), R.drawable.r_box, 92, 92);
+            Pot = decodeSampledBitmapFromResource(getResources(), R.drawable.pot, 92, 92);
 
-            RP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shuai, 80, 80);
-            RP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shi, 80, 80);
-            RP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_xiang, 80, 80);
-            RP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ma, 80, 80);
-            RP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ju, 80, 80);
-            RP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_pao, 80, 80);
-            RP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_bing, 80, 80);
+            RP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shuai, 92, 92);
+            RP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shi, 92, 92);
+            RP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_xiang, 92, 92);
+            RP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ma, 92, 92);
+            RP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ju, 92, 92);
+            RP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_pao, 92, 92);
+            RP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_bing, 92, 92);
 
-            BP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_jiang, 80, 80);
-            BP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_shi, 80, 80);
-            BP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_xiang, 80, 80);
-            BP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ma, 80, 80);
-            BP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ju, 80, 80);
-            BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, 80, 80);
-            BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, 80, 80);
+            BP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_jiang, 92, 92);
+            BP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_shi, 92, 92);
+            BP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_xiang, 92, 92);
+            BP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ma, 92, 92);
+            BP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ju, 92, 92);
+            BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, 92, 92);
+            BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, 92, 92);
         } catch (Exception e) {
             android.util.Log.e("ChessView", "Error loading images: " + e.getMessage());
             // 确保即使图片加载失败，应用也能继续运行
@@ -159,8 +159,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         if (chessInfo.piece[i][j] > 0) {
                             // 反转y坐标，确保红棋在屏幕下方，黑棋在屏幕上方
                             int drawY = 9 - i;
-                            // 增大棋子尺寸：88x88，超出格子边界2像素，让棋子更大更饱满
-                            pDesRect = new Rect(Scale(j * 85 - 2), Scale(drawY * 85 + 36), Scale(j * 85 + 86), Scale(drawY * 85 + 124));
+                            // 增大棋子尺寸：92x92，超出格子边界4像素，让棋子更大更饱满
+                            pDesRect = new Rect(Scale(j * 85 - 4), Scale(drawY * 85 + 34), Scale(j * 85 + 88), Scale(drawY * 85 + 126));
                             if (chessInfo.piece[i][j] <= 7) {
                                 int num = chessInfo.piece[i][j] - 1;
                                 if (BP != null && num >= 0 && num < BP.length && BP[num] != null) {
@@ -190,18 +190,18 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 // 反转y坐标，确保选中效果显示在正确的位置
                 int displayY = 9 - drawY;
-                // 绘制选中效果，无论当前是哪个玩家的回合，使用增大后的棋子尺寸 88x88
+                // 绘制选中效果，无论当前是哪个玩家的回合，使用增大后的棋子尺寸 92x92
                 if (isRedPiece && R_box != null) {
                     pSrcRect = new Rect(0, 0, R_box.getWidth(), R_box.getHeight());
-                    pDesRect = new Rect(Scale(drawX * 85 - 2), Scale(displayY * 85 + 36), Scale(drawX * 85 + 86), Scale(displayY * 85 + 124));
+                    pDesRect = new Rect(Scale(drawX * 85 - 4), Scale(displayY * 85 + 34), Scale(drawX * 85 + 88), Scale(displayY * 85 + 126));
                     canvas.drawBitmap(R_box, pSrcRect, pDesRect, null);
                 } else if (B_box != null) {
                     pSrcRect = new Rect(0, 0, B_box.getWidth(), B_box.getHeight());
-                    pDesRect = new Rect(Scale(drawX * 85 - 2), Scale(displayY * 85 + 36), Scale(drawX * 85 + 86), Scale(displayY * 85 + 124));
+                    pDesRect = new Rect(Scale(drawX * 85 - 4), Scale(displayY * 85 + 34), Scale(drawX * 85 + 88), Scale(displayY * 85 + 126));
                     canvas.drawBitmap(B_box, pSrcRect, pDesRect, null);
                 }
                 
-                // 绘制可移动位置，使用增大后的棋子尺寸 88x88
+                        // 绘制可移动位置，使用增大后的棋子尺寸 92x92
                 if (chessInfo.ret != null) {
                     Iterator<Pos> it = chessInfo.ret.iterator();
                     while (it.hasNext()) {
@@ -211,7 +211,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         int displayPosY = 9 - y;
                         if (Pot != null) {
                             pSrcRect = new Rect(0, 0, Pot.getWidth(), Pot.getHeight());
-                            pDesRect = new Rect(Scale(x * 85 - 2), Scale(displayPosY * 85 + 36), Scale(x * 85 + 86), Scale(displayPosY * 85 + 124));
+                            pDesRect = new Rect(Scale(x * 85 - 4), Scale(displayPosY * 85 + 34), Scale(x * 85 + 88), Scale(displayPosY * 85 + 126));
                             canvas.drawBitmap(Pot, pSrcRect, pDesRect, null);
                         }
                     }
@@ -232,9 +232,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
             Rect tmpRect;
 
-            // 使用增大后的棋子尺寸 88x88 绘制走棋轨迹
-            pDesRect = new Rect(Scale(draw_curX * 85 - 2), Scale(draw_curY * 85 + 36), Scale(draw_curX * 85 + 86), Scale(draw_curY * 85 + 124));
-            tmpRect = new Rect(Scale(draw_preX * 85 - 2), Scale(draw_preY * 85 + 36), Scale(draw_preX * 85 + 86), Scale(draw_preY * 85 + 124));
+            // 使用增大后的棋子尺寸 92x92 绘制走棋轨迹
+            pDesRect = new Rect(Scale(draw_curX * 85 - 4), Scale(draw_curY * 85 + 34), Scale(draw_curX * 85 + 88), Scale(draw_curY * 85 + 126));
+            tmpRect = new Rect(Scale(draw_preX * 85 - 4), Scale(draw_preY * 85 + 34), Scale(draw_preX * 85 + 88), Scale(draw_preY * 85 + 126));
 
             if (real_curY >= 0 && real_curY < 10 && real_curX >= 0 && real_curX < 9 && chessInfo.piece != null && chessInfo.piece[real_curY] != null && chessInfo.piece[real_curY][real_curX] >= 1 && chessInfo.piece[real_curY][real_curX] <= 7) {
                 if (B_box != null) {
