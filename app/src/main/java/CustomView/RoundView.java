@@ -225,7 +225,7 @@ public class RoundView extends View {
         borderPaint.setAntiAlias(true);
 
         // 统一文字大小 - 使用dp单位
-        float textSize = convertDpToPixel(14, getContext());
+        float textSize = convertDpToPixel(16, getContext());
 
         // 红色文本画笔（红方回合）- 使用更醒目的红色
         redTextPaint = new Paint();
@@ -253,7 +253,7 @@ public class RoundView extends View {
 
         // 模式文本画笔（突出显示模式）
         modeTextPaint = new Paint();
-        modeTextPaint.setTextSize(convertDpToPixel(11, getContext()));
+        modeTextPaint.setTextSize(convertDpToPixel(12, getContext()));
         modeTextPaint.setStrokeWidth(convertDpToPixel(0.3f, getContext()));
         modeTextPaint.setAntiAlias(true);
         modeTextPaint.setColor(Color.rgb(255, 245, 220)); // 米白色，与棕色背景对比好
@@ -311,23 +311,31 @@ public class RoundView extends View {
         // ========== 第1行：游戏模式（左） | 当前行棋方（居中突出） | 回合数（右） ==========
         float row1Y = paddingTop + lineHeight * 0.8f;
         
-        // 游戏模式（左侧）
+        // 游戏模式（左侧）+ 深度
         String modeText = getGameModeName(gameMode);
-        float modeTextSize = convertDpToPixel(12, getContext());
+        float modeTextSize = convertDpToPixel(10, getContext());
         modeTextPaint.setTextSize(modeTextSize);
         modeTextPaint.setTextAlign(Paint.Align.LEFT);
         canvas.drawText(modeText, convertDpToPixel(10, getContext()), row1Y, modeTextPaint);
         
-        // 当前行棋方（居中，突出显示）- 包含深度信息
+        // 在模式后面显示深度
         int currentDepthForTurn = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
-        String turnText;
+        String depthText = "";
         if (currentDepthForTurn > 0) {
-            turnText = chessInfo.IsRedGo ? "红方-" + currentDepthForTurn : "黑方-" + currentDepthForTurn;
-        } else {
-            turnText = chessInfo.IsRedGo ? "红方" : "黑方";
+            depthText = " D" + currentDepthForTurn;
         }
+        if (!depthText.isEmpty()) {
+            float modeTextWidth = modeTextPaint.measureText(modeText);
+            float depthTextX = convertDpToPixel(10, getContext()) + modeTextWidth + convertDpToPixel(4, getContext());
+            infoTextPaint.setTextSize(convertDpToPixel(9, getContext()));
+            infoTextPaint.setTextAlign(Paint.Align.LEFT);
+            canvas.drawText(depthText, depthTextX, row1Y, infoTextPaint);
+        }
+        
+        // 当前行棋方（居中，突出显示）- 不含深度
+        String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        float turnTextSize = convertDpToPixel(16, getContext());
+        float turnTextSize = convertDpToPixel(14, getContext());
         turnPaint.setTextSize(turnTextSize);
         turnPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(turnText, width / 2, row1Y, turnPaint);
@@ -336,7 +344,7 @@ public class RoundView extends View {
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "第" + roundCount + "回合";
-        float stepTextSize = convertDpToPixel(13, getContext());
+        float stepTextSize = convertDpToPixel(12, getContext());
         infoTextPaint.setTextSize(stepTextSize);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         canvas.drawText(stepText, width - convertDpToPixel(10, getContext()), row1Y, infoTextPaint);
@@ -408,19 +416,19 @@ public class RoundView extends View {
         }
         
         // 红方时间（左侧）
-        redTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        redTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         redTextPaint.setTextAlign(Paint.Align.LEFT);
         String redText = "红 " + formatTime(redTime);
         canvas.drawText(redText, convertDpToPixel(10, getContext()), row2Y, redTextPaint);
         
         // 评分（居中）
-        float scoreTextSize = convertDpToPixel(14, getContext());
+        float scoreTextSize = convertDpToPixel(13, getContext());
         infoTextPaint.setTextSize(scoreTextSize);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(scoreText, width / 2, row2Y, infoTextPaint);
         
         // 黑方时间（右侧）
-        blackTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        blackTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         blackTextPaint.setTextAlign(Paint.Align.RIGHT);
         String blackText = "黑 " + formatTime(blackTime);
         canvas.drawText(blackText, width - convertDpToPixel(10, getContext()), row2Y, blackTextPaint);
@@ -432,7 +440,7 @@ public class RoundView extends View {
         boolean hasAIOrSuggestInfo = (suggestMoveText != null && !suggestMoveText.isEmpty()) || isAILoading || isShowLoadingComplete || isAIThinking;
         
         // 绘制AI加载中、加载完成或AI思考动画
-        float aiTextSize = convertDpToPixel(11, getContext());
+        float aiTextSize = convertDpToPixel(10, getContext());
         if (isAILoading) {
             infoTextPaint.setTextSize(aiTextSize);
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -472,7 +480,7 @@ public class RoundView extends View {
         // 显示支招走法信息（AI思考时不显示，避免覆盖）
         if (!isAIThinking && suggestMoveText != null && !suggestMoveText.isEmpty()) {
             float originalTextSize = infoTextPaint.getTextSize();
-            infoTextPaint.setTextSize(convertDpToPixel(10, getContext()));
+            infoTextPaint.setTextSize(convertDpToPixel(11, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
             currentY += lineHeight;
@@ -483,8 +491,8 @@ public class RoundView extends View {
         if (!isAIThinking && suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
             float originalTextSize = infoTextPaint.getTextSize();
             boolean originalFakeBold = infoTextPaint.isFakeBoldText();
-            float normalSize = convertDpToPixel(11, getContext());
-            float firstSize = convertDpToPixel(13, getContext());
+            float normalSize = convertDpToPixel(12, getContext());
+            float firstSize = convertDpToPixel(14, getContext());
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
             float totalWidth = 0;
@@ -547,9 +555,9 @@ public class RoundView extends View {
             case 0:
                 return "双人对战";
             case 1:
-                return "人机对战（玩家红）";
+                return "玩家红棋";
             case 2:
-                return "人机对战（玩家黑）";
+                return "玩家黑棋";
             case 3:
                 return "双机对战";
             default:
