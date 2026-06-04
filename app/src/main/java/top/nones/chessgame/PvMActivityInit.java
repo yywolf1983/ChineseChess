@@ -18,6 +18,7 @@ import CustomView.ChessView;
 import CustomView.RoundView;
 import CustomView.SetupModeView;
 import Utils.LogUtils;
+import Utils.GameResourceManager;
 import AICore.PikafishAI;
 
 public class PvMActivityInit {
@@ -62,13 +63,15 @@ public class PvMActivityInit {
         // 初始化设置
         try {
             if (activity.sharedPreferences != null) {
-                activity.setting = new Setting(activity.sharedPreferences);
-                Log.d("PvMActivity", "Setting初始化完成");
+                GameResourceManager manager = GameResourceManager.getInstance();
+                manager.initSettings(activity);
+                activity.setting = manager.getSetting();
+                LogUtils.d("PvMActivity", "Setting初始化完成");
             } else {
-                Log.e("PvMActivityInit", "SharedPreferences is null, cannot initialize Setting");
+                LogUtils.e("PvMActivityInit", "SharedPreferences is null, cannot initialize Setting");
             }
         } catch (Exception e) {
-            Log.e("PvMActivityInit", "Error initializing Setting: " + e.getMessage());
+            LogUtils.e("PvMActivityInit", "Error initializing Setting: " + e.getMessage());
         }
 
         // 初始化默认值
@@ -102,28 +105,15 @@ public class PvMActivityInit {
             return;
         }
         try {
-            if (PvMActivity.selectMusic == null) {
-                PvMActivity.selectMusic = MediaPlayer.create(activity, R.raw.select);
-                if (PvMActivity.selectMusic != null) {
-                    PvMActivity.selectMusic.setVolume(5f, 5f);
-                }
-            }
-            if (PvMActivity.clickMusic == null) {
-                PvMActivity.clickMusic = MediaPlayer.create(activity, R.raw.click);
-                if (PvMActivity.clickMusic != null) {
-                    PvMActivity.clickMusic.setVolume(5f, 5f);
-                }
-            }
-            if (PvMActivity.checkMusic == null) {
-                PvMActivity.checkMusic = MediaPlayer.create(activity, R.raw.checkmate);
-                if (PvMActivity.checkMusic != null) {
-                    PvMActivity.checkMusic.setVolume(5f, 5f);
-                }
-            }
-            if (PvMActivity.winMusic == null) {
-                PvMActivity.winMusic = MediaPlayer.create(activity, R.raw.win);
-            }
-            Log.d("PvMActivity", "音效初始化完成 selectMusic=" + PvMActivity.selectMusic + " clickMusic=" + PvMActivity.clickMusic + " checkMusic=" + PvMActivity.checkMusic);
+            GameResourceManager manager = GameResourceManager.getInstance();
+            manager.initSoundEffects(activity);
+            
+            PvMActivity.selectMusic = manager.getSelectMusic();
+            PvMActivity.clickMusic = manager.getClickMusic();
+            PvMActivity.checkMusic = manager.getCheckMusic();
+            PvMActivity.winMusic = manager.getWinMusic();
+            
+            LogUtils.d("PvMActivity", "音效初始化完成 selectMusic=" + PvMActivity.selectMusic + " clickMusic=" + PvMActivity.clickMusic + " checkMusic=" + PvMActivity.checkMusic);
         } catch (Exception e) {
             Log.e("PvMActivityInit", "音效初始化失败: " + e.getMessage());
         }
@@ -791,7 +781,9 @@ public class PvMActivityInit {
                 if (PvMActivity.backMusic == null) {
                     try {
                         if (activity != null) {
-                            PvMActivity.backMusic = MediaPlayer.create(activity, R.raw.background);
+                            GameResourceManager manager = GameResourceManager.getInstance();
+                            manager.initBackgroundMusic(activity);
+                            PvMActivity.backMusic = manager.getBackMusic();
                             if (PvMActivity.backMusic != null) {
                                 PvMActivity.backMusic.setLooping(true);
                                 if (activity.setting != null && activity.setting.isMusicPlay) {

@@ -81,7 +81,7 @@ public class PikafishAI {
             // 检查是否在模拟器中运行
             boolean isEmulator = isRunningInEmulator();
             if (isEmulator) {
-                Log.e("PikafishAI", "在模拟器中运行，尝试初始化AI");
+                LogUtils.e("PikafishAI", "在模拟器中运行，尝试初始化AI");
             }
             
             // 复制神经网络文件到缓存目录
@@ -98,7 +98,7 @@ public class PikafishAI {
                 binaryPath = context.getCacheDir().getAbsolutePath() + "/pikafish";
                 binaryFile = new File(binaryPath);
                 if (!binaryFile.exists()) {
-                    Log.e("PikafishAI", "无法找到pikafish可执行文件");
+                    LogUtils.e("PikafishAI", "无法找到pikafish可执行文件");
                     return;
                 }
             }
@@ -120,12 +120,11 @@ public class PikafishAI {
                 }
                 
                 if (!isExecutable) {
-                    Log.e("PikafishAI", "无法设置pikafish可执行权限");
+                    LogUtils.e("PikafishAI", "无法设置pikafish可执行权限");
                     return;
                 }
             } catch (Exception e) {
-                Log.e("PikafishAI", "设置权限失败: " + e.getMessage());
-                LogUtils.e("PikafishAI", "操作失败", e);
+                LogUtils.e("PikafishAI", "设置权限失败: " + e.getMessage(), e);
                 return;
             }
             
@@ -139,12 +138,11 @@ public class PikafishAI {
                 
                 // 检查进程是否成功启动
                 if (process == null) {
-                    Log.e("PikafishAI", "启动进程失败: process为null");
+                    LogUtils.e("PikafishAI", "启动进程失败: process为null");
                     return;
                 }
             } catch (Exception e) {
-                Log.e("PikafishAI", "启动进程失败: " + e.getMessage());
-                LogUtils.e("PikafishAI", "操作失败", e);
+                LogUtils.e("PikafishAI", "启动进程失败: " + e.getMessage(), e);
                 
                 // 尝试使用proot启动
                 try {
@@ -172,14 +170,14 @@ public class PikafishAI {
                         // 设置proot可执行权限
                         Process chmodProcess = Runtime.getRuntime().exec("chmod 755 " + prootPath);
                         chmodProcess.waitFor();
-                        Log.e("PikafishAI", "复制并设置proot权限成功");
+                        LogUtils.e("PikafishAI", "复制并设置proot权限成功");
                     } catch (Exception ex) {
-                        Log.e("PikafishAI", "复制proot失败: " + ex.getMessage());
+                        LogUtils.e("PikafishAI", "复制proot失败: " + ex.getMessage());
                         return;
                     }
                     
                     // 使用proot启动pikafish
-                    Log.e("PikafishAI", "尝试使用proot启动: " + prootPath + " " + binaryPath);
+                    LogUtils.e("PikafishAI", "尝试使用proot启动: " + prootPath + " " + binaryPath);
                     ProcessBuilder pb = new ProcessBuilder(prootPath, "--bind=/system", "--bind=/vendor", "--bind=/data", binaryPath);
                     pb.redirectErrorStream(true);
                     // 设置工作目录为缓存目录，确保引擎能找到pikafish.nnue文件
@@ -188,14 +186,14 @@ public class PikafishAI {
                     
                     // 检查进程是否成功启动
                     if (process == null) {
-                        Log.e("PikafishAI", "使用proot启动进程失败: process为null");
+                        LogUtils.e("PikafishAI", "使用proot启动进程失败: process为null");
                         return;
                     }
                     
-                    Log.e("PikafishAI", "使用proot启动进程成功");
+                    LogUtils.e("PikafishAI", "使用proot启动进程成功");
                     LogUtils.i("PikafishAI", "使用proot启动进程成功");
                 } catch (Exception ex) {
-                    Log.e("PikafishAI", "使用proot启动失败: " + ex.getMessage());
+                    LogUtils.e("PikafishAI", "使用proot启动失败: " + ex.getMessage());
                     LogUtils.e("PikafishAI", "使用proot启动失败: " + ex.getMessage());
                     ex.printStackTrace();
                     return;
@@ -204,7 +202,7 @@ public class PikafishAI {
             
             // 检查进程是否存活
             if (process == null) {
-                Log.e("PikafishAI", "进程未启动");
+                LogUtils.e("PikafishAI", "进程未启动");
                 return;
             }
             
@@ -223,12 +221,12 @@ public class PikafishAI {
                 if (reader.ready()) {
                     line = reader.readLine();
                     if (line != null) {
-                        Log.e("PikafishAI", "初始化响应: " + line);
+                        LogUtils.e("PikafishAI", "初始化响应: " + line);
                         LogUtils.d("PikafishAI", "初始化响应: " + line);
                         if (line.equals("uciok")) {
                             uciOkReceived = true;
                             initialized = true;
-                            Log.e("PikafishAI", "UCI初始化成功");
+                            LogUtils.e("PikafishAI", "UCI初始化成功");
                             LogUtils.i("PikafishAI", "UCI初始化成功");
                         }
                     }
@@ -244,7 +242,7 @@ public class PikafishAI {
             }
             
             if (!uciOkReceived) {
-                Log.e("PikafishAI", "UCI初始化超时");
+                LogUtils.e("PikafishAI", "UCI初始化超时");
                 LogUtils.e("PikafishAI", "UCI初始化超时");
             }
             
@@ -270,21 +268,17 @@ public class PikafishAI {
                 LogUtils.i("PikafishAI", "设置哈希表大小: " + hashSize + " MB");
                 
                 // 3. 获取设置值
-                int skillLevel = 20; // 默认最高级别
-                int multiPV = 1; // 默认单主变
-                int contempt = 20; // 默认值
+                int skillLevel = 20;
+                int multiPV = 1;
+                int contempt = 20;
                 try {
-                    // 尝试获取Setting中的值
-                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                    Object settingObj = pvmaClass.getField("setting").get(null);
-                    if (settingObj != null) {
-                        skillLevel = (int) settingObj.getClass().getField("skillLevel").get(settingObj);
-                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
-                        // 尝试获取Contempt设置，如果存在的话
+                    Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
+                    if (setting != null) {
+                        skillLevel = setting.skillLevel;
+                        multiPV = setting.multiPV;
                         try {
-                            contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
-                        } catch (NoSuchFieldException e) {
-                            // 如果没有Contempt设置，使用默认值
+                            contempt = setting.contempt;
+                        } catch (Exception e) {
                             LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
                         }
                     }
@@ -316,11 +310,11 @@ public class PikafishAI {
                     if (reader.ready()) {
                         line = reader.readLine();
                         if (line != null) {
-                            Log.e("PikafishAI", "就绪响应: " + line);
+                            LogUtils.e("PikafishAI", "就绪响应: " + line);
                             LogUtils.d("PikafishAI", "就绪响应: " + line);
                             if (line.equals("readyok")) {
                                 readyOkReceived = true;
-                                Log.e("PikafishAI", "就绪成功");
+                                LogUtils.e("PikafishAI", "就绪成功");
                                 LogUtils.i("PikafishAI", "就绪成功");
                             }
                         }
@@ -336,12 +330,12 @@ public class PikafishAI {
                 }
                 
                 if (!readyOkReceived) {
-                    Log.e("PikafishAI", "就绪超时");
+                    LogUtils.e("PikafishAI", "就绪超时");
                     LogUtils.e("PikafishAI", "就绪超时");
                 }
             }
             
-            Log.e("PikafishAI", "初始化完成，状态: " + initialized);
+            LogUtils.e("PikafishAI", "初始化完成，状态: " + initialized);
             LogUtils.i("PikafishAI", "初始化完成，状态: " + initialized);
             
             // 通知初始化完成
@@ -368,9 +362,7 @@ public class PikafishAI {
             }
             
         } catch (Exception e) {
-            Log.e("PikafishAI", "初始化失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "初始化失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "操作失败", e);
+            LogUtils.e("PikafishAI", "初始化失败: " + e.getMessage(), e);
             // 确保资源被释放
             close();
             
@@ -417,7 +409,7 @@ public class PikafishAI {
     
     private void copyNNUEFile() {
         try {
-            Log.e("PikafishAI", "开始复制神经网络文件");
+            LogUtils.e("PikafishAI", "开始复制神经网络文件");
             InputStream is = context.getAssets().open("pikafish.nnue");
             FileOutputStream os = new FileOutputStream(context.getCacheDir().getAbsolutePath() + "/pikafish.nnue");
             
@@ -431,10 +423,10 @@ public class PikafishAI {
             
             is.close();
             os.close();
-            Log.e("PikafishAI", "复制神经网络文件成功，大小: " + totalBytes + " bytes");
+            LogUtils.e("PikafishAI", "复制神经网络文件成功，大小: " + totalBytes + " bytes");
             LogUtils.i("PikafishAI", "复制神经网络文件成功");
         } catch (Exception e) {
-            Log.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
+            LogUtils.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "操作失败", e);
         }
@@ -446,7 +438,7 @@ public class PikafishAI {
             String binaryName = "pikafish-armv8";
             String prootName = "proot-v5.3.0-aarch64-static";
             String cpuAbi = android.os.Build.CPU_ABI;
-            Log.e("PikafishAI", "设备架构: " + cpuAbi);
+            LogUtils.e("PikafishAI", "设备架构: " + cpuAbi);
             LogUtils.i("PikafishAI", "设备架构: " + cpuAbi);
             
             // 根据CPU架构选择合适的二进制文件
@@ -458,13 +450,13 @@ public class PikafishAI {
                 prootName = "proot-v5.3.0-arm-static";
             }
             
-            Log.e("PikafishAI", "选择的二进制文件: " + binaryName);
-            Log.e("PikafishAI", "选择的proot文件: " + prootName);
+            LogUtils.e("PikafishAI", "选择的二进制文件: " + binaryName);
+            LogUtils.e("PikafishAI", "选择的proot文件: " + prootName);
             
             // 尝试打开文件，如果失败则尝试其他版本
             try {
                 // 复制可执行文件
-                Log.e("PikafishAI", "开始复制主二进制文件: " + binaryName);
+                LogUtils.e("PikafishAI", "开始复制主二进制文件: " + binaryName);
                 InputStream is = context.getAssets().open(binaryName);
                 FileOutputStream os = new FileOutputStream(context.getCacheDir().getAbsolutePath() + "/pikafish");
                 
@@ -478,14 +470,14 @@ public class PikafishAI {
                 
                 is.close();
                 os.close();
-                Log.e("PikafishAI", "复制主二进制文件成功，大小: " + totalBytes + " bytes");
+                LogUtils.e("PikafishAI", "复制主二进制文件成功，大小: " + totalBytes + " bytes");
                 LogUtils.i("PikafishAI", "复制主二进制文件成功");
             } catch (Exception e) {
-                Log.e("PikafishAI", "复制主二进制文件失败，尝试备用版本: " + e.getMessage());
+                LogUtils.e("PikafishAI", "复制主二进制文件失败，尝试备用版本: " + e.getMessage());
                 LogUtils.e("PikafishAI", "复制主二进制文件失败，尝试备用版本: " + e.getMessage());
                 // 尝试备用版本
                 binaryName = "pikafish-armv8-dotprod";
-                Log.e("PikafishAI", "开始复制备用二进制文件: " + binaryName);
+                LogUtils.e("PikafishAI", "开始复制备用二进制文件: " + binaryName);
                 InputStream is = context.getAssets().open(binaryName);
                 FileOutputStream os = new FileOutputStream(context.getCacheDir().getAbsolutePath() + "/pikafish");
                 
@@ -499,17 +491,17 @@ public class PikafishAI {
                 
                 is.close();
                 os.close();
-                Log.e("PikafishAI", "复制备用二进制文件成功，大小: " + totalBytes + " bytes");
+                LogUtils.e("PikafishAI", "复制备用二进制文件成功，大小: " + totalBytes + " bytes");
                 LogUtils.i("PikafishAI", "复制备用二进制文件成功");
             }
             
             // 复制神经网络文件（已经在copyNNUEFile()中处理）
             
-            Log.e("PikafishAI", "二进制文件复制完成");
+            LogUtils.e("PikafishAI", "二进制文件复制完成");
             LogUtils.i("PikafishAI", "二进制文件复制完成");
             
         } catch (Exception e) {
-            Log.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
+            LogUtils.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
             LogUtils.e("PikafishAI", "操作失败", e);
         }
@@ -596,23 +588,23 @@ public class PikafishAI {
     public MoveWithScore getBestMoveWithScore(ChessInfo chessInfo) {
         // 检查是否在模拟器中运行
         if (isRunningInEmulator()) {
-            Log.e("PikafishAI", "在模拟器中运行，尝试获取AI走法");
+            LogUtils.e("PikafishAI", "在模拟器中运行，尝试获取AI走法");
             LogUtils.i("PikafishAI", "在模拟器中运行，尝试获取AI走法");
         }
         
         try {
             // 检查 reader 是否为 null
             if (reader == null) {
-                Log.e("PikafishAI", "reader 为 null，AI 未正确初始化");
+                LogUtils.e("PikafishAI", "reader 为 null，AI 未正确初始化");
                 return new MoveWithScore(getDefaultMove(chessInfo), 0);
             }
             
             if (!initialized) {
-                Log.e("PikafishAI", "AI未初始化，尝试重新初始化");
+                LogUtils.e("PikafishAI", "AI未初始化，尝试重新初始化");
                 // 尝试重新初始化
                 initialize();
                 if (!initialized) {
-                    Log.e("PikafishAI", "AI初始化失败，使用默认走法");
+                    LogUtils.e("PikafishAI", "AI初始化失败，使用默认走法");
                     return new MoveWithScore(getDefaultMove(chessInfo), 0);
                 }
             }
@@ -658,7 +650,7 @@ public class PikafishAI {
             depth = Math.max(MIN_DEPTH, depth);
             
             LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
-            Log.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
+            LogUtils.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
             
             // 检查是否处于强制变着模式
             boolean wasForceVariation = false;
@@ -969,7 +961,7 @@ public class PikafishAI {
         }
         
         // 如果获取AI走法失败，返回默认走法和0评分
-        Log.e("PikafishAI", "获取AI走法失败，返回默认走法");
+        LogUtils.e("PikafishAI", "获取AI走法失败，返回默认走法");
         return new MoveWithScore(getDefaultMove(chessInfo), 0);
     }
     
@@ -1212,23 +1204,23 @@ public class PikafishAI {
     public PvSequenceWithScore getPvSequenceWithScore(ChessInfo chessInfo) {
         // 检查是否在模拟器中运行
         if (isRunningInEmulator()) {
-            Log.e("PikafishAI", "在模拟器中运行，尝试获取AI走法序列");
+            LogUtils.e("PikafishAI", "在模拟器中运行，尝试获取AI走法序列");
             LogUtils.i("PikafishAI", "在模拟器中运行，尝试获取AI走法序列");
         }
         
         try {
             // 检查 reader 是否为 null
             if (reader == null) {
-                Log.e("PikafishAI", "reader 为 null，AI 未正确初始化");
+                LogUtils.e("PikafishAI", "reader 为 null，AI 未正确初始化");
                 return new PvSequenceWithScore(new java.util.ArrayList<>(), 0);
             }
             
             if (!initialized) {
-                Log.e("PikafishAI", "AI未初始化，尝试重新初始化");
+                LogUtils.e("PikafishAI", "AI未初始化，尝试重新初始化");
                 // 尝试重新初始化
                 initialize();
                 if (!initialized) {
-                    Log.e("PikafishAI", "AI初始化失败");
+                    LogUtils.e("PikafishAI", "AI初始化失败");
                     return new PvSequenceWithScore(new java.util.ArrayList<>(), 0);
                 }
             }
@@ -1273,7 +1265,7 @@ public class PikafishAI {
             depth = Math.max(MIN_DEPTH, depth);
             
             LogUtils.i("PikafishAI", "获取 pv 序列 - 深度: " + depth + ", 时间限制: " + time + "ms");
-            Log.e("PikafishAI", "获取 pv 序列 - 深度: " + depth + ", 时间限制: " + time + "ms");
+            LogUtils.e("PikafishAI", "获取 pv 序列 - 深度: " + depth + ", 时间限制: " + time + "ms");
             
             // 检查是否处于强制变着模式
             boolean wasForceVariation = false;
@@ -1495,7 +1487,7 @@ public class PikafishAI {
             }
         }
         
-        Log.e("PikafishAI", "获取 pv 序列失败，返回空列表");
+        LogUtils.e("PikafishAI", "获取 pv 序列失败，返回空列表");
         return new PvSequenceWithScore(new java.util.ArrayList<>(), 0);
     }
     
@@ -1578,9 +1570,32 @@ public class PikafishAI {
             // 重置初始化状态
             initialized = false;
             currentDepth = 0;
+            
+            // 验证资源是否已正确释放
+            verifyResourceRelease();
+            
             LogUtils.i("PikafishAI", "资源已成功释放");
         } catch (Exception e) {
-            LogUtils.e("PikafishAI", "关闭失败: " + e.getMessage());
+            LogUtils.e("PikafishAI", "关闭失败: " + e.getMessage(), e);
+        }
+    }
+    
+    private void verifyResourceRelease() {
+        boolean allReleased = true;
+        if (writer != null) {
+            LogUtils.w("PikafishAI", "writer 未正确释放");
+            allReleased = false;
+        }
+        if (reader != null) {
+            LogUtils.w("PikafishAI", "reader 未正确释放");
+            allReleased = false;
+        }
+        if (process != null) {
+            LogUtils.w("PikafishAI", "process 未正确释放");
+            allReleased = false;
+        }
+        if (allReleased) {
+            LogUtils.d("PikafishAI", "所有资源验证通过");
         }
     }
 }

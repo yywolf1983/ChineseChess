@@ -7,7 +7,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
-import android.util.Log;
+import Utils.LogUtils;
 import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
@@ -62,9 +62,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             // 加载棋盘图片并检查是否成功
             ChessBoard = decodeSampledBitmapFromResource(getResources(), R.drawable.chessboard, 768, 909);
             if (ChessBoard == null) {
-                android.util.Log.e("ChessView", "Failed to load chessboard image");
+                LogUtils.e("ChessView", "Failed to load chessboard image");
             } else {
-                android.util.Log.i("ChessView", "Successfully loaded chessboard image: " + ChessBoard.getWidth() + "x" + ChessBoard.getHeight());
+                LogUtils.i("ChessView", "Successfully loaded chessboard image: " + ChessBoard.getWidth() + "x" + ChessBoard.getHeight());
             }
 
             B_box = decodeSampledBitmapFromResource(getResources(), R.drawable.b_box, 92, 92);
@@ -87,7 +87,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, 92, 92);
             BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, 92, 92);
         } catch (Exception e) {
-            android.util.Log.e("ChessView", "Error loading images: " + e.getMessage());
+            LogUtils.e("ChessView", "Error loading images: " + e.getMessage());
             // 确保即使图片加载失败，应用也能继续运行
         }
     }
@@ -134,11 +134,11 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             // 绘制棋盘图片
             canvas.drawBitmap(ChessBoard, cSrcRect, cDesRect, null);
             // 添加日志，检查绘制参数
-            android.util.Log.i("ChessView", "Drawing chessboard: cSrcRect=" + cSrcRect.toString() + ", cDesRect=" + cDesRect.toString());
+            LogUtils.i("ChessView", "Drawing chessboard: cSrcRect=" + cSrcRect.toString() + ", cDesRect=" + cDesRect.toString());
         } else {
             // 当棋盘图片加载失败时，绘制一个简单的棋盘网格
             drawChessboardGrid(canvas);
-            android.util.Log.i("ChessView", "Drawing chessboard grid instead of bitmap");
+            LogUtils.i("ChessView", "Drawing chessboard grid instead of bitmap");
         }
         
         // 绘制传统坐标
@@ -419,9 +419,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             if (canvas != null) {
                 try {
                     Draw(canvas);
-                    android.util.Log.i("ChessView", "Surface created, drawing initial chessboard");
+                    LogUtils.i("ChessView", "Surface created, drawing initial chessboard");
                 } catch (Exception e) {
-                    android.util.Log.e("ChessView", "Error drawing on surface creation: " + e.getMessage());
+                    LogUtils.e("ChessView", "Error drawing on surface creation: " + e.getMessage());
                 } finally {
                     holder.unlockCanvasAndPost(canvas);
                 }

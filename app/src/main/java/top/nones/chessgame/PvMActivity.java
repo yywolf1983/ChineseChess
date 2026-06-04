@@ -26,6 +26,8 @@ import androidx.annotation.RequiresApi;
 import androidx.documentfile.provider.DocumentFile;
 import java.io.FileOutputStream;
 import java.io.IOException;
+
+import Utils.GameResourceManager;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -113,13 +115,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 识别服务
     private ChessRecognitionService recognitionService;
-    
-    // 防止多次启动相机/图片选择器 (使用AtomicBoolean解决竞态条件)
-    private java.util.concurrent.atomic.AtomicBoolean isLaunchingCamera = new java.util.concurrent.atomic.AtomicBoolean(false);
-    private java.util.concurrent.atomic.AtomicBoolean isLaunchingGallery = new java.util.concurrent.atomic.AtomicBoolean(false);
-    private volatile long lastCameraLaunchTime = 0;
-    private volatile long lastGalleryLaunchTime = 0;
-    private static final long LAUNCH_COOLDOWN_MS = 3000; // 3秒冷却时间
+    private PhotoCaptureManager photoCaptureManager;
     
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -139,6 +135,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
         // 先初始化模块
         initModules();
+        
+        // 初始化拍照管理器
+        photoCaptureManager = new PhotoCaptureManager(this);
         
         // 使用PvMActivityInit类处理初始化逻辑
         PvMActivityInit init = new PvMActivityInit(this);
@@ -248,8 +247,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 setupManager.toggleSetupMode();
             } else if (viewId == R.id.btn_camera_recognize) {
                 // 拍照识别 - 直接打开相机
-                android.util.Log.d("PvMActivity", "点击相机按钮: isLaunchingCamera=" + isLaunchingCamera.get() + ", isLaunchingGallery=" + isLaunchingGallery.get());
-                dispatchCameraIntent();
+                if (photoCaptureManager != null) {
+                    photoCaptureManager.handleCameraClick();
+                }
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "Error in button click handler", e);
@@ -485,90 +485,15 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 相机拍照
     public void dispatchCameraIntent() {
-        // 使用compareAndSet保证原子性，防止竞态条件
-        if (!isLaunchingCamera.compareAndSet(false, true)) {
-            android.util.Log.d("PvMActivity", "相机已在启动中，跳过");
-            return;
-        }
-        
-        // 额外检查冷却时间，防止快速重复点击
-        long now = System.currentTimeMillis();
-        if (now - lastCameraLaunchTime < LAUNCH_COOLDOWN_MS) {
-            android.util.Log.d("PvMActivity", "相机冷却中，跳过 (距上次启动=" + (now - lastCameraLaunchTime) + "ms)");
-            isLaunchingCamera.set(false);
-            return;
-        }
-        lastCameraLaunchTime = now;
-        
-        // 检查相机权限
-        if (androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) 
-                != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            // 请求相机权限
-            androidx.core.app.ActivityCompat.requestPermissions(this, 
-                    new String[]{android.Manifest.permission.CAMERA}, 1006);
-            isLaunchingCamera.set(false);
-            return;
-        }
-        
-        try {
-            cameraImageFile = createImageFile();
-            if (cameraImageFile == null) {
-                Toast.makeText(this, "无法创建图片文件", Toast.LENGTH_SHORT).show();
-                isLaunchingCamera.set(false);
-                return;
-            }
-            
-            Intent takePictureIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
-            Uri photoURI = androidx.core.content.FileProvider.getUriForFile(this,
-                    getApplicationContext().getPackageName() + ".fileprovider",
-                    cameraImageFile);
-            takePictureIntent.putExtra(android.provider.MediaStore.EXTRA_OUTPUT, photoURI);
-            takePictureIntent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            android.util.Log.d("PvMActivity", "启动相机: file=" + cameraImageFile.getAbsolutePath());
-            startActivityForResult(takePictureIntent, 1004);
-        } catch (Exception ex) {
-            android.util.Log.e("PvMActivity", "Error launching camera: " + ex.getMessage());
-            Toast.makeText(this, "无法启动相机: " + ex.getMessage(), Toast.LENGTH_SHORT).show();
-            isLaunchingCamera.set(false);
+        if (photoCaptureManager != null) {
+            photoCaptureManager.handleCameraClick();
         }
     }
     
     // 图片选择
     public void dispatchGalleryIntent() {
-        // 使用compareAndSet保证原子性，防止竞态条件
-        if (!isLaunchingGallery.compareAndSet(false, true)) {
-            android.util.Log.d("PvMActivity", "图片选择器已在启动中，跳过");
-            return;
-        }
-        
-        // 额外检查冷却时间，防止快速重复点击
-        long now = System.currentTimeMillis();
-        if (now - lastGalleryLaunchTime < LAUNCH_COOLDOWN_MS) {
-            android.util.Log.d("PvMActivity", "图片选择器冷却中，跳过 (距上次启动=" + (now - lastGalleryLaunchTime) + "ms)");
-            isLaunchingGallery.set(false);
-            return;
-        }
-        lastGalleryLaunchTime = now;
-        
-        try {
-            Intent pickPhotoIntent = new Intent(Intent.ACTION_PICK, 
-                    android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
-            pickPhotoIntent.setType("image/*");
-            android.util.Log.d("PvMActivity", "启动图片选择器");
-            startActivityForResult(pickPhotoIntent, 1005);
-        } catch (Exception ex) {
-            android.util.Log.e("PvMActivity", "Error launching gallery: " + ex.getMessage());
-            // 备用方案：使用ACTION_GET_CONTENT
-            try {
-                Intent backupIntent = new Intent(Intent.ACTION_GET_CONTENT);
-                backupIntent.setType("image/*");
-                backupIntent.addCategory(Intent.CATEGORY_OPENABLE);
-                startActivityForResult(Intent.createChooser(backupIntent, "选择图片"), 1005);
-            } catch (Exception ex2) {
-                Toast.makeText(this, "无法打开图片选择: " + ex2.getMessage(), Toast.LENGTH_SHORT).show();
-                isLaunchingGallery.set(false);
-            }
+        if (photoCaptureManager != null) {
+            photoCaptureManager.handleGalleryClick();
         }
     }
     
@@ -585,7 +510,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 ".jpg",
                 storageDir
         );
-        android.util.Log.d("PvMActivity", "创建图片文件: " + image.getAbsolutePath());
+        LogUtils.d("PvMActivity", "创建图片文件: " + image.getAbsolutePath());
         return image;
     }
 
@@ -599,9 +524,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     recognitionService = new ChessRecognitionService(this);
                     recognitionService.initialize();
                     recognitionInitDone = true;
-                    android.util.Log.d("PvMActivity", "Recognition service initialized");
+                    LogUtils.d("PvMActivity", "Recognition service initialized");
                 } catch (Exception e) {
-                    android.util.Log.e("PvMActivity", "Failed to init recognition: " + e.getMessage());
+                    LogUtils.e("PvMActivity", "Failed to init recognition: " + e.getMessage());
                     recognitionInitDone = true; // 标记完成，避免死等
                 }
             }).start();
@@ -609,7 +534,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     }
     
     // 处理识别结果
-    private void processRecognitionResult(android.graphics.Bitmap bitmap) {
+    public void processRecognitionResult(android.graphics.Bitmap bitmap) {
         if (recognitionService == null) {
             initRecognitionService();
         }
@@ -639,7 +564,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                                 Toast.makeText(PvMActivity.this, "识别成功，" + side, Toast.LENGTH_SHORT).show();
                             }
                         } catch (Exception e) {
-                            android.util.Log.e("PvMActivity", "应用识别结果失败: " + e.getMessage(), e);
+                            LogUtils.e("PvMActivity", "应用识别结果失败: " + e.getMessage(), e);
                             Toast.makeText(PvMActivity.this, "应用识别结果失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                         } finally {
                             // 释放缩放后的bitmap
@@ -656,7 +581,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     }
                 }
             } catch (Exception e) {
-                android.util.Log.e("PvMActivity", "Recognition error: " + e.getMessage(), e);
+                LogUtils.e("PvMActivity", "Recognition error: " + e.getMessage(), e);
                 runOnUiThread(() -> Toast.makeText(this, "出错: " + e.getMessage(), Toast.LENGTH_SHORT).show());
             }
         }).start();
@@ -677,7 +602,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             
             // 2. 识别结果 → FEN
             String fen = fenHandler.generateFEN(recognizedInfo);
-            android.util.Log.d("PvMActivity", "识别棋子数=" + recognizedPieceCount + ", FEN=" + fen);
+            LogUtils.d("PvMActivity", "识别棋子数=" + recognizedPieceCount + ", FEN=" + fen);
             
             // 3. FEN → ChessInfo（验证 FEN 解析正确性）
             ChessInfo parsedInfo = fenHandler.fenToChessInfo(fen);
@@ -693,9 +618,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     }
                 }
             }
-            android.util.Log.d("PvMActivity", "FEN往返自检: 匹配=" + matchCount + "/90, 不匹配=" + mismatchCount);
+            LogUtils.d("PvMActivity", "FEN往返自检: 匹配=" + matchCount + "/90, 不匹配=" + mismatchCount);
             if (mismatchCount > 0) {
-                android.util.Log.e("PvMActivity", "FEN往返不一致！位置差异=" + mismatchCount);
+                LogUtils.e("PvMActivity", "FEN往返不一致！位置差异=" + mismatchCount);
             }
             
             // 5. 复制 FEN 解析后的棋子到 chessInfo
@@ -709,7 +634,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             // 6. 保存识别的 FEN 到 notationManager（关键！）
             if (notationManager != null) {
                 notationManager.setSetupFEN(fen);
-                android.util.Log.d("PvMActivity", "已保存识别FEN到notationManager: " + fen);
+                LogUtils.d("PvMActivity", "已保存识别FEN到notationManager: " + fen);
             }
             
             // 7. 进入摆棋模式
@@ -727,7 +652,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         paramsSetup.addRule(android.widget.RelativeLayout.BELOW, R.id.roundView);
                         paramsSetup.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsSetup.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsSetup.setMargins(30, 10, 30, 10);
+                        paramsSetup.setMargins(
+                            getResources().getDimensionPixelOffset(R.dimen.setup_mode_margin_left),
+                            getResources().getDimensionPixelOffset(R.dimen.setup_mode_margin_top),
+                            getResources().getDimensionPixelOffset(R.dimen.setup_mode_margin_right),
+                            getResources().getDimensionPixelOffset(R.dimen.setup_mode_margin_bottom)
+                        );
                         setupModeView.setLayoutParams(paramsSetup);
                     }
                     setupModeView.setVisibility(View.VISIBLE);
@@ -785,17 +715,17 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             infoSet = new InfoSet();
             try {
                 infoSet.pushInfo(chessInfo);
-                android.util.Log.d("PvMActivity", "已重置infoSet并保存识别局面");
+                LogUtils.d("PvMActivity", "已重置infoSet并保存识别局面");
             } catch (CloneNotSupportedException e) {
-                android.util.Log.e("PvMActivity", "重置infoSet失败: " + e.getMessage());
+                LogUtils.e("PvMActivity", "重置infoSet失败: " + e.getMessage());
             }
             
             // 11. 验证显示：从 chessInfo 重新生成 FEN，确认显示与 FEN 一致
             String displayFen = fenHandler.generateFEN(chessInfo);
             if (!fen.equals(displayFen)) {
-                android.util.Log.e("PvMActivity", "FEN→显示不一致！原FEN=" + fen + ", 显示FEN=" + displayFen);
+                LogUtils.e("PvMActivity", "FEN→显示不一致！原FEN=" + fen + ", 显示FEN=" + displayFen);
             } else {
-                android.util.Log.d("PvMActivity", "FEN→显示验证通过 ✓, 棋子数=" + recognizedPieceCount 
+                LogUtils.d("PvMActivity", "FEN→显示验证通过 ✓, 棋子数=" + recognizedPieceCount 
                     + ", 红攻击子=" + chessInfo.attackNum_R + ", 黑攻击子=" + chessInfo.attackNum_B);
             }
         }
@@ -805,16 +735,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        android.util.Log.d("PvMActivity", "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
-        
-        // 重置启动标志
-        if (requestCode == 1004) {
-            isLaunchingCamera.set(false);
-            android.util.Log.d("PvMActivity", "相机标志已重置");
-        } else if (requestCode == 1005) {
-            isLaunchingGallery.set(false);
-            android.util.Log.d("PvMActivity", "图片选择器标志已重置");
-        }
+        LogUtils.d("PvMActivity", "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
         
         if (requestCode == 1001 && resultCode == RESULT_OK) {
             // 从NotationActivity返回，加载选中的棋谱
@@ -839,108 +760,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             if (uri != null) {
                 notationManager.saveChessNotationToUri(uri);
             }
-        } else if ((requestCode == 1004 || requestCode == 1005) && resultCode == RESULT_OK) {
-            // 处理相机拍照或图片选择结果
-            android.graphics.Bitmap bitmap = null;
-            
-            if (requestCode == 1004) {
-                // 相机拍照结果 - 需要处理 EXIF 旋转
-                android.util.Log.d("PvMActivity", "相机返回: cameraImageFile=" + (cameraImageFile != null ? cameraImageFile.getAbsolutePath() : "null"));
-                
-                // 尝试从文件获取图片
-                if (cameraImageFile != null && cameraImageFile.exists()) {
-                    bitmap = android.graphics.BitmapFactory.decodeFile(cameraImageFile.getAbsolutePath());
-                    android.util.Log.d("PvMActivity", "从文件加载图片: " + (bitmap != null ? bitmap.getWidth() + "x" + bitmap.getHeight() : "null"));
-                }
-                
-                // 备用方案：从data intent获取图片
-                if (bitmap == null && data != null && data.getExtras() != null) {
-                    android.util.Log.d("PvMActivity", "尝试从data extras获取图片");
-                    Object extra = data.getExtras().get("data");
-                    if (extra instanceof android.graphics.Bitmap) {
-                        bitmap = (android.graphics.Bitmap) extra;
-                        android.util.Log.d("PvMActivity", "从data获取图片: " + bitmap.getWidth() + "x" + bitmap.getHeight());
-                    }
-                }
-                
-                if (bitmap != null) {
-                    // 读取 EXIF 方向并旋转图片到正方向
-                    if (cameraImageFile != null && cameraImageFile.exists()) {
-                        try {
-                            android.media.ExifInterface exif = new android.media.ExifInterface(cameraImageFile.getAbsolutePath());
-                            int orientation = exif.getAttributeInt(android.media.ExifInterface.TAG_ORIENTATION, 
-                                    android.media.ExifInterface.ORIENTATION_NORMAL);
-                            android.graphics.Matrix matrix = new android.graphics.Matrix();
-                            switch (orientation) {
-                                case android.media.ExifInterface.ORIENTATION_ROTATE_90:
-                                    matrix.postRotate(90);
-                                    break;
-                                case android.media.ExifInterface.ORIENTATION_ROTATE_180:
-                                    matrix.postRotate(180);
-                                    break;
-                                case android.media.ExifInterface.ORIENTATION_ROTATE_270:
-                                    matrix.postRotate(270);
-                                    break;
-                                case android.media.ExifInterface.ORIENTATION_FLIP_HORIZONTAL:
-                                    matrix.postScale(-1, 1);
-                                    break;
-                                case android.media.ExifInterface.ORIENTATION_FLIP_VERTICAL:
-                                    matrix.postScale(1, -1);
-                                    break;
-                                default:
-                                    break;
-                            }
-                            if (orientation != android.media.ExifInterface.ORIENTATION_NORMAL 
-                                    && orientation != android.media.ExifInterface.ORIENTATION_UNDEFINED) {
-                                android.graphics.Bitmap rotated = android.graphics.Bitmap.createBitmap(
-                                        bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-                                if (rotated != bitmap) {
-                                    bitmap.recycle();
-                                    bitmap = rotated;
-                                }
-                                android.util.Log.d("PvMActivity", "已旋转图片: orientation=" + orientation 
-                                        + ", 尺寸=" + bitmap.getWidth() + "x" + bitmap.getHeight());
-                            }
-                        } catch (Exception e) {
-                            android.util.Log.e("PvMActivity", "读取EXIF失败: " + e.getMessage());
-                        }
-                    } else {
-                        android.util.Log.w("PvMActivity", "cameraImageFile为空或不存在，跳过EXIF读取");
-                    }
-                }
-            } else if (requestCode == 1005 && data != null) {
-                // 图片选择结果
-                Uri imageUri = data.getData();
-                if (imageUri != null) {
-                    try {
-                        InputStream inputStream = getContentResolver().openInputStream(imageUri);
-                        bitmap = android.graphics.BitmapFactory.decodeStream(inputStream);
-                        if (inputStream != null) {
-                            inputStream.close();
-                        }
-                    } catch (Exception e) {
-                        android.util.Log.e("PvMActivity", "Error loading image: " + e.getMessage());
-                    }
-                }
-            }
-            
-            if (bitmap != null) {
-                // 缩放图片到合理大小，防止OOM
-                int maxSize = 1280;
-                if (bitmap.getWidth() > maxSize || bitmap.getHeight() > maxSize) {
-                    float scale = Math.min((float) maxSize / bitmap.getWidth(), (float) maxSize / bitmap.getHeight());
-                    int newWidth = Math.round(bitmap.getWidth() * scale);
-                    int newHeight = Math.round(bitmap.getHeight() * scale);
-                    android.graphics.Bitmap scaled = android.graphics.Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
-                    if (scaled != bitmap) {
-                        bitmap.recycle();
-                        bitmap = scaled;
-                    }
-                    android.util.Log.d("PvMActivity", "图片已缩放: " + newWidth + "x" + newHeight);
-                }
-                processRecognitionResult(bitmap);
-            } else {
-                Toast.makeText(this, "无法加载图片", Toast.LENGTH_SHORT).show();
+        } else if ((requestCode == 100 || requestCode == 101) && resultCode == RESULT_OK) {
+            // 处理相机拍照或图片选择结果 - 使用 PhotoCaptureManager
+            if (photoCaptureManager != null) {
+                photoCaptureManager.handleActivityResult(requestCode, resultCode, data);
             }
         }
     }
@@ -952,8 +775,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (requestCode == 1006) {
             if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
                 // 相机权限已授予，重新启动相机
-                android.util.Log.d("PvMActivity", "相机权限已授予，重新启动相机");
-                dispatchCameraIntent();
+                LogUtils.d("PvMActivity", "相机权限已授予，重新启动相机");
+                if (photoCaptureManager != null) {
+                    photoCaptureManager.handleCameraClick();
+                }
             } else {
                 Toast.makeText(this, "需要相机权限才能拍照识别", Toast.LENGTH_SHORT).show();
             }
@@ -1012,16 +837,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         initTimeUpdateExecutor();
         
         // 安全重置相机/图片选择器标志（防止状态卡住）
-        // 注意：这里不直接重置，因为onResume可能在onActivityResult之前调用
-        // 只在超过冷却时间后才重置
-        long now = System.currentTimeMillis();
-        if (isLaunchingCamera.get() && (now - lastCameraLaunchTime > LAUNCH_COOLDOWN_MS * 2)) {
-            android.util.Log.d("PvMActivity", "onResume: 检测到相机标志可能卡住，重置");
-            isLaunchingCamera.set(false);
-        }
-        if (isLaunchingGallery.get() && (now - lastGalleryLaunchTime > LAUNCH_COOLDOWN_MS * 2)) {
-            android.util.Log.d("PvMActivity", "onResume: 检测到图片选择器标志可能卡住，重置");
-            isLaunchingGallery.set(false);
+        if (photoCaptureManager != null) {
+            photoCaptureManager.resetFlagsOnResume();
         }
     }
 
@@ -1048,27 +865,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             LogUtils.i("Perf", "onDestroy background cleanup cost=" + (System.currentTimeMillis() - cleanupStartMs) + "ms");
         }, "pvm-destroy-cleanup").start();
 
-        // 释放音乐资源
-        if (backMusic != null) {
-            backMusic.release();
-            backMusic = null;
-        }
-        if (selectMusic != null) {
-            selectMusic.release();
-            selectMusic = null;
-        }
-        if (clickMusic != null) {
-            clickMusic.release();
-            clickMusic = null;
-        }
-        if (checkMusic != null) {
-            checkMusic.release();
-            checkMusic = null;
-        }
-        if (winMusic != null) {
-            winMusic.release();
-            winMusic = null;
-        }
+        GameResourceManager.getInstance().release();
+        
+        backMusic = null;
+        selectMusic = null;
+        clickMusic = null;
+        checkMusic = null;
+        winMusic = null;
+        setting = null;
         // 清理静态引用
         if (weakInstance != null && weakInstance.get() == this) {
             weakInstance.clear();

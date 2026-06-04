@@ -576,9 +576,9 @@ public class ChessInfo implements Cloneable, Serializable {
 
     @Override
     public Object clone() throws CloneNotSupportedException {
-        ChessInfo info = (ChessInfo) super.clone();
-        
+        ChessInfo info;
         synchronized (lock) {
+            info = (ChessInfo) super.clone();
             // 深拷贝棋盘
             info.piece = new int[10][9];
             for (int i = 0; i < 10; i++) {

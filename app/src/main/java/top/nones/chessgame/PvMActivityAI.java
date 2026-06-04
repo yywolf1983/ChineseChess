@@ -39,17 +39,7 @@ public class PvMActivityAI {
     
     // 播放音效
     private void playEffect(MediaPlayer mediaPlayer) {
-        if (mediaPlayer != null) {
-            // 如果setting为null，默认播放音效；否则检查isEffectPlay设置
-            if (PvMActivity.setting == null || PvMActivity.setting.isEffectPlay) {
-                try {
-                    mediaPlayer.seekTo(0);
-                    mediaPlayer.start();
-                } catch (Exception e) {
-                    LogUtils.e("PvMActivityAI", "播放音效失败", e);
-                }
-            }
-        }
+        Utils.SoundManager.playEffect(mediaPlayer);
     }
     
     // 初始化线程池

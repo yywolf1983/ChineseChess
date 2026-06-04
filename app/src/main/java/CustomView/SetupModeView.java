@@ -12,6 +12,8 @@ import android.view.View;
 
 import top.nones.chessgame.R;
 
+import Utils.LogUtils;
+
 import Info.ChessInfo;
 
 public class SetupModeView extends View {
@@ -70,7 +72,7 @@ public class SetupModeView extends View {
             BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, pieceSize, pieceSize);
             BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, pieceSize, pieceSize);
         } catch (Exception e) {
-            android.util.Log.e("SetupModeView", "Error loading images: " + e.getMessage());
+            LogUtils.e("SetupModeView", "Error loading images: " + e.getMessage());
             // 确保即使图片加载失败，应用也能继续运行
         }
     }

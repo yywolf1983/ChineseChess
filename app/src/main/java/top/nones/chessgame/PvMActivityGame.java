@@ -21,17 +21,7 @@ public class PvMActivityGame {
     
     // 播放音效
     private void playEffect(MediaPlayer mediaPlayer) {
-        if (mediaPlayer != null) {
-            boolean shouldPlay = PvMActivity.setting == null || PvMActivity.setting.isEffectPlay;
-            if (shouldPlay) {
-                try {
-                    mediaPlayer.seekTo(0);
-                    mediaPlayer.start();
-                } catch (Exception e) {
-                    LogUtils.e("PvMActivityGame", "播放音效失败", e);
-                }
-            }
-        }
+        Utils.SoundManager.playEffect(mediaPlayer);
     }
     
     // 设置支招信息，并记录是给哪一方的
@@ -69,49 +59,7 @@ public class PvMActivityGame {
     
     // 检查双方老将是否见面
     private boolean isKingFaceToFace(int[][] piece) {
-        if (piece == null) {
-            return false;
-        }
-        
-        int redKingRow = -1, redKingCol = -1;
-        int blackKingRow = -1, blackKingCol = -1;
-        
-        // 找到红帅和黑将的位置
-        for (int i = 0; i < 10; i++) {
-            if (piece[i] == null) {
-                continue;
-            }
-            for (int j = 0; j < 9; j++) {
-                if (piece[i][j] == 8) { // 红帅
-                    redKingRow = i;
-                    redKingCol = j;
-                } else if (piece[i][j] == 1) { // 黑将
-                    blackKingRow = i;
-                    blackKingCol = j;
-                }
-            }
-        }
-        
-        // 检查是否都找到了
-        if (redKingRow == -1 || blackKingRow == -1) {
-            return false;
-        }
-        
-        // 检查是否在同一列
-        if (redKingCol != blackKingCol) {
-            return false;
-        }
-        
-        // 检查中间是否有棋子
-        int start = Math.min(redKingRow, blackKingRow) + 1;
-        int end = Math.max(redKingRow, blackKingRow);
-        for (int i = start; i < end; i++) {
-            if (piece[i] == null || piece[i][redKingCol] != 0) {
-                return false;
-            }
-        }
-        
-        return true;
+        return Rule.isKingFaceToFace(piece);
     }
     
     // 处理触摸事件

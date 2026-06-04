@@ -766,4 +766,46 @@ public class Rule {
         return true; // 没有合法移动，是被困毙
     }
 
+    public static boolean isKingFaceToFace(int[][] piece) {
+        if (piece == null) {
+            return false;
+        }
+        
+        int redKingX = -1, redKingY = -1;
+        int blackKingX = -1, blackKingY = -1;
+        
+        for (int i = 0; i < 10; i++) {
+            if (piece[i] == null) {
+                continue;
+            }
+            for (int j = 0; j < 9; j++) {
+                if (piece[i][j] == 8) {
+                    redKingX = j;
+                    redKingY = i;
+                } else if (piece[i][j] == 1) {
+                    blackKingX = j;
+                    blackKingY = i;
+                }
+            }
+        }
+        
+        if (redKingX == -1 || blackKingX == -1) {
+            return false;
+        }
+        
+        if (redKingX != blackKingX) {
+            return false;
+        }
+        
+        int start = Math.min(redKingY, blackKingY) + 1;
+        int end = Math.max(redKingY, blackKingY);
+        for (int i = start; i < end; i++) {
+            if (piece[i] == null || piece[i][redKingX] != 0) {
+                return false;
+            }
+        }
+        
+        return true;
+    }
+
 }

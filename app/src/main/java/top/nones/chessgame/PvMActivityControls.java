@@ -37,17 +37,7 @@ public class PvMActivityControls {
     
     // 播放音效
     private void playEffect(MediaPlayer mediaPlayer) {
-        if (mediaPlayer != null) {
-            boolean shouldPlay = PvMActivity.setting == null || PvMActivity.setting.isEffectPlay;
-            if (shouldPlay) {
-                try {
-                    mediaPlayer.seekTo(0);
-                    mediaPlayer.start();
-                } catch (Exception e) {
-                    LogUtils.e("PvMActivityControls", "播放音效失败", e);
-                }
-            }
-        }
+        Utils.SoundManager.playEffect(mediaPlayer);
     }
     
     // 递归设置按钮监听器，处理嵌套布局
@@ -693,37 +683,7 @@ public class PvMActivityControls {
     
     // 检查双方老将是否见面
     private boolean isKingFaceToFace(int[][] piece) {
-        // 查找红帅和黑将的位置
-        int redKingX = -1, redKingY = -1;
-        int blackKingX = -1, blackKingY = -1;
-        
-        for (int i = 0; i < 10; i++) {
-            for (int j = 0; j < 9; j++) {
-                if (piece[i][j] == 8) { // 红帅
-                    redKingX = j;
-                    redKingY = i;
-                } else if (piece[i][j] == 1) { // 黑将
-                    blackKingX = j;
-                    blackKingY = i;
-                }
-            }
-        }
-        
-        // 如果双方老将都存在且在同一列
-        if (redKingX != -1 && blackKingX != -1 && redKingX == blackKingX) {
-            // 检查中间是否有棋子
-            int startY = Math.min(redKingY, blackKingY) + 1;
-            int endY = Math.max(redKingY, blackKingY) - 1;
-            
-            for (int y = startY; y <= endY; y++) {
-                if (piece[y][redKingX] != 0) {
-                    return false; // 中间有棋子，不会见面
-                }
-            }
-            return true; // 中间没有棋子，老将见面
-        }
-        
-        return false;
+        return Rule.isKingFaceToFace(piece);
     }
     
     // 检查游戏状态
