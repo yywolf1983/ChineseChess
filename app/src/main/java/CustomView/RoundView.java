@@ -256,13 +256,10 @@ public class RoundView extends View {
         modeTextPaint.setTextSize(convertDpToPixel(16, getContext()));
         modeTextPaint.setStrokeWidth(convertDpToPixel(1f, getContext()));
         modeTextPaint.setAntiAlias(true);
-        modeTextPaint.setColor(Color.rgb(255, 255, 255));
+        modeTextPaint.setColor(Color.rgb(255, 225, 150));
         modeTextPaint.setFakeBoldText(true);
         modeTextPaint.setStyle(Paint.Style.FILL);
-        modeTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
-            convertDpToPixel(0.3f, getContext()), 
-            convertDpToPixel(0.3f, getContext()), 
-            Color.argb(25, 0, 0, 0));
+        modeTextPaint.clearShadowLayer();
         modeTextPaint.setStrokeWidth(2f);
 
         // 信息文本画笔（评分和搜索深度）
@@ -318,30 +315,9 @@ public class RoundView extends View {
         float modeTextSize = convertDpToPixel(16, getContext());
         modeTextPaint.setTextSize(modeTextSize);
         modeTextPaint.setTextAlign(Paint.Align.LEFT);
-        modeTextPaint.setColor(Color.rgb(255, 255, 255));
+        modeTextPaint.setColor(Color.rgb(255, 225, 150));
         modeTextPaint.setFakeBoldText(true);
-        modeTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
-            convertDpToPixel(0.5f, getContext()), 
-            convertDpToPixel(0.5f, getContext()), 
-            Color.argb(30, 0, 0, 0));
-        
-        float modeTextWidth = modeTextPaint.measureText(modeText);
-        float paddingX = convertDpToPixel(12, getContext());
-        float paddingY = convertDpToPixel(4, getContext());
-        float bgX = convertDpToPixel(6, getContext());
-        float bgY = row1Y - modeTextSize * 0.8f - paddingY;
-        float bgWidth = modeTextWidth + paddingX * 2;
-        float bgHeight = modeTextSize * 1.2f + paddingY * 2;
-        
-        Paint bgPaint = new Paint();
-        bgPaint.setColor(Color.argb(100, 0, 0, 0));
-        bgPaint.setAntiAlias(true);
-        bgPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
-            convertDpToPixel(0.5f, getContext()), 
-            convertDpToPixel(0.5f, getContext()), 
-            Color.argb(25, 0, 0, 0));
-        canvas.drawRoundRect(bgX, bgY, bgX + bgWidth, bgY + bgHeight, 
-            convertDpToPixel(8, getContext()), convertDpToPixel(8, getContext()), bgPaint);
+        modeTextPaint.clearShadowLayer();
         
         canvas.drawText(modeText, convertDpToPixel(10, getContext()), row1Y, modeTextPaint);
         
@@ -352,7 +328,7 @@ public class RoundView extends View {
             depthText = " D" + currentDepthForTurn;
         }
         if (!depthText.isEmpty()) {
-            float depthTextX = convertDpToPixel(10, getContext()) + modeTextWidth + convertDpToPixel(4, getContext());
+            float depthTextX = convertDpToPixel(10, getContext()) + modeTextPaint.measureText(modeText) + convertDpToPixel(4, getContext());
             infoTextPaint.setTextSize(convertDpToPixel(9, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             canvas.drawText(depthText, depthTextX, row1Y, infoTextPaint);
