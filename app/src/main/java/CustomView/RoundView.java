@@ -225,7 +225,7 @@ public class RoundView extends View {
         borderPaint.setAntiAlias(true);
 
         // 统一文字大小 - 使用dp单位
-        float textSize = convertDpToPixel(14, getContext());
+        float textSize = convertDpToPixel(12, getContext());
 
         // 红色文本画笔（红方回合）- 使用更醒目的红色
         redTextPaint = new Paint();
@@ -253,7 +253,7 @@ public class RoundView extends View {
 
         // 模式文本画笔（突出显示模式）
         modeTextPaint = new Paint();
-        modeTextPaint.setTextSize(convertDpToPixel(16, getContext()));
+        modeTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         modeTextPaint.setStrokeWidth(convertDpToPixel(1f, getContext()));
         modeTextPaint.setAntiAlias(true);
         modeTextPaint.setColor(Color.rgb(255, 225, 150));
@@ -304,15 +304,15 @@ public class RoundView extends View {
         canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint);
         
         // 计算垂直间距
-        float paddingTop = convertDpToPixel(8, getContext());
-        float lineHeight = convertDpToPixel(26, getContext());
+        float paddingTop = convertDpToPixel(6, getContext());
+        float lineHeight = convertDpToPixel(24, getContext());
         
         // ========== 第1行：游戏模式（左） | 当前行棋方（居中突出） | 回合数（右） ==========
         float row1Y = paddingTop + lineHeight * 0.8f;
         
-        // 游戏模式（左侧）+ 深度 - 带背景阴影框
+        // 游戏模式（左侧）+ 深度
         String modeText = getGameModeName(gameMode);
-        float modeTextSize = convertDpToPixel(16, getContext());
+        float modeTextSize = convertDpToPixel(14, getContext());
         modeTextPaint.setTextSize(modeTextSize);
         modeTextPaint.setTextAlign(Paint.Align.LEFT);
         modeTextPaint.setColor(Color.rgb(255, 225, 150));
@@ -337,7 +337,7 @@ public class RoundView extends View {
         // 当前行棋方（居中，突出显示）
         String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        float turnTextSize = convertDpToPixel(20, getContext());
+        float turnTextSize = convertDpToPixel(18, getContext());
         turnPaint.setTextSize(turnTextSize);
         turnPaint.setTextAlign(Paint.Align.CENTER);
         turnPaint.setFakeBoldText(true);
@@ -347,7 +347,7 @@ public class RoundView extends View {
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "第" + roundCount + "回合";
-        float stepTextSize = convertDpToPixel(16, getContext());
+        float stepTextSize = convertDpToPixel(14, getContext());
         infoTextPaint.setTextSize(stepTextSize);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         infoTextPaint.setFakeBoldText(true);
@@ -420,21 +420,21 @@ public class RoundView extends View {
         }
         
         // 红方时间（左侧）
-        redTextPaint.setTextSize(convertDpToPixel(16, getContext()));
+        redTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         redTextPaint.setTextAlign(Paint.Align.LEFT);
         redTextPaint.setFakeBoldText(true);
         String redText = "红 " + formatTime(redTime);
         canvas.drawText(redText, convertDpToPixel(10, getContext()), row2Y, redTextPaint);
         
         // 评分（居中）
-        float scoreTextSize = convertDpToPixel(18, getContext());
+        float scoreTextSize = convertDpToPixel(14, getContext());
         infoTextPaint.setTextSize(scoreTextSize);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         infoTextPaint.setFakeBoldText(true);
         canvas.drawText(scoreText, width / 2, row2Y, infoTextPaint);
         
         // 黑方时间（右侧）
-        blackTextPaint.setTextSize(convertDpToPixel(16, getContext()));
+        blackTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         blackTextPaint.setTextAlign(Paint.Align.RIGHT);
         blackTextPaint.setFakeBoldText(true);
         String blackText = "黑 " + formatTime(blackTime);
@@ -585,7 +585,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(92, getContext()); // 适配当前字体大小
+            height = (int) convertDpToPixel(80, getContext()); // 适配当前字体大小
         }
         
         viewWidth = width;
