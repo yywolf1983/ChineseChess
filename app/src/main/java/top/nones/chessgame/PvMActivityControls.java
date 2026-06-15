@@ -238,6 +238,10 @@ public class PvMActivityControls {
             builder.setTitle("选择对战模式");
             builder.setItems(new String[]{"双人对战", "人机对战(玩家红)", "人机对战(玩家黑)", "双机对战"}, (dialog, which) -> {
                 try {
+                    // 先停止当前AI分析，避免isAIAnalyzing标志残留导致棋子无法选中
+                    if (activity.aiManager != null) {
+                        activity.aiManager.stopAIAnalysis();
+                    }
                     activity.gameMode = which;
                     // 更新RoundView的游戏模式显示
                     if (activity.roundView != null) {
