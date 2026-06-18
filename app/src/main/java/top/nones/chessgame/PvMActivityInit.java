@@ -110,6 +110,7 @@ public class PvMActivityInit {
             
             PvMActivity.selectMusic = manager.getSelectMusic();
             PvMActivity.clickMusic = manager.getClickMusic();
+            PvMActivity.captureMusic = manager.getCaptureMusic();
             PvMActivity.checkMusic = manager.getCheckMusic();
             PvMActivity.winMusic = manager.getWinMusic();
             
