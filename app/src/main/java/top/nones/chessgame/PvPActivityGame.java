@@ -259,17 +259,13 @@ public class PvPActivityGame {
 
             // 在主线程中执行UI操作
             activity.runOnUiThread(() -> {
-                if (isCapture) {
-                    if (PvPActivityInit.getCaptureMusic() != null) {
-                        PvPActivityInit.playEffect(PvPActivityInit.getCaptureMusic());
-                    }
-                } else {
+                checkGameStatus(!isRed, isCapture);
+                
+                if (!chessInfo.IsChecked && !isCapture) {
                     if (PvPActivityInit.getClickMusic() != null) {
                         PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
                     }
                 }
-
-                checkGameStatus(!isRed);
 
                 if (chessView != null) {
                     chessView.requestDraw();
@@ -287,7 +283,7 @@ public class PvPActivityGame {
         }).start();
     }
 
-    private void checkGameStatus(final boolean isRed) {
+    private void checkGameStatus(final boolean isRed, final boolean isCapture) {
         // 快速检查：只在主线程中检查将军和胜负
         new Thread(() -> {
             int key = 0;
@@ -307,6 +303,11 @@ public class PvPActivityGame {
                         }
                         // 移除Toast提示，通过界面显示提示信息
                         lastCheckHintTime = currentTime;
+                    }
+                } else if (isCapture) {
+                    // 如果不是将军但吃了子，播放吃子音效
+                    if (PvPActivityInit.getCaptureMusic() != null) {
+                        PvPActivityInit.playEffect(PvPActivityInit.getCaptureMusic());
                     }
                 }
             });

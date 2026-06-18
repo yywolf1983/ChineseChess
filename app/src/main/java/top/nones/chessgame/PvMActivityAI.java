@@ -474,14 +474,13 @@ public class PvMActivityAI {
             this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
             this.activity.chessInfo.isMachine = true;
             
-            // 播放AI落子音效
-            if (tmp != 0) {
+            // 播放AI落子音效，将军优先
+            if (isCheck) {
+                playEffect(this.activity.checkMusic);
+            } else if (tmp != 0) {
                 playEffect(this.activity.captureMusic);
             } else {
                 playEffect(this.activity.clickMusic);
-            }
-            if (isCheck) {
-                playEffect(this.activity.checkMusic);
             }
         
             // 记录AI着法历史

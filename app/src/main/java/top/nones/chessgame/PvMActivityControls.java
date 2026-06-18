@@ -522,13 +522,6 @@ public class PvMActivityControls {
                                             activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
                                             activity.chessInfo.ret.clear(); // 清空可移动位置
 
-                                            // 根据是否吃子播放不同音效
-                                            if (tmp != 0) {
-                                                playEffect(activity.captureMusic);
-                                            } else {
-                                                playEffect(activity.clickMusic);
-                                            }
-
                                             // 生成并记录标准象棋记谱走法
                                             String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
                                             if (moveString != null) {
@@ -540,10 +533,16 @@ public class PvMActivityControls {
 
                                             // 检查是否将军
                                             boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
+                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
+                                            
+                                            // 播放音效，将军优先
                                             if (isCheck) {
                                                 playEffect(activity.checkMusic);
+                                            } else if (tmp != 0) {
+                                                playEffect(activity.captureMusic);
+                                            } else {
+                                                playEffect(activity.clickMusic);
                                             }
-                                            activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos, piece, tmp, isCheck);
 
                                             // 开始对方的回合计时
                                             activity.startTurnTimer();
