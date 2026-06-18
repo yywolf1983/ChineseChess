@@ -475,7 +475,11 @@ public class PvMActivityAI {
             this.activity.chessInfo.isMachine = true;
             
             // 播放AI落子音效
-            playEffect(this.activity.clickMusic);
+            if (tmp != 0) {
+                playEffect(this.activity.captureMusic);
+            } else {
+                playEffect(this.activity.clickMusic);
+            }
             if (isCheck) {
                 playEffect(this.activity.checkMusic);
             }
@@ -652,6 +656,10 @@ public class PvMActivityAI {
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
                 LogUtils.e("PvMActivityAI", "操作失败", e);
+            } finally {
+                // 确保无论是否发生异常，锁都会被释放
+                aiInstance.stopAISearch();
+                aiInstance.finishAnalyzing();
             }
             
             currentActivity = aiInstance.activity;
@@ -690,9 +698,6 @@ public class PvMActivityAI {
                 if (move != null) {
                     aiInstance.executeAIMove(move);
                 } else {
-                    aiInstance.stopAISearch();
-                    aiInstance.finishAnalyzing();
-                    
                     if (activity.chessInfo != null) {
                         // 移除胜利判断，只保留被将判断
                         if (aiInstance.aiRetryCount < 3) {
@@ -708,9 +713,6 @@ public class PvMActivityAI {
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "执行AI走法异常: " + e.getMessage());
                 LogUtils.e("PvMActivityAI", "操作失败", e);
-                // 确保AI搜索被停止
-                aiInstance.stopAISearch();
-                aiInstance.finishAnalyzing();
                 aiInstance.aiRetryCount = 0;
             }
         }

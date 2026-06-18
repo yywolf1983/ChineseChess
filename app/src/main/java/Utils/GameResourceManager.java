@@ -15,6 +15,7 @@ public class GameResourceManager {
     private MediaPlayer backMusic;
     private MediaPlayer selectMusic;
     private MediaPlayer clickMusic;
+    private MediaPlayer captureMusic;
     private MediaPlayer checkMusic;
     private MediaPlayer winMusic;
     private SharedPreferences sharedPreferences;
@@ -49,6 +50,12 @@ public class GameResourceManager {
             clickMusic = MediaPlayer.create(context, R.raw.click);
             if (clickMusic != null) {
                 clickMusic.setVolume(5f, 5f);
+            }
+        }
+        if (captureMusic == null) {
+            captureMusic = MediaPlayer.create(context, R.raw.capture);
+            if (captureMusic != null) {
+                captureMusic.setVolume(5f, 5f);
             }
         }
         if (checkMusic == null) {
@@ -91,6 +98,10 @@ public class GameResourceManager {
         return clickMusic;
     }
 
+    public MediaPlayer getCaptureMusic() {
+        return captureMusic;
+    }
+
     public MediaPlayer getCheckMusic() {
         return checkMusic;
     }
@@ -115,6 +126,10 @@ public class GameResourceManager {
         if (clickMusic != null) {
             clickMusic.release();
             clickMusic = null;
+        }
+        if (captureMusic != null) {
+            captureMusic.release();
+            captureMusic = null;
         }
         if (checkMusic != null) {
             checkMusic.release();

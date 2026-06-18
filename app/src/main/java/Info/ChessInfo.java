@@ -276,7 +276,8 @@ public class ChessInfo implements Cloneable, Serializable {
             else if (capturedPiece == 11 || capturedPiece == 12 || capturedPiece == 13 || capturedPiece == 14) {
                 attackNum_R--;
             }
-        } else {
+        } else if (!IsRedGo) {
+            // 只有黑方走完一步（完成一个完整回合）且没有吃子时，才增加peaceRound
             peaceRound++;
         }
         
@@ -318,7 +319,7 @@ public class ChessInfo implements Cloneable, Serializable {
         
         if (isCheck) {
             // 当前走棋方将军
-            if (!IsRedGo) {
+            if (IsRedGo) {
                 // 红方走棋并将军
                 consecutiveCheckRed++;
                 consecutiveCheckBlack = 0; // 重置对方的连续将军计数
@@ -329,7 +330,7 @@ public class ChessInfo implements Cloneable, Serializable {
             }
         } else {
             // 没有将军，重置当前走棋方的连续将军计数
-            if (!IsRedGo) {
+            if (IsRedGo) {
                 consecutiveCheckRed = 0;
             } else {
                 consecutiveCheckBlack = 0;
@@ -383,43 +384,75 @@ public class ChessInfo implements Cloneable, Serializable {
                     }
                     
                     if (attackingSamePiece) {
-                        // 连续攻击同一棋子
-                        if (!IsRedGo) {
-                            consecutiveAttackRed++;
-                            consecutiveAttackBlack = 0; // 重置对方的连续攻击计数
+                            // 连续攻击同一棋子
+                            boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
+                            if (movingPieceIsRed) {
+                                consecutiveAttackRed++;
+                                consecutiveAttackBlack = 0;
+                            } else {
+                                consecutiveAttackBlack++;
+                                consecutiveAttackRed = 0;
+                            }
                         } else {
-                            consecutiveAttackBlack++;
-                            consecutiveAttackRed = 0; // 重置对方的连续攻击计数
-                        }
-                    } else {
-                        // 攻击不同的棋子，重置计数
-                        resetConsecutiveAttackInternal();
-                        // 记录新的被攻击棋子
-                        for (Pos attackPos : possibleAttacks) {
-                            int targetPiece = piece[attackPos.y][attackPos.x];
-                            if (targetPiece != 0) {
-                                boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
-                                boolean targetPieceIsRed = targetPiece >= 8 && targetPiece <= 14;
-                                if (movingPieceIsRed != targetPieceIsRed) {
+                            // 检查是否攻击同一类型的棋子（目标棋子可能被移动）
+                            boolean attackingSameType = false;
+                            for (Pos attackPos : possibleAttacks) {
+                                int targetPiece = piece[attackPos.y][attackPos.x];
+                                if (targetPiece != 0 && targetPiece == lastAttackedPieceType) {
+                                    attackingSameType = true;
                                     lastAttackedPiecePos = attackPos;
-                                    lastAttackedPieceType = targetPiece;
                                     break;
                                 }
                             }
+                            
+                            if (attackingSameType) {
+                                // 连续攻击同一类型的棋子
+                                boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
+                                if (movingPieceIsRed) {
+                                    consecutiveAttackRed++;
+                                    consecutiveAttackBlack = 0;
+                                } else {
+                                    consecutiveAttackBlack++;
+                                    consecutiveAttackRed = 0;
+                                }
+                            } else {
+                                // 攻击不同的棋子，重置计数
+                                resetConsecutiveAttackInternal();
+                                // 记录新的被攻击棋子
+                                for (Pos attackPos : possibleAttacks) {
+                                    int targetPiece = piece[attackPos.y][attackPos.x];
+                                    if (targetPiece != 0) {
+                                        boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
+                                        boolean targetPieceIsRed = targetPiece >= 8 && targetPiece <= 14;
+                                        if (movingPieceIsRed != targetPieceIsRed) {
+                                            lastAttackedPiecePos = attackPos;
+                                            lastAttackedPieceType = targetPiece;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
                         }
-                    }
                 }
             } else {
-                // 第一次攻击，记录被攻击的棋子
+                // 第一次攻击，记录被攻击的棋子并增加计数
                 List<Pos> possibleAttacks = Rule.PossibleMoves(piece, toPos.x, toPos.y, movingPieceType);
                 for (Pos attackPos : possibleAttacks) {
                     int targetPiece = piece[attackPos.y][attackPos.x];
-                    if (targetPiece != 0) {
+                    if (targetPiece != 0 && movingPieceType != 0) {
                         boolean movingPieceIsRed = movingPieceType >= 8 && movingPieceType <= 14;
                         boolean targetPieceIsRed = targetPiece >= 8 && targetPiece <= 14;
                         if (movingPieceIsRed != targetPieceIsRed) {
                             lastAttackedPiecePos = attackPos;
                             lastAttackedPieceType = targetPiece;
+                            // 增加首次攻击计数
+                            if (movingPieceIsRed) {
+                                consecutiveAttackRed = 1;
+                                consecutiveAttackBlack = 0;
+                            } else {
+                                consecutiveAttackBlack = 1;
+                                consecutiveAttackRed = 0;
+                            }
                             break;
                         }
                     }
@@ -482,23 +515,24 @@ public class ChessInfo implements Cloneable, Serializable {
         synchronized (lock) {
             String currentHash = generatePositionHashInternal();
             Integer count = positionHistory.get(currentHash);
-            return count != null && count >= 3;
+            int totalCount = (count != null ? count : 0) + 1;
+            return totalCount >= 3;
         }
     }
     
     // 检查是否长将（连续将军超过规定次数）
     public boolean isPerpetualCheck() {
         synchronized (lock) {
-            // 连续将军超过3次判为长将
-            return consecutiveCheckRed >= 3 || consecutiveCheckBlack >= 3;
+            // 连续将军超过3次（即4次及以上）判为长将
+            return consecutiveCheckRed >= 4 || consecutiveCheckBlack >= 4;
         }
     }
     
     // 获取长将方（用于显示）
     public String getPerpetualCheckSide() {
         synchronized (lock) {
-            if (consecutiveCheckRed >= 3) return "红方";
-            if (consecutiveCheckBlack >= 3) return "黑方";
+            if (consecutiveCheckRed >= 4) return "红方";
+            if (consecutiveCheckBlack >= 4) return "黑方";
             return null;
         }
     }
@@ -506,8 +540,8 @@ public class ChessInfo implements Cloneable, Serializable {
     // 获取长捉方（用于显示）
     public String getPerpetualAttackSide() {
         synchronized (lock) {
-            if (consecutiveAttackRed >= 3) return "红方"; // 连续3次攻击同一棋子判为长捉
-            if (consecutiveAttackBlack >= 3) return "黑方";
+            if (consecutiveAttackRed >= 4) return "红方"; // 连续4次攻击同一棋子判为长捉
+            if (consecutiveAttackBlack >= 4) return "黑方";
             return null;
         }
     }
@@ -515,30 +549,30 @@ public class ChessInfo implements Cloneable, Serializable {
     // 检查是否单方长将
     public boolean isOneSidePerpetualCheck() {
         synchronized (lock) {
-            return (consecutiveCheckRed >= 3 && consecutiveCheckBlack == 0) || 
-                   (consecutiveCheckBlack >= 3 && consecutiveCheckRed == 0);
+            return (consecutiveCheckRed >= 4 && consecutiveCheckBlack == 0) || 
+                   (consecutiveCheckBlack >= 4 && consecutiveCheckRed == 0);
         }
     }
     
     // 检查是否单方长捉
     public boolean isOneSidePerpetualAttack() {
         synchronized (lock) {
-            return (consecutiveAttackRed >= 3 && consecutiveAttackBlack == 0) || 
-                   (consecutiveAttackBlack >= 3 && consecutiveAttackRed == 0);
+            return (consecutiveAttackRed >= 4 && consecutiveAttackBlack == 0) || 
+                   (consecutiveAttackBlack >= 4 && consecutiveAttackRed == 0);
         }
     }
     
     // 检查是否双方长将
     public boolean isBothSidesPerpetualCheck() {
         synchronized (lock) {
-            return consecutiveCheckRed >= 2 && consecutiveCheckBlack >= 2; // 双方各连续将军2次
+            return consecutiveCheckRed >= 3 && consecutiveCheckBlack >= 3; // 双方各连续将军3次
         }
     }
     
     // 检查是否双方长捉
     public boolean isBothSidesPerpetualAttack() {
         synchronized (lock) {
-            return consecutiveAttackRed >= 2 && consecutiveAttackBlack >= 2; // 双方各连续攻击2次
+            return consecutiveAttackRed >= 3 && consecutiveAttackBlack >= 3; // 双方各连续攻击3次
         }
     }
     
@@ -556,8 +590,8 @@ public class ChessInfo implements Cloneable, Serializable {
     public boolean isOneForbiddenOneAllowed() {
         synchronized (lock) {
             // 一方有禁止着法（长将或长捉），另一方没有
-            boolean redForbidden = (consecutiveCheckRed >= 3 || consecutiveAttackRed >= 3);
-            boolean blackForbidden = (consecutiveCheckBlack >= 3 || consecutiveAttackBlack >= 3);
+            boolean redForbidden = (consecutiveCheckRed >= 4 || consecutiveAttackRed >= 4);
+            boolean blackForbidden = (consecutiveCheckBlack >= 4 || consecutiveAttackBlack >= 4);
             return (redForbidden && !blackForbidden) || (!redForbidden && blackForbidden);
         }
     }
@@ -565,8 +599,8 @@ public class ChessInfo implements Cloneable, Serializable {
     // 获取禁止方
     public String getForbiddenSide() {
         synchronized (lock) {
-            boolean redForbidden = (consecutiveCheckRed >= 3 || consecutiveAttackRed >= 3);
-            boolean blackForbidden = (consecutiveCheckBlack >= 3 || consecutiveAttackBlack >= 3);
+            boolean redForbidden = (consecutiveCheckRed >= 4 || consecutiveAttackRed >= 4);
+            boolean blackForbidden = (consecutiveCheckBlack >= 4 || consecutiveAttackBlack >= 4);
             
             if (redForbidden && !blackForbidden) return "红方";
             if (!redForbidden && blackForbidden) return "黑方";

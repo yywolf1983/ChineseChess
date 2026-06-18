@@ -229,6 +229,7 @@ public class PvPActivityGame {
     private void executeMove(int i, int j, boolean isRed) {
         // 记录目标位置原来的棋子
         int tmp = chessInfo.piece[j][i];
+        boolean isCapture = tmp != 0;
         
         // 其他逻辑在后台线程执行
         new Thread(() -> {
@@ -258,8 +259,14 @@ public class PvPActivityGame {
 
             // 在主线程中执行UI操作
             activity.runOnUiThread(() -> {
-                if (PvPActivityInit.getClickMusic() != null) {
-                    PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
+                if (isCapture) {
+                    if (PvPActivityInit.getCaptureMusic() != null) {
+                        PvPActivityInit.playEffect(PvPActivityInit.getCaptureMusic());
+                    }
+                } else {
+                    if (PvPActivityInit.getClickMusic() != null) {
+                        PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
+                    }
                 }
 
                 checkGameStatus(!isRed);
@@ -454,7 +461,7 @@ public class PvPActivityGame {
         resetForbiddenCounters();
     }
     
-    // 处理默认强制变着
+    // 处理默认强制变着（三次重复局面等）
     private void handleDefaultForceVariation() {
         // 检查是否会立即输棋
         boolean willLose = checkWillLoseAfterForceVariation();
@@ -468,10 +475,17 @@ public class PvPActivityGame {
         
         resetForbiddenCounters();
         
-        // 显示浮窗提示
+        // 显示浮窗提示，明确要求制造重复局面的一方变着
         if (chessInfo.totalMoves - forceVariationHintRound >= 10) {
             activity.runOnUiThread(() -> {
-                showForceVariationHint("DEFAULT");
+                String ruleType = getViolatedRuleType();
+                if (ruleType.equals("THREEFOLD_REPETITION")) {
+                    // IsRedGo此时表示刚刚走完棋的一方（制造重复局面的一方）
+                    String violatingSide = chessInfo.IsRedGo ? "红方" : "黑方";
+                    showForceVariationHint("THREEFOLD_REPETITION", violatingSide + "制造重复局面，必须变着，不变判负");
+                } else {
+                    showForceVariationHint("DEFAULT");
+                }
                 forceVariationHintRound = chessInfo.totalMoves;
             });
         }

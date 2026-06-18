@@ -249,8 +249,12 @@ public class PvMActivityGame {
                             activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
                             activity.chessInfo.ret.clear(); // 清空可移动位置
 
-                            // 播放落子音效
-                            playEffect(activity.clickMusic);
+                            // 根据是否吃子播放不同音效
+                            if (tmp != 0) {
+                                playEffect(activity.captureMusic);
+                            } else {
+                                playEffect(activity.clickMusic);
+                            }
 
                             // 生成并记录标准象棋记谱走法
                             String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);

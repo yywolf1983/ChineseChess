@@ -25,6 +25,7 @@ public class PvPActivityInit {
     private static MediaPlayer backMusic;
     private static MediaPlayer selectMusic;
     private static MediaPlayer clickMusic;
+    private static MediaPlayer captureMusic;
     private static MediaPlayer checkMusic;
     private static MediaPlayer winMusic;
     private static Setting setting;
@@ -80,6 +81,10 @@ public class PvPActivityInit {
         clickMusic = MediaPlayer.create(activity, R.raw.click);
         if (clickMusic != null) {
             clickMusic.setVolume(5f, 5f);
+        }
+        captureMusic = MediaPlayer.create(activity, R.raw.capture);
+        if (captureMusic != null) {
+            captureMusic.setVolume(5f, 5f);
         }
         checkMusic = MediaPlayer.create(activity, R.raw.checkmate);
         if (checkMusic != null) {
@@ -175,6 +180,10 @@ public class PvPActivityInit {
 
     public static MediaPlayer getClickMusic() {
         return clickMusic;
+    }
+
+    public static MediaPlayer getCaptureMusic() {
+        return captureMusic;
     }
 
     public static MediaPlayer getCheckMusic() {

@@ -75,6 +75,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public static MediaPlayer backMusic;
     public static MediaPlayer selectMusic;
     public static MediaPlayer clickMusic;
+    public static MediaPlayer captureMusic;
     public static MediaPlayer checkMusic;
     public static MediaPlayer winMusic;
     public static SharedPreferences sharedPreferences;
@@ -870,6 +871,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         backMusic = null;
         selectMusic = null;
         clickMusic = null;
+        captureMusic = null;
         checkMusic = null;
         winMusic = null;
         setting = null;

@@ -458,6 +458,9 @@ public class PvMActivityControls {
                                             activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
                                             activity.chessInfo.ret.clear(); // 清空可移动位置
 
+                                            // 播放吃子音效
+                                            playEffect(activity.captureMusic);
+
                                             // 生成并记录标准象棋记谱走法
                                             String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
                                             if (moveString != null) {
@@ -519,8 +522,12 @@ public class PvMActivityControls {
                                             activity.chessInfo.Select = new int[]{-1, -1}; // 重置选中状态
                                             activity.chessInfo.ret.clear(); // 清空可移动位置
 
-                                            // 播放落子音效
-                                            playEffect(activity.clickMusic);
+                                            // 根据是否吃子播放不同音效
+                                            if (tmp != 0) {
+                                                playEffect(activity.captureMusic);
+                                            } else {
+                                                playEffect(activity.clickMusic);
+                                            }
 
                                             // 生成并记录标准象棋记谱走法
                                             String moveString = activity.generateMoveString(activity.chessInfo, piece, activity.chessInfo.prePos, activity.chessInfo.curPos, isRed);
@@ -765,18 +772,17 @@ public class PvMActivityControls {
                         return;
                     }
                     
-                    // 长将和长捉暂时不启用强制变着，只在真正的局面重复时启用
                     // 检查长将，后台强制变着并显示浮窗提示
-                    // if (activity.chessInfo.isPerpetualCheck()) {
-                    //     handleForceVariation();
-                    //     return;
-                    // }
+                    if (activity.chessInfo.isPerpetualCheck()) {
+                        handleForceVariation();
+                        return;
+                    }
                     
                     // 检查长捉，后台强制变着并显示浮窗提示
-                    // if (activity.chessInfo.getPerpetualAttackSide() != null) {
-                    //     handleForceVariation();
-                    //     return;
-                    // }
+                    if (activity.chessInfo.getPerpetualAttackSide() != null) {
+                        handleForceVariation();
+                        return;
+                    }
                 } else {
                     // 重置强制变着标志，允许下次检查
                     justExecutedForceVariation = false;
