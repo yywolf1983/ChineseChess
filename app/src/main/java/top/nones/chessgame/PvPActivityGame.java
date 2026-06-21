@@ -183,6 +183,14 @@ public class PvPActivityGame {
     private void handleRedMove(int i, int j) {
         if (chessInfo.IsChecked == false) {
             if (chessInfo.piece[j][i] >= 8 && chessInfo.piece[j][i] <= 14) {
+                boolean isChecked = Rule.isKingDanger(chessInfo.piece, true);
+                if (isChecked) {
+                    boolean canDefend = Rule.CanDefendCheck(chessInfo.piece, i, j, chessInfo.piece[j][i]);
+                    if (!canDefend) {
+                        showCheckHint();
+                        return;
+                    }
+                }
                 chessInfo.prePos = new Pos(i, j);
                 chessInfo.IsChecked = true;
                 chessInfo.ret = Rule.PossibleMoves(chessInfo.piece, i, j, chessInfo.piece[j][i]);
@@ -192,6 +200,14 @@ public class PvPActivityGame {
             }
         } else {
             if (chessInfo.piece[j][i] >= 8 && chessInfo.piece[j][i] <= 14) {
+                boolean isChecked = Rule.isKingDanger(chessInfo.piece, true);
+                if (isChecked) {
+                    boolean canDefend = Rule.CanDefendCheck(chessInfo.piece, i, j, chessInfo.piece[j][i]);
+                    if (!canDefend) {
+                        showCheckHint();
+                        return;
+                    }
+                }
                 chessInfo.prePos = new Pos(i, j);
                 chessInfo.ret = Rule.PossibleMoves(chessInfo.piece, i, j, chessInfo.piece[j][i]);
                 if (PvPActivityInit.getSelectMusic() != null) {
@@ -206,6 +222,14 @@ public class PvPActivityGame {
     private void handleBlackMove(int i, int j) {
         if (chessInfo.IsChecked == false) {
             if (chessInfo.piece[j][i] >= 1 && chessInfo.piece[j][i] <= 7) {
+                boolean isChecked = Rule.isKingDanger(chessInfo.piece, false);
+                if (isChecked) {
+                    boolean canDefend = Rule.CanDefendCheck(chessInfo.piece, i, j, chessInfo.piece[j][i]);
+                    if (!canDefend) {
+                        showCheckHint();
+                        return;
+                    }
+                }
                 chessInfo.prePos = new Pos(i, j);
                 chessInfo.IsChecked = true;
                 chessInfo.ret = Rule.PossibleMoves(chessInfo.piece, i, j, chessInfo.piece[j][i]);
@@ -215,6 +239,14 @@ public class PvPActivityGame {
             }
         } else {
             if (chessInfo.piece[j][i] >= 1 && chessInfo.piece[j][i] <= 7) {
+                boolean isChecked = Rule.isKingDanger(chessInfo.piece, false);
+                if (isChecked) {
+                    boolean canDefend = Rule.CanDefendCheck(chessInfo.piece, i, j, chessInfo.piece[j][i]);
+                    if (!canDefend) {
+                        showCheckHint();
+                        return;
+                    }
+                }
                 chessInfo.prePos = new Pos(i, j);
                 chessInfo.ret = Rule.PossibleMoves(chessInfo.piece, i, j, chessInfo.piece[j][i]);
                 if (PvPActivityInit.getSelectMusic() != null) {
@@ -231,6 +263,21 @@ public class PvPActivityGame {
         int tmp = chessInfo.piece[j][i];
         boolean isCapture = tmp != 0;
         
+        // 执行移动
+        int piece = chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x];
+        chessInfo.piece[j][i] = piece;
+        chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = 0;
+
+        // 检查移动后是否会导致自己被将军
+        boolean isCheckAfterMove = Rule.isKingDanger(chessInfo.piece, isRed);
+        if (isCheckAfterMove) {
+            // 撤销移动
+            chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] = piece;
+            chessInfo.piece[j][i] = tmp;
+            showSelfCheckHint();
+            return;
+        }
+
         // 其他逻辑在后台线程执行
         new Thread(() -> {
             // 执行其他操作
@@ -239,7 +286,6 @@ public class PvPActivityGame {
             chessInfo.curPos = new Pos(i, j);
 
             // 生成并记录标准象棋记谱走法
-            int piece = chessInfo.piece[j][i];
             String moveString = generateMoveString(piece, chessInfo.prePos, chessInfo.curPos, isRed);
             if (moveString != null) {
                 LogUtils.i("Move", (isRed ? "红方" : "黑方") + "走棋: " + moveString);
@@ -247,7 +293,7 @@ public class PvPActivityGame {
 
             // 检查是否将军
             boolean isCheck = Rule.isKingDanger(chessInfo.piece, !isRed);
-            chessInfo.updateAllInfo(chessInfo.prePos, chessInfo.curPos, chessInfo.piece[j][i], tmp, isCheck);
+            chessInfo.updateAllInfo(chessInfo.prePos, chessInfo.curPos, piece, tmp, isCheck);
 
             try {
                 if (infoSet != null) {
@@ -301,7 +347,9 @@ public class PvPActivityGame {
                         if (PvPActivityInit.getCheckMusic() != null) {
                             PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
                         }
-                        // 移除Toast提示，通过界面显示提示信息
+                        android.widget.Toast toast = android.widget.Toast.makeText(activity, "正在被将军", android.widget.Toast.LENGTH_SHORT);
+                        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+                        toast.show();
                         lastCheckHintTime = currentTime;
                     }
                 } else if (isCapture) {
@@ -579,6 +627,26 @@ public class PvPActivityGame {
         builder.show();
     }
     
+    private void showCheckHint() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastCheckHintTime > 1500) {
+            android.widget.Toast toast = android.widget.Toast.makeText(activity, "正被将军", android.widget.Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+            toast.show();
+            lastCheckHintTime = currentTime;
+        }
+    }
+
+    private void showSelfCheckHint() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastCheckHintTime > 1500) {
+            android.widget.Toast toast = android.widget.Toast.makeText(activity, "移动后将被将军", android.widget.Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+            toast.show();
+            lastCheckHintTime = currentTime;
+        }
+    }
+
     // 显示强制变着浮窗提示
     private void showForceVariationHint(String ruleType) {
         showForceVariationHint(ruleType, "");
@@ -626,6 +694,18 @@ public class PvPActivityGame {
             return;
         }
         
+        // 根据象棋规则判断
+        String forbiddenSide = chessInfo.getForbiddenSide();
+        boolean isBothForbidden = chessInfo.isBothSidesPerpetualCheck() || 
+                                  chessInfo.isBothSidesPerpetualAttack();
+        
+        // 如果双方都禁止（双方长将或双方长捉），直接判和
+        if (isBothForbidden) {
+            chessInfo.status = 2;
+            Toast.makeText(activity, "双方长将/长捉，此乃和棋", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        
         // 标记对话框正在显示
         isForceVariationDialogShowing = true;
         
@@ -634,11 +714,14 @@ public class PvPActivityGame {
         
         // 根据变着原因设置不同的提示信息
         String message = "";
-        if (chessInfo.isPerpetualCheck()) {
-            String side = chessInfo.getPerpetualCheckSide();
-            message = side + "长将，请变着！\n确认后将增加AI走法的随机性。";
+        if (forbiddenSide != null) {
+            if (chessInfo.isPerpetualCheck()) {
+                message = forbiddenSide + "长将，必须变着！";
+            } else if (chessInfo.getPerpetualAttackSide() != null) {
+                message = forbiddenSide + "长捉，必须变着！";
+            }
         } else {
-            message = "检测到重复局面，请变着！\n确认后将增加AI走法的随机性。";
+            message = "检测到重复局面，请变着！";
         }
         builder.setMessage(message);
         builder.setPositiveButton("确认变着", (dialog, which) -> {
@@ -653,6 +736,11 @@ public class PvPActivityGame {
             // 重置长将计数
             chessInfo.consecutiveCheckRed = 0;
             chessInfo.consecutiveCheckBlack = 0;
+            // 重置长捉计数
+            chessInfo.consecutiveAttackRed = 0;
+            chessInfo.consecutiveAttackBlack = 0;
+            chessInfo.lastAttackedPiecePos = null;
+            chessInfo.lastAttackedPieceType = 0;
             // 无需提示，对话框已明确说明
             
             // 对话框关闭，重置标志位
@@ -661,9 +749,12 @@ public class PvPActivityGame {
         builder.setNegativeButton("和棋", (dialog, which) -> {
             chessInfo.status = 2;
             String toastMessage = "";
-            if (chessInfo.isPerpetualCheck()) {
-                String side = chessInfo.getPerpetualCheckSide();
-                toastMessage = side + "长将，此乃和棋";
+            if (forbiddenSide != null) {
+                if (chessInfo.isPerpetualCheck()) {
+                    toastMessage = forbiddenSide + "长将，此乃和棋";
+                } else if (chessInfo.getPerpetualAttackSide() != null) {
+                    toastMessage = forbiddenSide + "长捉，此乃和棋";
+                }
             } else {
                 toastMessage = "三次重复局面，此乃和棋";
             }

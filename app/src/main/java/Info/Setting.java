@@ -11,6 +11,7 @@ public class Setting implements Serializable {
     public int skillLevel;
     public int multiPV;
     public int contempt;
+    public boolean forceVariation;
 
     public Setting(SharedPreferences sharedPreferences) {
         isMusicPlay = sharedPreferences.getBoolean("isMusicPlay", true);
@@ -20,6 +21,7 @@ public class Setting implements Serializable {
         skillLevel = sharedPreferences.getInt("skillLevel", 20);
         multiPV = sharedPreferences.getInt("multiPV", 1);
         contempt = sharedPreferences.getInt("contempt", 20);
+        forceVariation = sharedPreferences.getBoolean("forceVariation", true);
     }
 
     public void saveSetting(SharedPreferences sharedPreferences) {
@@ -31,6 +33,7 @@ public class Setting implements Serializable {
         editor.putInt("skillLevel", skillLevel);
         editor.putInt("multiPV", multiPV);
         editor.putInt("contempt", contempt);
+        editor.putBoolean("forceVariation", forceVariation);
         editor.apply();
     }
 }

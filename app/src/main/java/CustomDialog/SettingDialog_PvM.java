@@ -40,9 +40,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public Button multiPVMinusBtn, multiPVPlusBtn;
     public RadioGroup musicGroup;
     public RadioGroup effectGroup;
+    public RadioGroup forceVariationGroup;
     public LinearLayout levelGroup;
     public RadioButton musicTrue, musicFalse;
     public RadioButton effectTrue, effectFalse;
+    public RadioButton forceVariationTrue, forceVariationFalse;
     public SeekBar timeSeekBar;
     public TextView timeValue;
 
@@ -51,6 +53,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public int searchDepth; // 搜索深度
     public int skillLevel; // 技能级别（1-20）
     public int multiPV; // 多主变搜索（1-5）
+    public boolean forceVariation; // 是否开启强制变着
 
     public SettingDialog_PvM(Context context) {
         super(context, R.style.CustomDialog);
@@ -64,6 +67,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             searchDepth = PvMActivity.setting.depth;
             skillLevel = PvMActivity.setting.skillLevel;
             multiPV = PvMActivity.setting.multiPV;
+            forceVariation = PvMActivity.setting.forceVariation;
         } else {
             // 设置默认值
             isMusicPlay = true;
@@ -72,6 +76,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             searchDepth = 10; // 默认搜索深度10
             skillLevel = 20; // 默认最高技能级别
             multiPV = 1; // 默认单主变
+            forceVariation = true; // 默认开启强制变着
         }
         
         // 确保思考时间在合理范围内
@@ -84,6 +89,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public TextView skillLevelValue;
     public SeekBar multiPVSeekBar;
     public TextView multiPVValue;
+    public TextView multiPVWarning;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -114,8 +120,15 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         // 设置MultiPV滑块
         multiPVSeekBar.setProgress(multiPV - 1); // 因为SeekBar从0开始，所以减1
         multiPVValue.setText(multiPV + "变");
+        // 设置强制变着选项
+        if (forceVariation) {
+            forceVariationTrue.setChecked(true);
+        } else {
+            forceVariationFalse.setChecked(true);
+        }
         musicGroup.setOnCheckedChangeListener(this);
         effectGroup.setOnCheckedChangeListener(this);
+        forceVariationGroup.setOnCheckedChangeListener(this);
         timeSeekBar.setOnSeekBarChangeListener(this);
         depthSeekBar.setOnSeekBarChangeListener(this);
         skillLevelSeekBar.setOnSeekBarChangeListener(this);
@@ -155,6 +168,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         multiPVValue = (TextView) findViewById(R.id.multiPVValue);
         multiPVMinusBtn = (Button) findViewById(R.id.multiPVMinusBtn);
         multiPVPlusBtn = (Button) findViewById(R.id.multiPVPlusBtn);
+        multiPVWarning = (TextView) findViewById(R.id.multiPVWarning);
+        // 初始化强制变着选项
+        forceVariationGroup = (RadioGroup) findViewById(R.id.forceVariationGroup);
+        forceVariationTrue = (RadioButton) findViewById(R.id.forceVariationTrue);
+        forceVariationFalse = (RadioButton) findViewById(R.id.forceVariationFalse);
     }
 
 
@@ -246,7 +264,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             } else if (id == R.id.depthPlusBtn) {
                 // 增加搜索深度
                 playEffect(selectMusic);
-                if (searchDepth < 35) {
+                if (searchDepth < 120) {
                     searchDepth++;
                     depthSeekBar.setProgress(searchDepth);
                     depthValue.setText(searchDepth + "层");
@@ -282,6 +300,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                     multiPV++;
                     multiPVSeekBar.setProgress(multiPV - 1);
                     multiPVValue.setText(multiPV + "变");
+                    showMultiPVChangeHint();
                 }
             }
         }
@@ -298,6 +317,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 PvMActivity.setting.depth = searchDepth;
                 PvMActivity.setting.skillLevel = skillLevel;
                 PvMActivity.setting.multiPV = multiPV;
+                PvMActivity.setting.forceVariation = forceVariation;
                 // 立即生效：更新音乐播放状态
                 if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
                     PvMActivity.backMusic.start();
@@ -357,6 +377,12 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             } else {
                 isEffectPlay = false;
             }
+        } else if (id == R.id.forceVariationGroup) {
+            if (checked.getId() == R.id.forceVariationTrue) {
+                forceVariation = true;
+            } else {
+                forceVariation = false;
+            }
         }
     }
 
@@ -369,8 +395,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 thinkingTime = Math.max(1, Math.min(60, progress));
                 timeValue.setText(thinkingTime + "秒");
             } else if (seekBar == depthSeekBar) {
-                // 确保搜索深度在5-35之间
-                searchDepth = Math.max(5, Math.min(35, progress));
+                // 确保搜索深度在5-120之间
+                searchDepth = Math.max(5, Math.min(120, progress));
                 depthValue.setText(searchDepth + "层");
             } else if (seekBar == skillLevelSeekBar) {
                 // 确保技能级别在1-20之间
@@ -378,8 +404,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 skillLevelValue.setText(skillLevel + "级");
             } else if (seekBar == multiPVSeekBar) {
                 // 确保MultiPV在1-5之间（因为SeekBar从0开始，所以加1）
-                multiPV = Math.max(1, Math.min(5, progress + 1));
-                multiPVValue.setText(multiPV + "变");
+                int newMultiPV = Math.max(1, Math.min(5, progress + 1));
+                if (newMultiPV != multiPV) {
+                    multiPV = newMultiPV;
+                    multiPVValue.setText(multiPV + "变");
+                }
             }
         }
     }
@@ -391,7 +420,17 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
 
     @Override
     public void onStopTrackingTouch(SeekBar seekBar) {
-        // 停止拖动时的处理
+        if (seekBar == multiPVSeekBar) {
+            showMultiPVChangeHint();
+        }
+    }
+
+    private void showMultiPVChangeHint() {
+        int suggestTime = multiPV * 3;
+        String message = "MultiPV=" + multiPV + "，建议思考时间至少" + suggestTime + "秒";
+        android.widget.Toast toast = android.widget.Toast.makeText(getContext(), message, android.widget.Toast.LENGTH_LONG);
+        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+        toast.show();
     }
 
     public interface OnClickBottomListener {

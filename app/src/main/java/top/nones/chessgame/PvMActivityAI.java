@@ -79,22 +79,25 @@ public class PvMActivityAI {
             // 检查是否需要强制变着 - 只在真正的三次重复局面时启用
             if (this.activity.chessInfo != null && this.activity.chessInfo.status == 1) {
                 if (this.activity.chessInfo.isThreefoldRepetition()) {
-                    // 启用强制变着模式
-                    this.activity.chessInfo.forceVariation = true;
-                    this.activity.chessInfo.variationRandomness = 3; // 设置中等随机性
-                    // 重置重复局面计数
-                    String currentHash = this.activity.chessInfo.generatePositionHash();
-                    if (this.activity.chessInfo.positionHistory.containsKey(currentHash)) {
-                        this.activity.chessInfo.positionHistory.put(currentHash, 1);
+                    // 根据设置决定是否启用强制变着模式
+                    if (PvMActivity.setting != null && PvMActivity.setting.forceVariation) {
+                        // 启用强制变着模式
+                        this.activity.chessInfo.forceVariation = true;
+                        this.activity.chessInfo.variationRandomness = 3; // 设置中等随机性
+                        // 重置重复局面计数
+                        String currentHash = this.activity.chessInfo.generatePositionHash();
+                        if (this.activity.chessInfo.positionHistory.containsKey(currentHash)) {
+                            this.activity.chessInfo.positionHistory.put(currentHash, 1);
+                        }
+                        // 重置长将计数
+                        this.activity.chessInfo.consecutiveCheckRed = 0;
+                        this.activity.chessInfo.consecutiveCheckBlack = 0;
+                        // 重置长捉计数
+                        this.activity.chessInfo.consecutiveAttackRed = 0;
+                        this.activity.chessInfo.consecutiveAttackBlack = 0;
+                        this.activity.chessInfo.lastAttackedPiecePos = null;
+                        this.activity.chessInfo.lastAttackedPieceType = 0;
                     }
-                    // 重置长将计数
-                    this.activity.chessInfo.consecutiveCheckRed = 0;
-                    this.activity.chessInfo.consecutiveCheckBlack = 0;
-                    // 重置长捉计数
-                    this.activity.chessInfo.consecutiveAttackRed = 0;
-                    this.activity.chessInfo.consecutiveAttackBlack = 0;
-                    this.activity.chessInfo.lastAttackedPiecePos = null;
-                    this.activity.chessInfo.lastAttackedPieceType = 0;
                 }
                 
                 // 确保使用最新的设置

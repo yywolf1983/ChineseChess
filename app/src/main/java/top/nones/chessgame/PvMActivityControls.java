@@ -408,6 +408,8 @@ public class PvMActivityControls {
                                             if (activity.chessView != null) {
                                                 activity.chessView.requestDraw();
                                             }
+                                        } else if (canSelect && !canDefendCheck) {
+                                            showCheckHint();
                                         }
                                     }
                                 } else {
@@ -503,7 +505,7 @@ public class PvMActivityControls {
                                             if (isCheckAfterMove) {
                                                 activity.chessInfo.piece[activity.chessInfo.prePos.y][activity.chessInfo.prePos.x] = piece;
                                                 activity.chessInfo.piece[targetY][targetX] = tmp;
-                                                // 移除Toast提示，通过界面显示提示信息
+                                                showSelfCheckHint();
                                                 return false;
                                             }
                                             
@@ -559,7 +561,13 @@ public class PvMActivityControls {
                                                 key = 1;
                                             }
                                             if (key == 1) {
-                                                // 移除Toast提示，通过界面显示提示信息
+                                                long currentTime = System.currentTimeMillis();
+                                                if (currentTime - lastCheckHintTime > 1000) {
+                                                    android.widget.Toast toast = android.widget.Toast.makeText(activity, "正在被将军", android.widget.Toast.LENGTH_SHORT);
+                                                    toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+                                                    toast.show();
+                                                    lastCheckHintTime = currentTime;
+                                                }
                                             }
 
                                             // 增加继续对局后的回合计数器
@@ -807,6 +815,33 @@ public class PvMActivityControls {
     // 处理强制变着逻辑
     private void handleForceVariation() {
         
+        // 根据象棋规则判断哪一方需要变着
+        String forbiddenSide = activity.chessInfo.getForbiddenSide();
+        boolean isBothForbidden = activity.chessInfo.isBothSidesPerpetualCheck() || 
+                                  activity.chessInfo.isBothSidesPerpetualAttack();
+        
+        // 如果双方都禁止（双方长将或双方长捉），判和
+        if (isBothForbidden) {
+            activity.chessInfo.status = 2;
+            android.widget.Toast toast = android.widget.Toast.makeText(activity, "双方长将/长捉，此乃和棋", android.widget.Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
+            toast.show();
+            return;
+        }
+        
+        // 如果一方禁止一方允许，只有禁止方需要变着
+        boolean needForceVariation = false;
+        if (forbiddenSide != null) {
+            // 当前回合方是否是禁止方
+            boolean isRedTurn = activity.chessInfo.IsRedGo;
+            boolean isForbiddenSideTurn = (forbiddenSide.equals("红方") && isRedTurn) || 
+                                          (forbiddenSide.equals("黑方") && !isRedTurn);
+            needForceVariation = isForbiddenSideTurn;
+        } else {
+            // 三次重复局面，双方都需要变着
+            needForceVariation = true;
+        }
+        
         // 重置重复局面计数
         String currentHash = activity.chessInfo.generatePositionHash();
         if (activity.chessInfo.positionHistory.containsKey(currentHash)) {
@@ -828,7 +863,11 @@ public class PvMActivityControls {
         
         // 检查是否需要显示浮窗提示（十回合内只提示一次）
         if (activity.chessInfo.totalMoves - forceVariationHintRound >= 10) {
-            showForceVariationHint();
+            if (forbiddenSide != null) {
+                showForceVariationHintWithSide(forbiddenSide);
+            } else {
+                showForceVariationHint();
+            }
             forceVariationHintRound = activity.chessInfo.totalMoves;
         }
         
@@ -840,13 +879,16 @@ public class PvMActivityControls {
             activity.roundView.requestDraw();
         }
         
-        // 只有在非用户模式（人机对战或双机对战）下才启用强制变着模式
-        if (activity.gameMode != 0) {
+        // 只有在非用户模式（人机对战或双机对战）下且当前回合方需要变着时才启用强制变着模式
+        if (activity.gameMode != 0 && needForceVariation) {
             // 启用强制变着模式
             activity.chessInfo.forceVariation = true;
             activity.chessInfo.variationRandomness = 3; // 设置中等随机性
             // 不立即检查AI移动，让AI在自己的回合正常行棋
             // activity.gameManager.checkAIMove();
+        } else {
+            // 当前回合方不需要变着，关闭强制变着模式
+            activity.chessInfo.forceVariation = false;
         }
         
         // 标记刚刚执行了强制变着，跳过下次和棋检查
@@ -917,6 +959,26 @@ public class PvMActivityControls {
         builder.show();
     }
     
+    private void showCheckHint() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastCheckHintTime > 1500) {
+            android.widget.Toast toast = android.widget.Toast.makeText(activity, "正被将军", android.widget.Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+            toast.show();
+            lastCheckHintTime = currentTime;
+        }
+    }
+
+    private void showSelfCheckHint() {
+        long currentTime = System.currentTimeMillis();
+        if (currentTime - lastCheckHintTime > 1500) {
+            android.widget.Toast toast = android.widget.Toast.makeText(activity, "移动后将被将军", android.widget.Toast.LENGTH_SHORT);
+            toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+            toast.show();
+            lastCheckHintTime = currentTime;
+        }
+    }
+
     // 显示强制变着浮窗提示
     private void showForceVariationHint() {
         String message = "";
@@ -928,6 +990,21 @@ public class PvMActivityControls {
             message = side + "长捉，已强制变着";
         } else {
             message = "检测到重复局面，已强制变着";
+        }
+        
+        // 创建浮窗提示
+        Toast toast = Toast.makeText(activity, message, Toast.LENGTH_SHORT);
+        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 100);
+        toast.show();
+    }
+    
+    // 显示强制变着浮窗提示（带变着方信息）
+    private void showForceVariationHintWithSide(String forbiddenSide) {
+        String message = forbiddenSide + "违规，必须变着！";
+        if (activity.chessInfo.isPerpetualCheck()) {
+            message = forbiddenSide + "长将，必须变着！";
+        } else if (activity.chessInfo.getPerpetualAttackSide() != null) {
+            message = forbiddenSide + "长捉，必须变着！";
         }
         
         // 创建浮窗提示

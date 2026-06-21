@@ -19,7 +19,7 @@
         android:layout_margin="15dp"
         android:textSize="20sp"
         android:textColor="#000000"
-        android:text="设置 (2)" />
+        android:text="设置" />
 
     <RadioGroup
         android:id="@+id/musicGroup"
@@ -245,7 +245,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:min="5"
-                android:max="35"
+                android:max="120"
                 android:progress="10"
                 android:thumb="@android:drawable/btn_star" />
             <Button
@@ -277,7 +277,77 @@
                 android:gravity="right"
                 android:textSize="12sp"
                 android:textColor="#000000"
-                android:text="35层" />
+                android:text="120层" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- 强制变着设置 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:layout_gravity="center"
+        android:layout_marginRight="25dp"
+        android:layout_marginLeft="25dp"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="16sp"
+                android:textColor="#000000"
+                android:text="强制变着" />
+
+            <RadioGroup
+                android:id="@+id/forceVariationGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <RadioButton
+                    android:id="@+id/forceVariationTrue"
+                    android:layout_width="60dp"
+                    android:layout_height="wrap_content"
+                    android:text="开启"
+                    android:textSize="14sp" />
+
+                <RadioButton
+                    android:id="@+id/forceVariationFalse"
+                    android:layout_width="60dp"
+                    android:layout_height="wrap_content"
+                    android:text="关闭"
+                    android:textSize="14sp" />
+            </RadioGroup>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="5dp">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="10sp"
+                android:textColor="#666666"
+                android:text="开启：重复局面强制变着" />
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="10sp"
+                android:textColor="#666666"
+                android:gravity="right"
+                android:text="关闭：按引擎最优解" />
         </LinearLayout>
     </LinearLayout>
 
@@ -477,6 +547,15 @@
             android:textColor="#666666"
             android:layout_marginTop="5dp"
             android:text="MultiPV影响AI考虑的走法多样性，值越大计算负担越重" />
+
+        <TextView
+            android:id="@+id/multiPVWarning"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="#FF0000"
+            android:layout_marginTop="5dp"
+            android:text="落子并非最优解。慎重增大。" />
     </LinearLayout>
 
     <LinearLayout
