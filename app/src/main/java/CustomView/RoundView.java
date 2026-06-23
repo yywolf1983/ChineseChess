@@ -379,6 +379,31 @@ public class RoundView extends View {
             canvas.drawText(depthText, depthX, depthY, infoTextPaint);
         }
         
+        // 分数（当前行棋方文字左下方，比深度大些）
+        int score = moveScore;
+        String scoreDisplayText;
+        int textColor;
+        if (score > 0) {
+            scoreDisplayText = String.valueOf(score);
+            textColor = Color.rgb(180, 20, 20);
+        } else if (score < 0) {
+            scoreDisplayText = String.valueOf(Math.abs(score));
+            textColor = Color.rgb(0, 0, 0);
+        } else {
+            scoreDisplayText = "均势";
+            textColor = Color.rgb(80, 80, 80);
+        }
+        float turnTextWidth = turnPaint.measureText(turnText);
+        infoTextPaint.setTextSize(convertDpToPixel(10, getContext()));
+        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
+        infoTextPaint.setFakeBoldText(true);
+        infoTextPaint.setColor(textColor);
+        infoTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 0, 0, Color.argb(80, 255, 255, 255));
+        float scoreX = width / 2 - turnTextWidth / 2 - convertDpToPixel(4, getContext());
+        float scoreY = row1Y + convertDpToPixel(8, getContext());
+        canvas.drawText(scoreDisplayText, scoreX, scoreY, infoTextPaint);
+        infoTextPaint.clearShadowLayer();
+        
         // 回合数（右侧）
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
@@ -764,26 +789,6 @@ public class RoundView extends View {
         canvas.restore();
         
         canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, borderPaint);
-        
-        String scoreText;
-        int textColor;
-        if (score > 0) {
-            scoreText = String.valueOf(score);
-            textColor = Color.rgb(180, 20, 20);
-        } else if (score < 0) {
-            scoreText = String.valueOf(Math.abs(score));
-            textColor = Color.rgb(0, 0, 0);
-        } else {
-            scoreText = "均势";
-            textColor = Color.rgb(80, 80, 80);
-        }
-        
-        infoTextPaint.setTextSize(convertDpToPixel(11, getContext()));
-        infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        infoTextPaint.setFakeBoldText(true);
-        infoTextPaint.setColor(textColor);
-        infoTextPaint.setShadowLayer(convertDpToPixel(1.5f, getContext()), 0, 0, Color.argb(80, 255, 255, 255));
-        canvas.drawText(scoreText, centerX, centerY - convertDpToPixel(3, getContext()) + convertDpToPixel(4, getContext()), infoTextPaint);
         
         infoTextPaint.clearShadowLayer();
         infoTextPaint.setColor(Color.rgb(255, 250, 240));
