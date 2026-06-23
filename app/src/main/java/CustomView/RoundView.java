@@ -214,7 +214,7 @@ public class RoundView extends View {
     private void initPaints() {
         backgroundPaint = new Paint();
         backgroundPaint.setStyle(Paint.Style.FILL);
-        backgroundPaint.setColor(Color.rgb(145, 95, 55));
+        backgroundPaint.setColor(Color.rgb(180, 130, 80));
 
         borderPaint = new Paint();
         borderPaint.setStyle(Paint.Style.STROKE);

@@ -67,25 +67,25 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 LogUtils.i("ChessView", "Successfully loaded chessboard image: " + ChessBoard.getWidth() + "x" + ChessBoard.getHeight());
             }
 
-            B_box = decodeSampledBitmapFromResource(getResources(), R.drawable.b_box, 92, 92);
-            R_box = decodeSampledBitmapFromResource(getResources(), R.drawable.r_box, 92, 92);
-            Pot = decodeSampledBitmapFromResource(getResources(), R.drawable.pot, 92, 92);
+            B_box = decodeSampledBitmapFromResource(getResources(), R.drawable.b_box, 100, 100);
+            R_box = decodeSampledBitmapFromResource(getResources(), R.drawable.r_box, 100, 100);
+            Pot = decodeSampledBitmapFromResource(getResources(), R.drawable.pot, 100, 100);
 
-            RP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shuai, 92, 92);
-            RP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shi, 92, 92);
-            RP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_xiang, 92, 92);
-            RP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ma, 92, 92);
-            RP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ju, 92, 92);
-            RP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_pao, 92, 92);
-            RP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_bing, 92, 92);
+            RP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shuai, 100, 100);
+            RP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_shi, 100, 100);
+            RP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_xiang, 100, 100);
+            RP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ma, 100, 100);
+            RP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_ju, 100, 100);
+            RP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_pao, 100, 100);
+            RP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.r_bing, 100, 100);
 
-            BP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_jiang, 92, 92);
-            BP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_shi, 92, 92);
-            BP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_xiang, 92, 92);
-            BP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ma, 92, 92);
-            BP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ju, 92, 92);
-            BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, 92, 92);
-            BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, 92, 92);
+            BP[0] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_jiang, 100, 100);
+            BP[1] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_shi, 100, 100);
+            BP[2] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_xiang, 100, 100);
+            BP[3] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ma, 100, 100);
+            BP[4] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_ju, 100, 100);
+            BP[5] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_pao, 100, 100);
+            BP[6] = decodeSampledBitmapFromResource(getResources(), R.drawable.b_zu, 100, 100);
         } catch (Exception e) {
             LogUtils.e("ChessView", "Error loading images: " + e.getMessage());
             // 确保即使图片加载失败，应用也能继续运行
