@@ -267,19 +267,26 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             suggestPaint.setAntiAlias(true);
             suggestPaint.setTextAlign(Paint.Align.CENTER);
             
+            int[] stepColors = {
+                Color.rgb(255, 0, 0),    // 第1步：红色
+                Color.rgb(0, 128, 255),  // 第2步：蓝色
+                Color.rgb(0, 180, 0),    // 第3步：绿色
+                Color.rgb(255, 128, 0),  // 第4步：橙色
+                Color.rgb(180, 0, 255),  // 第5步：紫色
+                Color.rgb(255, 0, 128),  // 第6步：粉红色
+                Color.rgb(128, 128, 0),  // 第7步：橄榄色
+                Color.rgb(0, 180, 180)   // 第8步：青色
+            };
+            
             for (int i = 0; i < chessInfo.suggestMoves.size() && i < chessInfo.suggestMoveLabels.size(); i++) {
                 ChessMove.Move move = chessInfo.suggestMoves.get(i);
                 if (move == null || move.fromPos == null || move.toPos == null) continue;
                 
-                // 获取起始位置的棋子颜色，判断是红方还是黑方
-                int fromPiece = chessInfo.piece[move.fromPos.y][move.fromPos.x];
-                boolean isRedPiece = fromPiece >= 8;
+                int stepColor = stepColors[i % stepColors.length];
                 
-                // 起始位置坐标
                 int fromX = move.fromPos.x;
                 int fromY = 9 - move.fromPos.y;
                 
-                // 目标位置坐标
                 int toX = move.toPos.x;
                 int toY = 9 - move.toPos.y;
                 
@@ -290,65 +297,44 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
-                // 第一步用实线，其他步用细线虚线
                 if (i == 0) {
-                    // 绘制箭头线
-                    if (isRedPiece) {
-                        suggestPaint.setColor(Color.RED);
-                    } else {
-                        suggestPaint.setColor(Color.BLACK);
-                    }
+                    suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(5);
-                    suggestPaint.setPathEffect(null); // 实线
-                    suggestPaint.setAlpha(255);
+                    suggestPaint.setStrokeWidth(8);
+                    suggestPaint.setPathEffect(null);
+                    suggestPaint.setAlpha(160);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
-                    // 先绘制实心圆
-                    if (isRedPiece) {
-                        suggestPaint.setColor(Color.RED);
-                    } else {
-                        suggestPaint.setColor(Color.BLACK);
-                    }
+                    suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setAlpha(255);
-                    int circleRadius = Scale(14);
+                    suggestPaint.setAlpha(140);
+                    int circleRadius = Scale(20);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
-                    // 再绘制数字在圆上
                     suggestPaint.setColor(Color.WHITE);
-                    suggestPaint.setTextSize(Scale(22));
+                    suggestPaint.setTextSize(Scale(38));
                     suggestPaint.setAlpha(255);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(7), suggestPaint);
+                    suggestPaint.setFakeBoldText(true);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(11), suggestPaint);
                 } else {
-                    // 绘制箭头线
-                    if (isRedPiece) {
-                        suggestPaint.setColor(Color.RED);
-                    } else {
-                        suggestPaint.setColor(Color.BLACK);
-                    }
+                    suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(4);
-                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{10, 10}, 0)); // 虚线
-                    suggestPaint.setAlpha(200);
+                    suggestPaint.setStrokeWidth(6);
+                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{12, 8}, 0));
+                    suggestPaint.setAlpha(140);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
-                    // 先绘制实心圆
-                    if (isRedPiece) {
-                        suggestPaint.setColor(Color.RED);
-                    } else {
-                        suggestPaint.setColor(Color.BLACK);
-                    }
+                    suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setAlpha(255);
-                    int circleRadius = Scale(12);
+                    suggestPaint.setAlpha(120);
+                    int circleRadius = Scale(18);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
-                    // 再绘制数字在圆上
                     suggestPaint.setColor(Color.WHITE);
-                    suggestPaint.setTextSize(Scale(18));
+                    suggestPaint.setTextSize(Scale(34));
                     suggestPaint.setAlpha(255);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(6), suggestPaint);
+                    suggestPaint.setFakeBoldText(true);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
                 }
             }
         }
