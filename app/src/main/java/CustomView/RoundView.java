@@ -636,7 +636,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(80, getContext()); // 适配当前字体大小
+            height = (int) convertDpToPixel(90, getContext()); // 适配当前字体大小
         }
         
         viewWidth = width;
