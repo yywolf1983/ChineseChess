@@ -212,62 +212,55 @@ public class RoundView extends View {
     }
 
     private void initPaints() {
-        // 背景画笔 - 使用渐变效果
         backgroundPaint = new Paint();
         backgroundPaint.setStyle(Paint.Style.FILL);
-        backgroundPaint.setColor(Color.rgb(180, 110, 50)); // 温暖的棕色背景
+        backgroundPaint.setColor(Color.rgb(145, 95, 55));
 
-        // 边框画笔 - 使用dp单位确保不同屏幕一致性
         borderPaint = new Paint();
         borderPaint.setStyle(Paint.Style.STROKE);
-        borderPaint.setColor(Color.rgb(140, 70, 35)); // 深棕色边框
+        borderPaint.setColor(Color.rgb(100, 60, 30));
         borderPaint.setStrokeWidth(convertDpToPixel(1.5f, getContext()));
         borderPaint.setAntiAlias(true);
 
-        // 统一文字大小 - 使用dp单位
         float textSize = convertDpToPixel(12, getContext());
 
-        // 红色文本画笔（红方回合）- 使用更醒目的红色
         redTextPaint = new Paint();
         redTextPaint.setTextSize(textSize);
         redTextPaint.setStrokeWidth(convertDpToPixel(0.5f, getContext()));
         redTextPaint.setAntiAlias(true);
-        redTextPaint.setColor(Color.rgb(220, 30, 30)); // 更鲜艳的红色
+        redTextPaint.setColor(Color.rgb(200, 40, 40));
         redTextPaint.setFakeBoldText(true);
         redTextPaint.setShadowLayer(convertDpToPixel(1.5f, getContext()), 
             convertDpToPixel(0.5f, getContext()), 
             convertDpToPixel(0.5f, getContext()), 
             Color.argb(100, 0, 0, 0));
 
-        // 黑色文本画笔（黑方回合）- 使用深灰色避免纯黑
         blackTextPaint = new Paint();
         blackTextPaint.setTextSize(textSize);
         blackTextPaint.setStrokeWidth(convertDpToPixel(0.5f, getContext()));
         blackTextPaint.setAntiAlias(true);
-        blackTextPaint.setColor(Color.rgb(40, 40, 40)); // 深灰色，避免纯黑
+        blackTextPaint.setColor(Color.rgb(35, 35, 35));
         blackTextPaint.setFakeBoldText(true);
         blackTextPaint.setShadowLayer(convertDpToPixel(1.5f, getContext()), 
             convertDpToPixel(0.5f, getContext()), 
             convertDpToPixel(0.5f, getContext()), 
             Color.argb(80, 255, 255, 255));
 
-        // 模式文本画笔（突出显示模式）
         modeTextPaint = new Paint();
         modeTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         modeTextPaint.setStrokeWidth(convertDpToPixel(1f, getContext()));
         modeTextPaint.setAntiAlias(true);
-        modeTextPaint.setColor(Color.rgb(255, 225, 150));
+        modeTextPaint.setColor(Color.rgb(230, 200, 130));
         modeTextPaint.setFakeBoldText(true);
         modeTextPaint.setStyle(Paint.Style.FILL);
         modeTextPaint.clearShadowLayer();
         modeTextPaint.setStrokeWidth(2f);
 
-        // 信息文本画笔（评分和搜索深度）
         infoTextPaint = new Paint();
         infoTextPaint.setTextSize(textSize);
         infoTextPaint.setStrokeWidth(convertDpToPixel(0.3f, getContext()));
         infoTextPaint.setAntiAlias(true);
-        infoTextPaint.setColor(Color.rgb(255, 250, 240)); // 象牙白，柔和不刺眼
+        infoTextPaint.setColor(Color.rgb(245, 240, 230));
         infoTextPaint.setFakeBoldText(true);
         infoTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
             convertDpToPixel(0.3f, getContext()), 
@@ -322,31 +315,31 @@ public class RoundView extends View {
         
         switch (gameMode) {
             case 0:
-                modeTextPaint.setColor(Color.rgb(255, 215, 0));
+                modeTextPaint.setColor(Color.rgb(230, 195, 80));
                 canvas.drawText("双人", currentX, row1Y, modeTextPaint);
                 currentX += modeTextPaint.measureText("双人");
-                modeTextPaint.setColor(Color.rgb(255, 220, 0));
+                modeTextPaint.setColor(Color.rgb(220, 160, 50));
                 canvas.drawText("对战", currentX, row1Y, modeTextPaint);
                 break;
             case 1:
-                modeTextPaint.setColor(Color.rgb(255, 225, 150));
+                modeTextPaint.setColor(Color.rgb(230, 200, 130));
                 canvas.drawText("玩家", currentX, row1Y, modeTextPaint);
                 currentX += modeTextPaint.measureText("玩家");
-                modeTextPaint.setColor(Color.rgb(255, 0, 0));
+                modeTextPaint.setColor(Color.rgb(200, 40, 40));
                 canvas.drawText("红棋", currentX, row1Y, modeTextPaint);
                 break;
             case 2:
-                modeTextPaint.setColor(Color.rgb(255, 225, 150));
+                modeTextPaint.setColor(Color.rgb(230, 200, 130));
                 canvas.drawText("玩家", currentX, row1Y, modeTextPaint);
                 currentX += modeTextPaint.measureText("玩家");
-                modeTextPaint.setColor(Color.rgb(0, 0, 0));
+                modeTextPaint.setColor(Color.rgb(35, 35, 35));
                 canvas.drawText("黑棋", currentX, row1Y, modeTextPaint);
                 break;
             case 3:
-                modeTextPaint.setColor(Color.rgb(255, 215, 0));
+                modeTextPaint.setColor(Color.rgb(230, 195, 80));
                 canvas.drawText("双机", currentX, row1Y, modeTextPaint);
                 currentX += modeTextPaint.measureText("双机");
-                modeTextPaint.setColor(Color.rgb(60, 80, 150));
+                modeTextPaint.setColor(Color.rgb(100, 60, 130));
                 canvas.drawText("对战", currentX, row1Y, modeTextPaint);
                 break;
             default:
@@ -385,16 +378,16 @@ public class RoundView extends View {
         int textColor;
         if (score > 0) {
             scoreDisplayText = String.valueOf(score);
-            textColor = Color.rgb(180, 20, 20);
+            textColor = Color.rgb(200, 40, 40);
         } else if (score < 0) {
             scoreDisplayText = String.valueOf(Math.abs(score));
-            textColor = Color.rgb(0, 0, 0);
+            textColor = Color.rgb(35, 35, 35);
         } else {
             scoreDisplayText = "均势";
-            textColor = Color.rgb(80, 80, 80);
+            textColor = Color.rgb(100, 90, 80);
         }
         float turnTextWidth = turnPaint.measureText(turnText);
-        infoTextPaint.setTextSize(convertDpToPixel(10, getContext()));
+        infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         infoTextPaint.setFakeBoldText(true);
         infoTextPaint.setColor(textColor);
@@ -412,6 +405,7 @@ public class RoundView extends View {
         infoTextPaint.setTextSize(stepTextSize);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         infoTextPaint.setFakeBoldText(true);
+        infoTextPaint.setColor(Color.rgb(245, 240, 230));
         canvas.drawText(stepText, width - convertDpToPixel(10, getContext()), row1Y, infoTextPaint);
         
         // ========== 第2行：红方时间（左） | 评分（居中） | 黑方时间（右） ==========
@@ -755,11 +749,11 @@ public class RoundView extends View {
         
         Paint redBarPaint = new Paint();
         redBarPaint.setStyle(Paint.Style.FILL);
-        redBarPaint.setColor(Color.argb(80, 150, 20, 20));
+        redBarPaint.setColor(Color.rgb(180, 30, 30));
         
         Paint blackBarPaint = new Paint();
         blackBarPaint.setStyle(Paint.Style.FILL);
-        blackBarPaint.setColor(Color.argb(80, 40, 40, 40));
+        blackBarPaint.setColor(Color.rgb(40, 40, 40));
         
         float redStartX, redEndX, blackStartX, blackEndX;
         
