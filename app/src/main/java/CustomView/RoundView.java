@@ -311,28 +311,51 @@ public class RoundView extends View {
         float row1Y = paddingTop + lineHeight * 0.8f;
         
         // 游戏模式（左侧）+ 深度
-        String modeText = getGameModeName(gameMode);
         float modeTextSize = convertDpToPixel(14, getContext());
         modeTextPaint.setTextSize(modeTextSize);
         modeTextPaint.setTextAlign(Paint.Align.LEFT);
-        modeTextPaint.setColor(Color.rgb(255, 225, 150));
         modeTextPaint.setFakeBoldText(true);
         modeTextPaint.clearShadowLayer();
         
-        canvas.drawText(modeText, convertDpToPixel(10, getContext()), row1Y, modeTextPaint);
+        float modeStartX = convertDpToPixel(10, getContext());
+        float currentX = modeStartX;
         
-        // 在模式后面显示深度
-        int currentDepthForTurn = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
-        String depthText = "";
-        if (currentDepthForTurn > 0) {
-            depthText = " D" + currentDepthForTurn;
+        switch (gameMode) {
+            case 0:
+                modeTextPaint.setColor(Color.rgb(255, 215, 0));
+                canvas.drawText("双人", currentX, row1Y, modeTextPaint);
+                currentX += modeTextPaint.measureText("双人");
+                modeTextPaint.setColor(Color.rgb(255, 220, 0));
+                canvas.drawText("对战", currentX, row1Y, modeTextPaint);
+                break;
+            case 1:
+                modeTextPaint.setColor(Color.rgb(255, 225, 150));
+                canvas.drawText("玩家", currentX, row1Y, modeTextPaint);
+                currentX += modeTextPaint.measureText("玩家");
+                modeTextPaint.setColor(Color.rgb(255, 0, 0));
+                canvas.drawText("红棋", currentX, row1Y, modeTextPaint);
+                break;
+            case 2:
+                modeTextPaint.setColor(Color.rgb(255, 225, 150));
+                canvas.drawText("玩家", currentX, row1Y, modeTextPaint);
+                currentX += modeTextPaint.measureText("玩家");
+                modeTextPaint.setColor(Color.rgb(0, 0, 0));
+                canvas.drawText("黑棋", currentX, row1Y, modeTextPaint);
+                break;
+            case 3:
+                modeTextPaint.setColor(Color.rgb(255, 215, 0));
+                canvas.drawText("双机", currentX, row1Y, modeTextPaint);
+                currentX += modeTextPaint.measureText("双机");
+                modeTextPaint.setColor(Color.rgb(60, 80, 150));
+                canvas.drawText("对战", currentX, row1Y, modeTextPaint);
+                break;
+            default:
+                modeTextPaint.setColor(Color.rgb(255, 225, 150));
+                canvas.drawText(getGameModeName(gameMode), currentX, row1Y, modeTextPaint);
+                break;
         }
-        if (!depthText.isEmpty()) {
-            float depthTextX = convertDpToPixel(10, getContext()) + modeTextPaint.measureText(modeText) + convertDpToPixel(4, getContext());
-            infoTextPaint.setTextSize(convertDpToPixel(9, getContext()));
-            infoTextPaint.setTextAlign(Paint.Align.LEFT);
-            canvas.drawText(depthText, depthTextX, row1Y, infoTextPaint);
-        }
+        
+        
         
         // 当前行棋方（居中，突出显示）
         String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
@@ -342,6 +365,19 @@ public class RoundView extends View {
         turnPaint.setTextAlign(Paint.Align.CENTER);
         turnPaint.setFakeBoldText(true);
         canvas.drawText(turnText, width / 2, row1Y, turnPaint);
+        
+        // 搜索深度（当前行棋方文字右下方）
+        int currentDepthForTurn = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
+        if (currentDepthForTurn > 0) {
+            String depthText = "D" + currentDepthForTurn;
+            infoTextPaint.setTextSize(convertDpToPixel(8, getContext()));
+            infoTextPaint.setTextAlign(Paint.Align.LEFT);
+            infoTextPaint.setColor(Color.argb(150, 0, 0, 0));
+            float turnTextWidth = turnPaint.measureText(turnText);
+            float depthX = width / 2 + turnTextWidth / 2 + convertDpToPixel(4, getContext());
+            float depthY = row1Y + convertDpToPixel(8, getContext());
+            canvas.drawText(depthText, depthX, depthY, infoTextPaint);
+        }
         
         // 回合数（右侧）
         int totalMoves = chessInfo.totalMoves;
@@ -426,12 +462,8 @@ public class RoundView extends View {
         String redText = "红 " + formatTime(redTime);
         canvas.drawText(redText, convertDpToPixel(10, getContext()), row2Y, redTextPaint);
         
-        // 评分（居中）
-        float scoreTextSize = convertDpToPixel(14, getContext());
-        infoTextPaint.setTextSize(scoreTextSize);
-        infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        infoTextPaint.setFakeBoldText(true);
-        canvas.drawText(scoreText, width / 2, row2Y, infoTextPaint);
+        // 评分（居中）- 双向进度条
+        drawScoreBar(canvas, width, row2Y, moveScore);
         
         // 黑方时间（右侧）
         blackTextPaint.setTextSize(convertDpToPixel(14, getContext()));
@@ -634,5 +666,126 @@ public class RoundView extends View {
         cachedBlackCheckmated = Rule.isCheckmate(chessInfo.piece, false);
         cachedRedStalemated = Rule.isStalemate(chessInfo.piece, true);
         cachedBlackStalemated = Rule.isStalemate(chessInfo.piece, false);
+    }
+    
+    private void drawScoreBar(Canvas canvas, int width, float centerY, int score) {
+        float barWidth = width * 0.55f;
+        float barHeight = convertDpToPixel(12, getContext());
+        float barX = (width - barWidth) / 2;
+        float barY = centerY - barHeight / 2 - convertDpToPixel(3, getContext());
+        
+        float cornerRadius = barHeight / 2;
+        android.graphics.RectF barRect = new android.graphics.RectF(barX, barY, barX + barWidth, barY + barHeight);
+        
+        boolean isGameOver = chessInfo.status == 2;
+        boolean hasWinner = !cachedRedKingExists || !cachedBlackKingExists || 
+                           cachedRedCheckmated || cachedBlackCheckmated || 
+                           cachedRedStalemated || cachedBlackStalemated;
+        
+        if (isGameOver || hasWinner) {
+            String winText = "";
+            int winColor = Color.rgb(0, 0, 0);
+            
+            if (!cachedRedKingExists || cachedRedCheckmated || cachedRedStalemated) {
+                winText = "黑方胜利！";
+                winColor = Color.rgb(0, 0, 0);
+            } else if (!cachedBlackKingExists || cachedBlackCheckmated || cachedBlackStalemated) {
+                winText = "红方胜利！";
+                winColor = Color.rgb(255, 0, 0);
+            } else if (isGameOver) {
+                winText = chessInfo.IsRedGo ? "黑方胜利！" : "红方胜利！";
+                winColor = chessInfo.IsRedGo ? Color.rgb(0, 0, 0) : Color.rgb(255, 0, 0);
+            }
+            
+            Paint winBgPaint = new Paint();
+            winBgPaint.setStyle(Paint.Style.FILL);
+            winBgPaint.setColor(Color.argb(200, 255, 255, 255));
+            canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, winBgPaint);
+            
+            canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, borderPaint);
+            
+            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            infoTextPaint.setFakeBoldText(true);
+            infoTextPaint.setColor(winColor);
+            infoTextPaint.setShadowLayer(convertDpToPixel(2f, getContext()), 0, 0, Color.argb(100, 255, 255, 255));
+            canvas.drawText(winText, width / 2, centerY - convertDpToPixel(3, getContext()) + convertDpToPixel(4, getContext()), infoTextPaint);
+            
+            infoTextPaint.clearShadowLayer();
+            infoTextPaint.setColor(Color.rgb(255, 250, 240));
+            return;
+        }
+        
+        android.graphics.Path clipPath = new android.graphics.Path();
+        clipPath.addRoundRect(barRect, cornerRadius, cornerRadius, android.graphics.Path.Direction.CW);
+        canvas.save();
+        canvas.clipPath(clipPath);
+        
+        float maxScore = 1000f;
+        float scoreRatio = Math.abs(score) / maxScore;
+        if (scoreRatio > 1) scoreRatio = 1;
+        
+        float centerX = width / 2;
+        float totalRange = barWidth / 2;
+        
+        Paint redBarPaint = new Paint();
+        redBarPaint.setStyle(Paint.Style.FILL);
+        redBarPaint.setColor(Color.argb(80, 150, 20, 20));
+        
+        Paint blackBarPaint = new Paint();
+        blackBarPaint.setStyle(Paint.Style.FILL);
+        blackBarPaint.setColor(Color.argb(80, 40, 40, 40));
+        
+        float redStartX, redEndX, blackStartX, blackEndX;
+        
+        if (score > 0) {
+            redStartX = barX;
+            redEndX = centerX + totalRange * scoreRatio;
+            blackStartX = centerX + totalRange * scoreRatio;
+            blackEndX = barX + barWidth;
+        } else if (score < 0) {
+            redStartX = barX;
+            redEndX = centerX - totalRange * scoreRatio;
+            blackStartX = centerX - totalRange * scoreRatio;
+            blackEndX = barX + barWidth;
+        } else {
+            redStartX = barX;
+            redEndX = centerX;
+            blackStartX = centerX;
+            blackEndX = barX + barWidth;
+        }
+        
+        android.graphics.RectF redRect = new android.graphics.RectF(redStartX, barY, redEndX, barY + barHeight);
+        canvas.drawRect(redRect, redBarPaint);
+        
+        android.graphics.RectF blackRect = new android.graphics.RectF(blackStartX, barY, blackEndX, barY + barHeight);
+        canvas.drawRect(blackRect, blackBarPaint);
+        
+        canvas.restore();
+        
+        canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, borderPaint);
+        
+        String scoreText;
+        int textColor;
+        if (score > 0) {
+            scoreText = String.valueOf(score);
+            textColor = Color.rgb(180, 20, 20);
+        } else if (score < 0) {
+            scoreText = String.valueOf(Math.abs(score));
+            textColor = Color.rgb(0, 0, 0);
+        } else {
+            scoreText = "均势";
+            textColor = Color.rgb(80, 80, 80);
+        }
+        
+        infoTextPaint.setTextSize(convertDpToPixel(11, getContext()));
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        infoTextPaint.setFakeBoldText(true);
+        infoTextPaint.setColor(textColor);
+        infoTextPaint.setShadowLayer(convertDpToPixel(1.5f, getContext()), 0, 0, Color.argb(80, 255, 255, 255));
+        canvas.drawText(scoreText, centerX, centerY - convertDpToPixel(3, getContext()) + convertDpToPixel(4, getContext()), infoTextPaint);
+        
+        infoTextPaint.clearShadowLayer();
+        infoTextPaint.setColor(Color.rgb(255, 250, 240));
     }
 }
