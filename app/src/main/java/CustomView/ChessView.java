@@ -300,7 +300,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 if (i == 0) {
                     suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(8);
+                    suggestPaint.setStrokeWidth(5);
                     suggestPaint.setPathEffect(null);
                     suggestPaint.setAlpha(160);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
