@@ -267,22 +267,18 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             suggestPaint.setAntiAlias(true);
             suggestPaint.setTextAlign(Paint.Align.CENTER);
             
-            int[] stepColors = {
-                Color.rgb(255, 0, 0),    // 第1步：红色
-                Color.rgb(0, 128, 255),  // 第2步：蓝色
-                Color.rgb(0, 180, 0),    // 第3步：绿色
-                Color.rgb(255, 128, 0),  // 第4步：橙色
-                Color.rgb(180, 0, 255),  // 第5步：紫色
-                Color.rgb(255, 0, 128),  // 第6步：粉红色
-                Color.rgb(128, 128, 0),  // 第7步：橄榄色
-                Color.rgb(0, 180, 180)   // 第8步：青色
-            };
+            int redColor = Color.rgb(220, 50, 50);
+            int blackColor = Color.rgb(50, 80, 200);
             
             for (int i = 0; i < chessInfo.suggestMoves.size() && i < chessInfo.suggestMoveLabels.size(); i++) {
                 ChessMove.Move move = chessInfo.suggestMoves.get(i);
                 if (move == null || move.fromPos == null || move.toPos == null) continue;
                 
-                int stepColor = stepColors[i % stepColors.length];
+                boolean isRedMove = false;
+                if (chessInfo.suggestMovesIsRed != null && i < chessInfo.suggestMovesIsRed.size()) {
+                    isRedMove = chessInfo.suggestMovesIsRed.get(i);
+                }
+                int stepColor = isRedMove ? redColor : blackColor;
                 
                 int fromX = move.fromPos.x;
                 int fromY = 9 - move.fromPos.y;
@@ -302,12 +298,12 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                     suggestPaint.setStyle(Paint.Style.STROKE);
                     suggestPaint.setStrokeWidth(5);
                     suggestPaint.setPathEffect(null);
-                    suggestPaint.setAlpha(160);
+                    suggestPaint.setAlpha(180);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
                     suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setAlpha(140);
+                    suggestPaint.setAlpha(160);
                     int circleRadius = Scale(20);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
@@ -319,22 +315,22 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 } else {
                     suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(6);
+                    suggestPaint.setStrokeWidth(5);
                     suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{12, 8}, 0));
-                    suggestPaint.setAlpha(140);
+                    suggestPaint.setAlpha(120);
                     drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                     
                     suggestPaint.setColor(stepColor);
                     suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setAlpha(120);
-                    int circleRadius = Scale(18);
+                    suggestPaint.setAlpha(100);
+                    int circleRadius = Scale(16);
                     canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                     
                     suggestPaint.setColor(Color.WHITE);
-                    suggestPaint.setTextSize(Scale(34));
+                    suggestPaint.setTextSize(Scale(30));
                     suggestPaint.setAlpha(255);
                     suggestPaint.setFakeBoldText(true);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(10), suggestPaint);
+                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(9), suggestPaint);
                 }
             }
         }

@@ -372,19 +372,26 @@ public class PvMActivityAI {
         synchronized (lock) {
             // 检查当前局面是否已经是重复局面，如果是则强制AI变着
             if (this.activity.chessInfo.isThreefoldRepetition()) {
-                // 启用强制变着模式
-                this.activity.chessInfo.forceVariation = true;
-                this.activity.chessInfo.variationRandomness = 5; // 设置高随机性
+                // 检查用户是否开启了强制变着功能
+                boolean forceVariationEnabled = PvMActivity.setting != null && PvMActivity.setting.forceVariation;
                 
-                // 通知用户需要重新计算
-                if (this.activity != null) {
-                    this.activity.runOnUiThread(() -> {
-                        // 移除Toast提示，避免频繁弹出
-                    });
+                if (forceVariationEnabled) {
+                    // 启用强制变着模式
+                    this.activity.chessInfo.forceVariation = true;
+                    this.activity.chessInfo.variationRandomness = 5; // 设置高随机性
+                    
+                    // 通知用户需要重新计算
+                    if (this.activity != null) {
+                        this.activity.runOnUiThread(() -> {
+                            // 移除Toast提示，避免频繁弹出
+                        });
+                    }
+                    
+                    // 重新触发AI计算
+                    return triggerAIRecalculation();
+                } else {
+                    LogUtils.i("PvMActivityAI", "检测到重复局面，但用户已关闭强制变着");
                 }
-                
-                // 重新触发AI计算
-                return triggerAIRecalculation();
             }
             
             boolean redKingExists = false;

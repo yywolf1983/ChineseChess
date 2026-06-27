@@ -773,21 +773,36 @@ public class PvMActivityControls {
             } else {
                 // 如果刚刚执行了强制变着，跳过强制变着检查
                 if (!justExecutedForceVariation) {
+                    // 检查用户是否开启了强制变着功能
+                    boolean forceVariationEnabled = PvMActivity.setting != null && PvMActivity.setting.forceVariation;
+                    
                     // 检查三次重复局面，后台强制变着并显示浮窗提示
                     if (activity.chessInfo.isThreefoldRepetition()) {
-                        handleForceVariation();
+                        if (forceVariationEnabled) {
+                            handleForceVariation();
+                        } else {
+                            LogUtils.i("PvMActivityControls", "检测到三次重复局面，但用户已关闭强制变着");
+                        }
                         return;
                     }
                     
                     // 检查长将，后台强制变着并显示浮窗提示
                     if (activity.chessInfo.isPerpetualCheck()) {
-                        handleForceVariation();
+                        if (forceVariationEnabled) {
+                            handleForceVariation();
+                        } else {
+                            LogUtils.i("PvMActivityControls", "检测到长将，但用户已关闭强制变着");
+                        }
                         return;
                     }
                     
                     // 检查长捉，后台强制变着并显示浮窗提示
                     if (activity.chessInfo.getPerpetualAttackSide() != null) {
-                        handleForceVariation();
+                        if (forceVariationEnabled) {
+                            handleForceVariation();
+                        } else {
+                            LogUtils.i("PvMActivityControls", "检测到长捉，但用户已关闭强制变着");
+                        }
                         return;
                     }
                 } else {
