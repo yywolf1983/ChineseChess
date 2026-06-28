@@ -157,10 +157,8 @@ public class ChessRecognitionService {
 
             ChessInfo chessInfo;
             if (warpedBoard != null) {
-                // Step 3: 在变换后的标准棋盘图上分类
                 chessInfo = runClassification(warpedBoard);
             } else {
-                // 降级：直接在原图上分类（效果会差）
                 Log.w(TAG, "Pose/warp failed, falling back to direct classification");
                 chessInfo = runClassification(bitmap);
             }
@@ -404,7 +402,14 @@ public class ChessRecognitionService {
             Log.d(TAG, String.format("Cls timing: resize=%dms, prep=%dms, infer=%dms, parse=%dms, total=%dms",
                 t1-t0, t2-t1, t3-t2, t4-t3, t5-t0));
 
-            // 8. 先手默认红方
+            // 8. 自动检测方向并修正（模型训练方向可能与代码假设不一致）
+            boolean needsFlip = detectBoardOrientation(chessInfo);
+            if (needsFlip) {
+                flipBoardVertical(chessInfo);
+                Log.w(TAG, "Auto-detected reversed board orientation, flipped");
+            }
+            
+            // 9. 先手默认红方
             chessInfo.IsRedGo = true;
             return chessInfo;
         } finally {
@@ -743,6 +748,86 @@ public class ChessRecognitionService {
     }
 
     // ========== 模拟数据 ==========
+
+    /**
+     * 检测棋盘方向是否正确（红方应在下方 y=0-4，黑方应在上方 y=5-9）
+     * 使用"将帅位置"作为主判断（最可靠），棋子分布作为辅助验证
+     * @return true 表示方向反了，需要翻转
+     */
+    private boolean detectBoardOrientation(ChessInfo info) {
+        // ── 第1层：找红帅(8)和黑将(1)的位置 ──
+        int redKingY = -1, blackKingY = -1;
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int p = info.piece[y][x];
+                if (p == 8) redKingY = y;       // 红帅
+                else if (p == 1) blackKingY = y; // 黑将
+            }
+        }
+        
+        boolean redKingInTop = (redKingY >= 5 && redKingY <= 9);
+        boolean blackKingInBottom = (blackKingY >= 0 && blackKingY <= 4);
+        
+        // 双王都在 → 判断最可靠
+        if (redKingY >= 0 && blackKingY >= 0) {
+            boolean needFlip = redKingInTop && blackKingInBottom;
+            Log.d(TAG, String.format("Orientation(kings): redKingY=%d blackKingY=%d → flip=%b", 
+                redKingY, blackKingY, needFlip));
+            return needFlip;
+        }
+        
+        // 只有红帅 → 红帅在上半部则需翻转
+        if (redKingY >= 0) {
+            boolean needFlip = redKingInTop;
+            Log.d(TAG, String.format("Orientation(redKing only): redKingY=%d → flip=%b", redKingY, needFlip));
+            return needFlip;
+        }
+        
+        // 只有黑将 → 黑将在下半部则需翻转
+        if (blackKingY >= 0) {
+            boolean needFlip = blackKingInBottom;
+            Log.d(TAG, String.format("Orientation(blackKing only): blackKingY=%d → flip=%b", blackKingY, needFlip));
+            return needFlip;
+        }
+        
+        // ── 第2层：都没找到王，用棋子分布 ──
+        int topRed = 0, bottomRed = 0;
+        int topBlack = 0, bottomBlack = 0;
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int p = info.piece[y][x];
+                if (p >= 8 && p <= 14) {
+                    if (y <= 4) bottomRed++; else topRed++;
+                } else if (p >= 1 && p <= 7) {
+                    if (y <= 4) bottomBlack++; else topBlack++;
+                }
+            }
+        }
+        
+        // 红棋多在上半部 且 黑棋多在下半部 → 方向反了
+        boolean needFlip = (topRed > bottomRed) && (bottomBlack > topBlack)
+                        && (topRed + bottomBlack > bottomRed + topBlack + 2);
+        Log.d(TAG, String.format("Orientation(counts): topRed=%d bottomRed=%d topBlack=%d bottomBlack=%d → flip=%b",
+            topRed, bottomRed, topBlack, bottomBlack, needFlip));
+        return needFlip;
+    }
+    
+    /**
+     * 180°旋转棋盘：(x,y) → (8-x, 9-y)
+     * 同时修正 Y 轴（红黑上下）和 X 轴（左右镜像）
+     */
+    private void flipBoardVertical(ChessInfo info) {
+        int[][] temp = new int[10][9];
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                temp[9 - y][8 - x] = info.piece[y][x];
+                info.piece[y][x] = 0;
+            }
+        }
+        for (int y = 0; y < 10; y++) {
+            System.arraycopy(temp[y], 0, info.piece[y], 0, 9);
+        }
+    }
 
     private ChessInfo createSimulatedChessInfo() {
         ChessInfo chessInfo = new ChessInfo();
