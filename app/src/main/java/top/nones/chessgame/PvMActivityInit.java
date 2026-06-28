@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.Toast;
 
 import java.util.concurrent.ExecutorService;
@@ -276,7 +277,10 @@ public class PvMActivityInit {
         } catch (Exception e) {
             Log.e("PvMActivityInit", "Error initializing button group: " + e.getMessage());
         }
-        
+
+        // 添加翻转按钮（浮动在棋盘右上角，仅显示层翻转）
+        addFlipButton();
+
         // 初始绘制界面
         try {
             if (activity.chessView != null) {
@@ -413,7 +417,41 @@ public class PvMActivityInit {
             }
         }
     }
-    
+
+    // 添加翻转棋盘按钮（棋盘右下角外侧，半透明圆形）
+    private void addFlipButton() {
+        if (activity == null || activity.chessView == null || activity.relativeLayout == null) return;
+
+        int sizeDp = 44;
+        float density = activity.getResources().getDisplayMetrics().density;
+        int sizePx = (int) (sizeDp * density + 0.5f);
+        int paddingPx = (int) (10 * density + 0.5f);
+
+        ImageView flipButton = new ImageView(activity);
+        flipButton.setImageResource(R.drawable.ic_flip);
+        flipButton.setBackgroundResource(R.drawable.bg_flip_button);
+        flipButton.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+        flipButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            flipButton.setElevation(4 * density);
+        }
+        flipButton.setOnClickListener(v -> {
+            if (activity.chessView != null) {
+                activity.chessView.toggleFlip();
+            }
+        });
+        activity.relativeLayout.addView(flipButton);
+
+        android.widget.RelativeLayout.LayoutParams flipParams =
+                new android.widget.RelativeLayout.LayoutParams(sizePx, sizePx);
+        flipParams.addRule(android.widget.RelativeLayout.ABOVE, 10001);
+        flipParams.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT);
+        flipParams.setMargins(0, 0,
+                (int) (12 * density + 0.5f),
+                (int) (-18 * density + 0.5f));
+        flipButton.setLayoutParams(flipParams);
+    }
+
     // 棋盘触摸监听器类
     private static class ChessViewTouchListener implements android.view.View.OnTouchListener {
         private final PvMActivity activity;
@@ -427,17 +465,20 @@ public class PvMActivityInit {
             if (activity == null || activity.chessView == null) {
                 return false;
             }
-            
+
+            // 翻转状态下变换触摸坐标，使触摸与视觉一致（仅显示调度，不动数据）
+            android.view.MotionEvent ev = activity.chessView.transformTouchForFlip(event);
+
             // 先让ChessView处理触摸事件（用于摆棋窗口拖动和棋子点击）
-            activity.chessView.onTouchEvent(event);
-            
+            activity.chessView.onTouchEvent(ev);
+
             // 处理摆棋模式下的触摸事件
-            if (activity.chessInfo != null && activity.chessInfo.IsSetupMode && event.getAction() == android.view.MotionEvent.ACTION_DOWN) {
+            if (activity.chessInfo != null && activity.chessInfo.IsSetupMode && ev.getAction() == android.view.MotionEvent.ACTION_DOWN) {
                 // 处理棋盘上的放置逻辑
-                float x = event.getX();
-                float y = event.getY();
+                float x = ev.getX();
+                float y = ev.getY();
                 if (x >= 0 && x <= activity.chessView.Board_width && y >= 0 && y <= activity.chessView.Board_height) {
-                    int[] pos = activity.getPos(event);
+                    int[] pos = activity.getPos(ev);
                     if (pos != null) {
                         activity.chessInfo.Select = pos;
                         int i = pos[0];
@@ -517,11 +558,14 @@ public class PvMActivityInit {
                         }
                     }
                 }
+                if (ev != event) ev.recycle();
                 return true;
             }
-            
+
             // 非摆棋模式下，由Activity处理触摸事件
-            return activity.onTouch(view, event);
+            boolean result = activity.onTouch(view, ev);
+            if (ev != event) ev.recycle();
+            return result;
         }
     }
     

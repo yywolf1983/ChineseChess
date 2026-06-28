@@ -53,14 +53,19 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             // 设置触摸监听器
             chessView.setOnTouchListener((view, event) -> {
                 try {
+                    // 翻转状态下变换触摸坐标，使触摸与视觉一致（仅显示调度，不动数据）
+                    MotionEvent ev = chessView.transformTouchForFlip(event);
                     // 先让ChessView处理触摸事件（用于摆棋窗口拖动和棋子点击）
-                    boolean handled = chessView.onTouchEvent(event);
+                    boolean handled = chessView.onTouchEvent(ev);
                     if (handled) {
+                        if (ev != event) ev.recycle();
                         // 摆棋模式的触摸事件已经由SetupModeView处理
                         return true;
                     }
                     // 否则由Activity处理
-                    return onTouch(view, event);
+                    boolean result = onTouch(view, ev);
+                    if (ev != event) ev.recycle();
+                    return result;
                 } catch (Exception e) {
                     LogUtils.e("PvPActivity", "Error in touch listener", e);
                     return false;

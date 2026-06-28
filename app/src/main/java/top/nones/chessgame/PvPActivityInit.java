@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import androidx.appcompat.app.AppCompatActivity;
@@ -49,6 +50,7 @@ public class PvPActivityInit {
         initRoundView();
         initChessView();
         initButtonGroup();
+        addFlipButton();
     }
 
     private void initChessInfo() {
@@ -124,6 +126,7 @@ public class PvPActivityInit {
 
     private void initButtonGroup() {
         LinearLayout buttonGroup = (LinearLayout) activity.getLayoutInflater().inflate(R.layout.button_group, relativeLayout, false);
+        buttonGroup.setId(R.id.button_group);
         relativeLayout.addView(buttonGroup);
 
         RelativeLayout.LayoutParams paramsV = (RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
@@ -151,6 +154,39 @@ public class PvPActivityInit {
                 setupButtonListeners((ViewGroup) child);
             }
         }
+    }
+
+    // 添加翻转棋盘按钮（棋盘右下角外侧，半透明圆形）
+    private void addFlipButton() {
+        if (activity == null || chessView == null || relativeLayout == null) return;
+
+        int sizeDp = 44;
+        float density = activity.getResources().getDisplayMetrics().density;
+        int sizePx = (int) (sizeDp * density + 0.5f);
+        int paddingPx = (int) (10 * density + 0.5f);
+
+        ImageView flipButton = new ImageView(activity);
+        flipButton.setImageResource(R.drawable.ic_flip);
+        flipButton.setBackgroundResource(R.drawable.bg_flip_button);
+        flipButton.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
+        flipButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            flipButton.setElevation(4 * density);
+        }
+        flipButton.setOnClickListener(v -> {
+            if (chessView != null) {
+                chessView.toggleFlip();
+            }
+        });
+        relativeLayout.addView(flipButton);
+
+        RelativeLayout.LayoutParams flipParams = new RelativeLayout.LayoutParams(sizePx, sizePx);
+        flipParams.addRule(RelativeLayout.ABOVE, R.id.button_group);
+        flipParams.addRule(RelativeLayout.ALIGN_PARENT_RIGHT);
+        flipParams.setMargins(0, 0,
+                (int) (12 * density + 0.5f),
+                (int) (-18 * density + 0.5f));
+        flipButton.setLayoutParams(flipParams);
     }
 
     // Getters

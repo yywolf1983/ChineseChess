@@ -38,6 +38,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
     public ChessInfo chessInfo;
 
+    /** 棋盘视图是否翻转（仅显示层，不动任何数据/算法） */
+    public volatile boolean boardFlipped = false;
+
 
 
     public String[] thinkMood = new String[]{"😀", "🙂", "😶", "😣", "😵", "😭"};
@@ -128,6 +131,12 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     public void Draw(Canvas canvas) {
+        canvas.save();
+        // 棋盘翻转：Canvas 180° 旋转，仅显示层操作，不动任何数据
+        if (boardFlipped) {
+            canvas.rotate(180, Board_width / 2f, Board_height / 2f);
+        }
+
         canvas.drawColor(Color.WHITE);
         // 添加空指针检查，确保 ChessBoard 不为 null 时才绘制
         if (ChessBoard != null && cSrcRect != null && cDesRect != null) {
@@ -355,6 +364,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 thinkContent = "😀·····";
             }
         }
+        canvas.restore();
     }
 
 
@@ -440,7 +450,32 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             }
         }
     }
-    
+
+    /**
+     * 翻转棋盘视图（仅显示层，触摸坐标需用 transformTouchForFlip 转换）
+     */
+    public void toggleFlip() {
+        boardFlipped = !boardFlipped;
+        requestDraw();
+    }
+
+    /**
+     * 当棋盘翻转时，将触摸坐标从屏幕空间映射到数据空间。
+     * 调用者必须用返回的 MotionEvent 代替原始事件，并在使用后 recycle（如果非同一对象）。
+     *
+     * @param event 原始触摸事件（坐标在 ChessView 坐标系中）
+     * @return 转换后的事件（坐标映射到未翻转时的数据坐标系）；未翻转时返回原事件
+     */
+    public MotionEvent transformTouchForFlip(MotionEvent event) {
+        if (!boardFlipped || Board_width <= 0 || Board_height <= 0) {
+            return event;
+        }
+        return MotionEvent.obtain(event.getDownTime(), event.getEventTime(),
+                event.getAction(),
+                Board_width - event.getX(),
+                Board_height - event.getY(),
+                event.getMetaState());
+    }
 
     
     // 处理触摸事件，实现摆棋窗口的拖动功能
