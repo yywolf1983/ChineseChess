@@ -353,7 +353,7 @@ public class RoundView extends View {
         // 当前行棋方（居中，突出显示）
         String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        float turnTextSize = convertDpToPixel(20, getContext());
+        float turnTextSize = convertDpToPixel(18, getContext());
         turnPaint.setTextSize(turnTextSize);
         turnPaint.setTextAlign(Paint.Align.CENTER);
         turnPaint.setFakeBoldText(true);
@@ -401,7 +401,7 @@ public class RoundView extends View {
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "第" + roundCount + "回合";
-        float stepTextSize = convertDpToPixel(18, getContext());
+        float stepTextSize = convertDpToPixel(16, getContext());
         infoTextPaint.setTextSize(stepTextSize);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         infoTextPaint.setFakeBoldText(true);
