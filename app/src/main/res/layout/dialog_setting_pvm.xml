@@ -1,294 +1,151 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:fillViewport="true">
+    android:layout_height="wrap_content"
+    android:minWidth="320dp"
+    android:background="@drawable/shape_dialog"
+    android:paddingTop="0dp"
+    android:paddingBottom="12dp">
 
-    <LinearLayout
-        android:orientation="vertical"
-        android:minWidth="300dp"
+    <!-- 顶部彩色条 -->
+    <View
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@drawable/shape_dialog">
+        android:layout_height="4dp"
+        android:background="#4CAF50" />
 
+    <!-- 标题 -->
     <TextView
-        android:id="@+id/textView3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_margin="15dp"
-        android:textSize="14sp"
-        android:textColor="#000000"
-        android:text="设置" />
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="6dp"
+        android:textSize="18sp"
+        android:textColor="#333333"
+        android:textStyle="bold"
+        android:text="⚙ 设  置" />
 
-    <RadioGroup
-        android:id="@+id/musicGroup"
+    <!-- 可滚动内容区 -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="false"
+        android:scrollbars="vertical"
+        android:fadeScrollbars="false"
+        android:minHeight="320dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingBottom="4dp">
+
+    <!-- ==================== 声音设置 ==================== -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp">
+        android:orientation="vertical"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp">
 
         <TextView
-            android:id="@+id/textView"
-            android:layout_width="80dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:text="音乐" />
+            android:text="声音"
+            android:textSize="10sp"
+            android:textColor="#999999"
+            android:layout_marginBottom="8dp"
+            android:letterSpacing="0.15" />
 
-        <RadioButton
-            android:id="@+id/musicTrue"
-            android:soundEffectsEnabled="false"
-            android:layout_width="80dp"
+        <RadioGroup
+            android:id="@+id/musicGroup"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:text="开" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-        <RadioButton
-            android:id="@+id/musicFalse"
-            android:soundEffectsEnabled="false"
-            android:layout_width="80dp"
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="13sp"
+                android:textColor="#444444"
+                android:text="音乐" />
+
+            <RadioButton
+                android:id="@+id/musicTrue"
+                android:soundEffectsEnabled="false"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:buttonTint="#4CAF50"
+                android:text="开" />
+
+            <RadioButton
+                android:id="@+id/musicFalse"
+                android:soundEffectsEnabled="false"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:buttonTint="#4CAF50"
+                android:text="关"
+                android:layout_marginLeft="8dp" />
+        </RadioGroup>
+
+        <RadioGroup
+            android:id="@+id/effectGroup"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:text="关" />
-    </RadioGroup>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="4dp">
 
-    <RadioGroup
-        android:id="@+id/effectGroup"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="13sp"
+                android:textColor="#444444"
+                android:text="音效" />
 
-        <TextView
-            android:id="@+id/textView2"
-            android:layout_width="80dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:text="音效" />
+            <RadioButton
+                android:id="@+id/effectTrue"
+                android:soundEffectsEnabled="false"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:buttonTint="#4CAF50"
+                android:text="开" />
 
-        <RadioButton
-            android:id="@+id/effectTrue"
-            android:soundEffectsEnabled="false"
-            android:layout_width="80dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:text="开" />
+            <RadioButton
+                android:id="@+id/effectFalse"
+                android:soundEffectsEnabled="false"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textColor="#000000"
+                android:buttonTint="#4CAF50"
+                android:text="关"
+                android:layout_marginLeft="8dp" />
+        </RadioGroup>
+    </LinearLayout>
 
-        <RadioButton
-            android:id="@+id/effectFalse"
-            android:soundEffectsEnabled="false"
-            android:layout_width="80dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textSize="12sp"
-            android:textColor="#000000"
-            android:text="关" />
-    </RadioGroup>
-
+    <!-- ==================== 思考时间 ==================== -->
     <LinearLayout
         android:id="@+id/levelGroup"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
-
-            <TextView
-                android:id="@+id/textView5"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:text="思考时间" />
-
-            <TextView
-                android:id="@+id/timeValue"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:gravity="center"
-                android:text="5秒" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp">
-            <Button
-                android:id="@+id/timeMinusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:text="-"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginRight="10dp" />
-            <SeekBar
-                android:id="@+id/timeSeekBar"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:min="1"
-                android:max="60"
-                android:progress="5"
-                android:thumb="@android:drawable/btn_star" />
-            <Button
-                android:id="@+id/timePlusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:text="+"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginLeft="10dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:text="1秒" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="right"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:text="60秒" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- 搜索深度设置 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp"
-        android:layout_marginTop="10dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
-
-            <TextView
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:text="搜索深度" />
-
-            <TextView
-                android:id="@+id/depthValue"
-                android:layout_width="80dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:gravity="center"
-                android:text="10层" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp">
-            <Button
-                android:id="@+id/depthMinusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:text="-"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginRight="10dp" />
-            <SeekBar
-                android:id="@+id/depthSeekBar"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:min="5"
-                android:max="120"
-                android:progress="10"
-                android:thumb="@android:drawable/btn_star" />
-            <Button
-                android:id="@+id/depthPlusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:text="+"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginLeft="10dp" />
-        </LinearLayout>
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:text="5层" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="right"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:text="120层" />
-        </LinearLayout>
-    </LinearLayout>
-
-    <!-- 强制变着设置 -->
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
         android:layout_marginTop="10dp">
 
         <LinearLayout
@@ -300,8 +157,203 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:textSize="13sp"
+                android:textColor="#444444"
+                android:text="思考时间" />
+
+            <TextView
+                android:id="@+id/timeValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#4CAF50"
+                android:textStyle="bold"
+                android:text="5秒" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+            <Button
+                android:id="@+id/timeMinusBtn"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="−"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_setting_btn"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
+            <SeekBar
+                android:id="@+id/timeSeekBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:min="1"
+                android:max="60"
+                android:progress="5"
+                android:progressTint="#4CAF50"
+                android:thumbTint="#4CAF50"
+                android:progressBackgroundTint="#E0E0E0" />
+            <Button
+                android:id="@+id/timePlusBtn"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="+"
+                android:textSize="14sp"
+                android:textColor="#4CAF50"
+                android:background="@drawable/bg_setting_btn_active"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="10sp"
+                android:textColor="#999999"
+                android:text="1秒" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="right"
+                android:textSize="10sp"
+                android:textColor="#999999"
+                android:text="60秒" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ==================== 搜索深度 ==================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="13sp"
+                android:textColor="#444444"
+                android:text="搜索深度" />
+
+            <TextView
+                android:id="@+id/depthValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="14sp"
+                android:textColor="#2196F3"
+                android:textStyle="bold"
+                android:text="10层" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
+            <Button
+                android:id="@+id/depthMinusBtn"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="−"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_setting_btn"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
+            <SeekBar
+                android:id="@+id/depthSeekBar"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:min="5"
+                android:max="120"
+                android:progress="10"
+                android:progressTint="#2196F3"
+                android:thumbTint="#2196F3"
+                android:progressBackgroundTint="#E0E0E0" />
+            <Button
+                android:id="@+id/depthPlusBtn"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="+"
+                android:textSize="14sp"
+                android:textColor="#2196F3"
+                android:background="@drawable/bg_setting_btn_active"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:layout_marginTop="4dp">
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="10sp"
+                android:textColor="#999999"
+                android:text="5层" />
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:gravity="right"
+                android:textSize="10sp"
+                android:textColor="#999999"
+                android:text="120层" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- ==================== 强制变着 ==================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="10dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textSize="13sp"
+                android:textColor="#444444"
                 android:text="强制变着" />
 
             <RadioGroup
@@ -312,32 +364,43 @@
 
                 <RadioButton
                     android:id="@+id/forceVariationTrue"
-                    android:layout_width="60dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="开"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:textColor="#000000"
+                    android:buttonTint="#4CAF50" />
 
                 <RadioButton
                     android:id="@+id/forceVariationFalse"
-                    android:layout_width="60dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="关"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:textColor="#000000"
+                    android:buttonTint="#4CAF50"
+                    android:layout_marginLeft="8dp" />
             </RadioGroup>
         </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:background="#1A000000"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_marginTop="5dp">
+            android:orientation="horizontal">
 
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textSize="10sp"
-                android:textColor="#666666"
+                android:textColor="#999999"
                 android:text="开启：重复局面强制变着" />
 
             <TextView
@@ -345,44 +408,42 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:textSize="10sp"
-                android:textColor="#666666"
+                android:textColor="#999999"
                 android:gravity="right"
                 android:text="关闭：按引擎最优解" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- 技能级别设置 -->
+    <!-- ==================== 技能级别 ==================== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
         android:layout_marginTop="10dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="80dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:textSize="13sp"
+                android:textColor="#444444"
                 android:text="技能级别" />
 
             <TextView
                 android:id="@+id/skillLevelValue"
-                android:layout_width="80dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:gravity="center"
+                android:textSize="14sp"
+                android:textColor="#FF9800"
+                android:textStyle="bold"
                 android:text="20级" />
         </LinearLayout>
 
@@ -390,54 +451,62 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp">
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
             <Button
                 android:id="@+id/skillLevelMinusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:text="-"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginRight="10dp" />
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="−"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_setting_btn"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
             <SeekBar
                 android:id="@+id/skillLevelSeekBar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
                 android:min="1"
                 android:max="20"
                 android:progress="20"
-                android:thumb="@android:drawable/btn_star" />
+                android:progressTint="#FF9800"
+                android:thumbTint="#FF9800"
+                android:progressBackgroundTint="#E0E0E0" />
             <Button
                 android:id="@+id/skillLevelPlusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:text="+"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginLeft="10dp" />
+                android:textSize="14sp"
+                android:textColor="#FF9800"
+                android:background="@drawable/bg_setting_btn_active"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_gravity="center">
-
+            android:layout_marginTop="4dp">
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:layout_weight="1"
+                android:textSize="10sp"
+                android:textColor="#999999"
                 android:text="1级" />
-
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:gravity="right"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:textSize="10sp"
+                android:textColor="#999999"
                 android:text="20级" />
         </LinearLayout>
 
@@ -445,43 +514,41 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="10sp"
-            android:textColor="#666666"
-            android:layout_marginTop="5dp"
+            android:textColor="#999999"
+            android:layout_marginTop="6dp"
             android:text="技能级别影响AI的走棋风格和强度，20级为最高水平" />
     </LinearLayout>
 
-    <!-- MultiPV设置 -->
+    <!-- ==================== MultiPV ==================== -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:layout_gravity="center"
-        android:layout_marginRight="25dp"
-        android:layout_marginLeft="25dp"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
         android:layout_marginTop="10dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:layout_gravity="center">
+            android:orientation="horizontal">
 
             <TextView
-                android:layout_width="80dp"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:textSize="13sp"
+                android:textColor="#444444"
                 android:text="MultiPV" />
 
             <TextView
                 android:id="@+id/multiPVValue"
-                android:layout_width="80dp"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textSize="12sp"
-                android:textColor="#000000"
-                android:gravity="center"
+                android:textSize="14sp"
+                android:textColor="#9C27B0"
+                android:textStyle="bold"
                 android:text="1变" />
         </LinearLayout>
 
@@ -489,54 +556,62 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="10dp"
-            android:layout_marginBottom="10dp">
+            android:layout_marginTop="8dp"
+            android:gravity="center_vertical">
             <Button
                 android:id="@+id/multiPVMinusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
-                android:text="-"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginRight="10dp" />
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="−"
+                android:textSize="14sp"
+                android:textColor="#666666"
+                android:background="@drawable/bg_setting_btn"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
             <SeekBar
                 android:id="@+id/multiPVSeekBar"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
                 android:min="0"
                 android:max="4"
                 android:progress="0"
-                android:thumb="@android:drawable/btn_star" />
+                android:progressTint="#9C27B0"
+                android:thumbTint="#9C27B0"
+                android:progressBackgroundTint="#E0E0E0" />
             <Button
                 android:id="@+id/multiPVPlusBtn"
-                android:layout_width="24dp"
-                android:layout_height="24dp"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
                 android:text="+"
-                android:textSize="12sp"
-                android:background="@android:color/transparent"
-                android:layout_marginLeft="10dp" />
+                android:textSize="14sp"
+                android:textColor="#9C27B0"
+                android:background="@drawable/bg_setting_btn_active"
+                android:minWidth="0dp"
+                android:minHeight="0dp" />
         </LinearLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_gravity="center">
-
+            android:layout_marginTop="4dp">
             <TextView
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:layout_weight="1"
+                android:textSize="10sp"
+                android:textColor="#999999"
                 android:text="1变" />
-
             <TextView
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_weight="1"
                 android:gravity="right"
-                android:textSize="12sp"
-                android:textColor="#000000"
+                android:textSize="10sp"
+                android:textColor="#999999"
                 android:text="5变" />
         </LinearLayout>
 
@@ -544,8 +619,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="10sp"
-            android:textColor="#666666"
-            android:layout_marginTop="5dp"
+            android:textColor="#999999"
+            android:layout_marginTop="6dp"
             android:text="MultiPV影响AI考虑的走法多样性，值越大计算负担越重" />
 
         <TextView
@@ -553,39 +628,48 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="11sp"
-            android:textColor="#FF0000"
-            android:layout_marginTop="5dp"
-            android:text="落子并非最优解。慎重增大。" />
+            android:textColor="#E53935"
+            android:layout_marginTop="4dp"
+            android:text="⚠ 落子并非最优解。慎重增大。" />
     </LinearLayout>
 
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- 按钮区域 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="horizontal">
-
-        <Button
-            android:id="@+id/posBtn"
-            android:soundEffectsEnabled="false"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_margin="15dp"
-            android:background="@drawable/selector_btn2"
-            android:textSize="14sp"
-            android:text="确定" />
+        android:orientation="horizontal"
+        android:layout_marginLeft="16dp"
+        android:layout_marginRight="16dp"
+        android:layout_marginTop="16dp"
+        android:gravity="center">
 
         <Button
             android:id="@+id/negBtn"
             android:soundEffectsEnabled="false"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
             android:layout_weight="1"
-            android:layout_margin="15dp"
-            android:background="@drawable/selector_btn2"
+            android:layout_marginRight="8dp"
+            android:background="@drawable/bg_dialog_cancel"
             android:textSize="14sp"
+            android:textColor="#666666"
+            android:textStyle="bold"
             android:text="取消" />
-    </LinearLayout>
 
+        <Button
+            android:id="@+id/posBtn"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="42dp"
+            android:layout_weight="1"
+            android:layout_marginLeft="8dp"
+            android:background="@drawable/bg_dialog_confirm"
+            android:textSize="14sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:text="确定" />
     </LinearLayout>
-
-</ScrollView>
+</LinearLayout>

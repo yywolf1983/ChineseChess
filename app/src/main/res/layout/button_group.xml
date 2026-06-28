@@ -6,170 +6,178 @@
     android:orientation="vertical"
     android:padding="8dp">
 
+    <!-- 第1行：核心对局操作 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="5"
+        android:layout_marginBottom="6dp">
+
+        <Button
+            android:id="@+id/btn_retry"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_primary"
+            android:textSize="16sp"
+            android:text="新局"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_load"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_primary"
+            android:textSize="16sp"
+            android:text="加载"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_prev"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_nav"
+            android:textSize="16sp"
+            android:text="上一步"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_next"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_nav"
+            android:textSize="16sp"
+            android:text="下一步"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_recall"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:background="@drawable/bg_board_btn_tool"
+            android:textSize="16sp"
+            android:text="悔棋"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- 第2行：功能工具 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:weightSum="5">
 
-    <Button
-        android:id="@+id/btn_retry"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="新局"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
+        <Button
+            android:id="@+id/btn_settings"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_tool"
+            android:textSize="16sp"
+            android:text="设置"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btn_load"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="加载"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
+        <Button
+            android:id="@+id/btn_save"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_tool"
+            android:textSize="16sp"
+            android:text="保存"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btn_prev"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="14dp"
-        android:text="上一步"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
+        <Button
+            android:id="@+id/btn_mode"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_tool"
+            android:textSize="16sp"
+            android:text="模式"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btn_next"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="14dp"
-        android:text="下一步"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
+        <Button
+            android:id="@+id/btn_setup"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:layout_marginEnd="3dp"
+            android:background="@drawable/bg_board_btn_setup"
+            android:textSize="16sp"
+            android:text="摆棋"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
 
-    <Button
-        android:id="@+id/btn_recall"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="悔棋"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
-</LinearLayout>
+        <Button
+            android:id="@+id/btn_statistics"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginStart="3dp"
+            android:background="@drawable/bg_board_btn_save"
+            android:textSize="16sp"
+            android:text="支招"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
+    </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:weightSum="5">
-
-    <Button
-        android:id="@+id/btn_mode"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="模式"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
-
-    <Button
-        android:id="@+id/btn_save"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="保存"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
-
-    <Button
-        android:id="@+id/btn_settings"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="设置"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
-
-    <Button
-        android:id="@+id/btn_statistics"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="支招"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
-
-    <Button
-        android:id="@+id/btn_setup"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn2"
-        android:textSize="16dp"
-        android:text="摆棋"
-        android:textColor="@android:color/black"
-        android:elevation="2dp" />
-
-</LinearLayout>
-
+    <!-- 拍照识别按钮（隐藏） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:weightSum="1">
 
-    <Button
-        android:id="@+id/btn_camera_recognize"
-        android:soundEffectsEnabled="false"
-        android:layout_width="0dp"
-        android:layout_height="56dp"
-        android:layout_weight="1"
-        android:layout_margin="4dp"
-        android:background="@drawable/selector_btn1"
-        android:textSize="18dp"
-        android:text="📷 拍照识别"
-        android:textColor="#FFFFFF"
-        android:visibility="gone"
-        android:elevation="2dp" />
+        <Button
+            android:id="@+id/btn_camera_recognize"
+            android:soundEffectsEnabled="false"
+            android:layout_width="0dp"
+            android:layout_height="44dp"
+            android:layout_weight="1"
+            android:layout_marginTop="6dp"
+            android:background="@drawable/selector_btn1"
+            android:textSize="16sp"
+            android:text="📷 拍照识别"
+            android:textColor="#FFFFFF"
+            android:visibility="gone" />
+    </LinearLayout>
 
-</LinearLayout>
 </LinearLayout>

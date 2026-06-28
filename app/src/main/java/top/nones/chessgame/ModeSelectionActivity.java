@@ -4,7 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
-import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -32,38 +32,30 @@ public class ModeSelectionActivity extends Activity implements View.OnClickListe
         
         // 设置当前模式显示
         TextView currentModeText = findViewById(R.id.current_mode_text);
-        currentModeText.setText("当前模式: " + modeNames[currentMode]);
+        currentModeText.setText(modeNames[currentMode]);
         
         // 设置模式按钮
         setupModeButtons();
         
         // 设置取消按钮
-        Button cancelButton = findViewById(R.id.cancel_button);
+        LinearLayout cancelButton = findViewById(R.id.cancel_button);
         cancelButton.setOnClickListener(this);
     }
     
     private void setupModeButtons() {
-        // 设置双人对战按钮
-        Button mode0Button = findViewById(R.id.mode_0_button);
-        mode0Button.setText(modeNames[0]);
+        LinearLayout mode0Button = findViewById(R.id.mode_0_button);
         mode0Button.setOnClickListener(this);
         mode0Button.setTag(0);
-        
-        // 设置人机对战（玩家红）按钮
-        Button mode1Button = findViewById(R.id.mode_1_button);
-        mode1Button.setText(modeNames[1]);
+
+        LinearLayout mode1Button = findViewById(R.id.mode_1_button);
         mode1Button.setOnClickListener(this);
         mode1Button.setTag(1);
-        
-        // 设置人机对战（玩家黑）按钮
-        Button mode2Button = findViewById(R.id.mode_2_button);
-        mode2Button.setText(modeNames[2]);
+
+        LinearLayout mode2Button = findViewById(R.id.mode_2_button);
         mode2Button.setOnClickListener(this);
         mode2Button.setTag(2);
-        
-        // 设置双机对战按钮
-        Button mode3Button = findViewById(R.id.mode_3_button);
-        mode3Button.setText(modeNames[3]);
+
+        LinearLayout mode3Button = findViewById(R.id.mode_3_button);
         mode3Button.setOnClickListener(this);
         mode3Button.setTag(3);
     }

@@ -5,6 +5,8 @@ import android.content.Context;
 import android.os.Bundle;
 import androidx.annotation.IdRes;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
@@ -96,6 +98,16 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         super.onCreate(savedInstanceState);
         setContentView(R.layout.dialog_setting_pvm);
         setCanceledOnTouchOutside(false);
+
+        // 设置对话框宽度为屏幕90%，确保够宽
+        Window window = getWindow();
+        if (window != null) {
+            WindowManager.LayoutParams params = window.getAttributes();
+            params.width = (int) (getContext().getResources().getDisplayMetrics().widthPixels * 0.9);
+            params.height = WindowManager.LayoutParams.WRAP_CONTENT;
+            window.setAttributes(params);
+        }
+
         initView();
         initEvent();
         if (isMusicPlay) {

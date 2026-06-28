@@ -304,7 +304,7 @@ public class RoundView extends View {
         float row1Y = paddingTop + lineHeight * 0.8f;
         
         // 游戏模式（左侧）+ 深度
-        float modeTextSize = convertDpToPixel(14, getContext());
+        float modeTextSize = convertDpToPixel(15, getContext());
         modeTextPaint.setTextSize(modeTextSize);
         modeTextPaint.setTextAlign(Paint.Align.LEFT);
         modeTextPaint.setFakeBoldText(true);
@@ -353,17 +353,17 @@ public class RoundView extends View {
         // 当前行棋方（居中，突出显示）
         String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
         Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        float turnTextSize = convertDpToPixel(18, getContext());
+        float turnTextSize = convertDpToPixel(24, getContext());
         turnPaint.setTextSize(turnTextSize);
         turnPaint.setTextAlign(Paint.Align.CENTER);
         turnPaint.setFakeBoldText(true);
-        canvas.drawText(turnText, width / 2, row1Y, turnPaint);
+        canvas.drawText(turnText, width / 2, row1Y + convertDpToPixel(4, getContext()), turnPaint);
         
         // 搜索深度（当前行棋方文字右下方）
         int currentDepthForTurn = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
         if (currentDepthForTurn > 0) {
-            String depthText = "D" + currentDepthForTurn;
-            infoTextPaint.setTextSize(convertDpToPixel(8, getContext()));
+            String depthText = "深度" + currentDepthForTurn;
+            infoTextPaint.setTextSize(convertDpToPixel(13, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             infoTextPaint.setColor(Color.argb(150, 0, 0, 0));
             float turnTextWidth = turnPaint.measureText(turnText);
@@ -387,7 +387,7 @@ public class RoundView extends View {
             textColor = Color.rgb(100, 90, 80);
         }
         float turnTextWidth = turnPaint.measureText(turnText);
-        infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        infoTextPaint.setTextSize(convertDpToPixel(15, getContext()));
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         infoTextPaint.setFakeBoldText(true);
         infoTextPaint.setColor(textColor);
@@ -401,7 +401,7 @@ public class RoundView extends View {
         int totalMoves = chessInfo.totalMoves;
         int roundCount = (totalMoves + 1) / 2;
         String stepText = "第" + roundCount + "回合";
-        float stepTextSize = convertDpToPixel(14, getContext());
+        float stepTextSize = convertDpToPixel(18, getContext());
         infoTextPaint.setTextSize(stepTextSize);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         infoTextPaint.setFakeBoldText(true);
@@ -475,70 +475,69 @@ public class RoundView extends View {
         }
         
         // 红方时间（左侧）
-        redTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        redTextPaint.setTextSize(convertDpToPixel(15, getContext()));
         redTextPaint.setTextAlign(Paint.Align.LEFT);
         redTextPaint.setFakeBoldText(true);
-        String redText = "红 " + formatTime(redTime);
+        String redText = formatTime(redTime);
         canvas.drawText(redText, convertDpToPixel(10, getContext()), row2Y, redTextPaint);
         
         // 评分（居中）- 双向进度条
         drawScoreBar(canvas, width, row2Y, moveScore);
         
         // 黑方时间（右侧）
-        blackTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        blackTextPaint.setTextSize(convertDpToPixel(15, getContext()));
         blackTextPaint.setTextAlign(Paint.Align.RIGHT);
         blackTextPaint.setFakeBoldText(true);
-        String blackText = "黑 " + formatTime(blackTime);
+        String blackText = formatTime(blackTime);
         canvas.drawText(blackText, width - convertDpToPixel(10, getContext()), row2Y, blackTextPaint);
         
         // ========== 第3行（可选）：AI加载信息 / 支招信息 ==========
         float row3Y = row2Y + lineHeight;
         float currentY = row3Y;
         
-        boolean hasAIOrSuggestInfo = (suggestMoveText != null && !suggestMoveText.isEmpty()) || isAILoading || isShowLoadingComplete || isAIThinking;
+        boolean hasSuggest = (suggestMoveText != null && !suggestMoveText.isEmpty())
+                || (suggestMoveTexts != null && !suggestMoveTexts.isEmpty());
+        boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking;
         
-        // 绘制AI加载中、加载完成或AI思考动画
-        float aiTextSize = convertDpToPixel(10, getContext());
-        if (isAILoading) {
-            infoTextPaint.setTextSize(aiTextSize);
-            infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            
-            String dots = "";
-            for (int i = 0; i < aiLoadingProgress; i++) {
-                dots += ".";
+        // 绘制AI加载中、加载完成或AI思考动画（支招文字出现时不显示AI状态）
+        float aiTextSize = convertDpToPixel(13, getContext());
+        if (!hasSuggest) {
+            if (isAILoading) {
+                infoTextPaint.setTextSize(aiTextSize);
+                infoTextPaint.setTextAlign(Paint.Align.CENTER);
+                String dots = "";
+                for (int i = 0; i < aiLoadingProgress; i++) {
+                    dots += ".";
+                }
+                String loadingText = "AI加载中" + dots;
+                canvas.drawText(loadingText, width / 2, currentY, infoTextPaint);
+                aiLoadingProgress = (aiLoadingProgress + 1) % 4;
+                currentY += lineHeight;
+                postInvalidateDelayed(300);
+            } else if (isShowLoadingComplete) {
+                infoTextPaint.setTextSize(aiTextSize);
+                infoTextPaint.setTextAlign(Paint.Align.CENTER);
+                canvas.drawText("AI加载完成！", width / 2, currentY, infoTextPaint);
+                currentY += lineHeight;
+            } else if (isAIThinking) {
+                infoTextPaint.setTextSize(aiTextSize);
+                infoTextPaint.setTextAlign(Paint.Align.CENTER);
+                String dots = "";
+                for (int i = 0; i < aiThinkingProgress; i++) {
+                    dots += ".";
+                }
+                String thinkingText = "AI思考中" + dots;
+                canvas.drawText(thinkingText, width / 2, currentY, infoTextPaint);
+                aiThinkingProgress = (aiThinkingProgress + 1) % 4;
+                currentY += lineHeight;
+                postInvalidateDelayed(800);
             }
-            String loadingText = "AI加载中" + dots;
-            canvas.drawText(loadingText, width / 2, currentY, infoTextPaint);
-            
-            aiLoadingProgress = (aiLoadingProgress + 1) % 4;
-            currentY += lineHeight;
-            postInvalidateDelayed(300);
-        } else if (isShowLoadingComplete) {
-            infoTextPaint.setTextSize(aiTextSize);
-            infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("AI加载完成！", width / 2, currentY, infoTextPaint);
-            currentY += lineHeight;
-        } else if (isAIThinking) {
-            // AI思考动画
-            infoTextPaint.setTextSize(aiTextSize);
-            infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            
-            String dots = "";
-            for (int i = 0; i < aiThinkingProgress; i++) {
-                dots += ".";
-            }
-            String thinkingText = "AI思考中" + dots;
-            canvas.drawText(thinkingText, width / 2, currentY, infoTextPaint);
-            
-            aiThinkingProgress = (aiThinkingProgress + 1) % 4;
-            currentY += lineHeight;
-            postInvalidateDelayed(800);
         }
         
         // 显示支招走法信息（AI思考时不显示，避免覆盖）
         if (!isAIThinking && suggestMoveText != null && !suggestMoveText.isEmpty()) {
             float originalTextSize = infoTextPaint.getTextSize();
-            infoTextPaint.setTextSize(convertDpToPixel(10, getContext()));
+            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
             currentY += lineHeight;
@@ -549,8 +548,8 @@ public class RoundView extends View {
         if (!isAIThinking && suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
             float originalTextSize = infoTextPaint.getTextSize();
             boolean originalFakeBold = infoTextPaint.isFakeBoldText();
-            float normalSize = convertDpToPixel(11, getContext());
-            float firstSize = convertDpToPixel(13, getContext());
+            float normalSize = convertDpToPixel(13, getContext());
+            float firstSize = convertDpToPixel(15, getContext());
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
             float totalWidth = 0;
@@ -636,7 +635,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(90, getContext()); // 适配当前字体大小
+            height = (int) convertDpToPixel(100, getContext()); // 适配当前字体大小
         }
         
         viewWidth = width;
@@ -688,8 +687,8 @@ public class RoundView extends View {
     }
     
     private void drawScoreBar(Canvas canvas, int width, float centerY, int score) {
-        float barWidth = width * 0.55f;
-        float barHeight = convertDpToPixel(12, getContext());
+        float barWidth = width * 0.7f;
+        float barHeight = convertDpToPixel(14, getContext());
         float barX = (width - barWidth) / 2;
         float barY = centerY - barHeight / 2 - convertDpToPixel(3, getContext());
         
