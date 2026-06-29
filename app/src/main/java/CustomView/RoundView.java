@@ -17,6 +17,10 @@ import top.nones.chessgame.PvMActivity;
  */
 
 public class RoundView extends View {
+    private static final int AI_DOT_DELAY_MS = 500;
+    private static final int AI_DOT_MAX = 3;
+    private static final int AI_DOT_CYCLE = AI_DOT_MAX + 1;
+
     public ChessInfo chessInfo;
     private int gameMode = 0; // 对战模式
     private int moveScore = 0; // 走法评分
@@ -44,6 +48,22 @@ public class RoundView extends View {
     private boolean cachedBlackCheckmated = false;
     private boolean cachedRedStalemated = false;
     private boolean cachedBlackStalemated = false;
+    private boolean dotAnimationScheduled = false;
+
+    private final Runnable aiDotAnimationRunnable = () -> {
+        dotAnimationScheduled = false;
+        if (!shouldAnimateDots()) {
+            return;
+        }
+        if (isSuggestMode || isAIThinking) {
+            aiThinkingProgress = (aiThinkingProgress + 1) % AI_DOT_CYCLE;
+        }
+        if (isAILoading) {
+            aiLoadingProgress = (aiLoadingProgress + 1) % AI_DOT_CYCLE;
+        }
+        invalidate();
+        scheduleNextDotAnimation();
+    };
 
     private Paint backgroundPaint;
     private Paint redTextPaint;
@@ -105,17 +125,18 @@ public class RoundView extends View {
         }
         // 当深度为0时，表示AI思考完成，隐藏"AI正在思考"提示
         // 当深度大于0时，表示AI正在思考，显示"AI正在思考"提示
+        boolean wasThinking = this.isAIThinking;
         this.isAIThinking = depth > 0;
         // 只有当AI正在思考时才更新isRedTurn，这样当AI思考完成后，isRedTurn会保持为AI的颜色
         if (this.isAIThinking) {
             this.isRedTurn = isRed;
-            // 更新动画进度
-            this.aiThinkingProgress = (this.aiThinkingProgress + 1) % 4;
-        } else {
-            // 重置动画进度
+            if (!wasThinking && !isSuggestMode) {
+                this.aiThinkingProgress = 0;
+            }
+        } else if (!isSuggestMode) {
             this.aiThinkingProgress = 0;
-            // 不重置isRedTurn，保持为AI的颜色，这样深度信息会正确显示
         }
+        syncDotAnimation();
         invalidate();
     }
     
@@ -126,17 +147,18 @@ public class RoundView extends View {
             // 默认为黑方深度
             this.blackSearchDepth = depth;
         }
+        boolean wasThinking = this.isAIThinking;
         this.isAIThinking = depth > 0;
         // 只有当AI正在思考时才更新isRedTurn，默认为黑方
         if (this.isAIThinking) {
             this.isRedTurn = false;
-            // 更新动画进度
-            this.aiThinkingProgress = (this.aiThinkingProgress + 1) % 4;
-        } else {
-            // 重置动画进度
+            if (!wasThinking && !isSuggestMode) {
+                this.aiThinkingProgress = 0;
+            }
+        } else if (!isSuggestMode) {
             this.aiThinkingProgress = 0;
-            // 不重置isRedTurn，保持为黑方，这样深度信息会正确显示
         }
+        syncDotAnimation();
         invalidate();
     }
     
@@ -151,12 +173,8 @@ public class RoundView extends View {
             postDelayed(new HideLoadingCompleteRunnable(this), 2000);
         }
         this.isAILoading = loading;
-        // 如果正在加载，启动动画
-        if (loading) {
-            aiLoadingProgress = 0;
-            // 使用 postInvalidateDelayed 来持续更新加载动画
-            invalidate();
-        }
+        aiLoadingProgress = 0;
+        syncDotAnimation();
         invalidate();
     }
     
@@ -186,6 +204,10 @@ public class RoundView extends View {
     // 设置支招模式
     public void setSuggestMode(boolean isSuggestMode) {
         this.isSuggestMode = isSuggestMode;
+        if (isSuggestMode) {
+            this.aiThinkingProgress = 0;
+        }
+        syncDotAnimation();
         invalidate();
     }
     
@@ -271,6 +293,55 @@ public class RoundView extends View {
     // 将dp转换为像素
     private float convertDpToPixel(float dp, Context context) {
         return dp * context.getResources().getDisplayMetrics().density;
+    }
+
+    private String buildDotSuffix(int progress) {
+        int dotCount = progress % AI_DOT_CYCLE;
+        StringBuilder dots = new StringBuilder(dotCount);
+        for (int i = 0; i < dotCount; i++) {
+            dots.append('.');
+        }
+        return dots.toString();
+    }
+
+    private void drawThinkingText(Canvas canvas, float width, float y, float textSize, String prefix, int progress) {
+        infoTextPaint.setTextSize(textSize);
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(prefix + buildDotSuffix(progress), width / 2, y, infoTextPaint);
+    }
+
+    private boolean shouldAnimateDots() {
+        return isSuggestMode || isAILoading || isAIThinking;
+    }
+
+    private void scheduleNextDotAnimation() {
+        if (shouldAnimateDots()) {
+            dotAnimationScheduled = true;
+            postDelayed(aiDotAnimationRunnable, AI_DOT_DELAY_MS);
+        }
+    }
+
+    private void stopDotAnimation() {
+        removeCallbacks(aiDotAnimationRunnable);
+        dotAnimationScheduled = false;
+    }
+
+    private void syncDotAnimation() {
+        if (shouldAnimateDots()) {
+            if (!dotAnimationScheduled) {
+                scheduleNextDotAnimation();
+            }
+        } else {
+            stopDotAnimation();
+            aiThinkingProgress = 0;
+            aiLoadingProgress = 0;
+        }
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        stopDotAnimation();
+        super.onDetachedFromWindow();
     }
 
     @Override
@@ -497,45 +568,30 @@ public class RoundView extends View {
         
         boolean hasSuggest = (suggestMoveText != null && !suggestMoveText.isEmpty())
                 || (suggestMoveTexts != null && !suggestMoveTexts.isEmpty());
-        boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking;
+        boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking || isSuggestMode;
         
-        // 绘制AI加载中、加载完成或AI思考动画（支招文字出现时不显示AI状态）
+        // 绘制AI加载中、加载完成、支招思考或AI走棋思考动画
         float aiTextSize = convertDpToPixel(13, getContext());
-        if (!hasSuggest) {
+        if (isSuggestMode) {
+            drawThinkingText(canvas, width, currentY, aiTextSize, "AI正在思考", aiThinkingProgress);
+            currentY += lineHeight;
+        } else if (!hasSuggest) {
             if (isAILoading) {
-                infoTextPaint.setTextSize(aiTextSize);
-                infoTextPaint.setTextAlign(Paint.Align.CENTER);
-                String dots = "";
-                for (int i = 0; i < aiLoadingProgress; i++) {
-                    dots += ".";
-                }
-                String loadingText = "AI加载中" + dots;
-                canvas.drawText(loadingText, width / 2, currentY, infoTextPaint);
-                aiLoadingProgress = (aiLoadingProgress + 1) % 4;
+                drawThinkingText(canvas, width, currentY, aiTextSize, "AI加载中", aiLoadingProgress);
                 currentY += lineHeight;
-                postInvalidateDelayed(300);
             } else if (isShowLoadingComplete) {
                 infoTextPaint.setTextSize(aiTextSize);
                 infoTextPaint.setTextAlign(Paint.Align.CENTER);
                 canvas.drawText("AI加载完成！", width / 2, currentY, infoTextPaint);
                 currentY += lineHeight;
             } else if (isAIThinking) {
-                infoTextPaint.setTextSize(aiTextSize);
-                infoTextPaint.setTextAlign(Paint.Align.CENTER);
-                String dots = "";
-                for (int i = 0; i < aiThinkingProgress; i++) {
-                    dots += ".";
-                }
-                String thinkingText = "AI思考中" + dots;
-                canvas.drawText(thinkingText, width / 2, currentY, infoTextPaint);
-                aiThinkingProgress = (aiThinkingProgress + 1) % 4;
+                drawThinkingText(canvas, width, currentY, aiTextSize, "AI思考中", aiThinkingProgress);
                 currentY += lineHeight;
-                postInvalidateDelayed(800);
             }
         }
         
-        // 显示支招走法信息（AI思考时不显示，避免覆盖）
-        if (!isAIThinking && suggestMoveText != null && !suggestMoveText.isEmpty()) {
+        // 显示支招走法信息（支招思考或AI走棋思考时不显示，避免覆盖）
+        if (!isSuggestMode && !isAIThinking && suggestMoveText != null && !suggestMoveText.isEmpty()) {
             float originalTextSize = infoTextPaint.getTextSize();
             infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
@@ -544,8 +600,8 @@ public class RoundView extends View {
             infoTextPaint.setTextSize(originalTextSize);
         }
         
-        // 显示彩色支招走法信息（AI思考时不显示，避免覆盖）
-        if (!isAIThinking && suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
+        // 显示彩色支招走法信息（支招思考或AI走棋思考时不显示，避免覆盖）
+        if (!isSuggestMode && !isAIThinking && suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
             float originalTextSize = infoTextPaint.getTextSize();
             boolean originalFakeBold = infoTextPaint.isFakeBoldText();
             float normalSize = convertDpToPixel(13, getContext());

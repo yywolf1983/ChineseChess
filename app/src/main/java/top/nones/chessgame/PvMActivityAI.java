@@ -817,11 +817,6 @@ public class PvMActivityAI {
                 return;
             }
 
-            // 设置为支招模式，显示AI正在思考
-            if (activity.roundView != null) {
-                activity.roundView.setSuggestMode(true);
-            }
-
             // 启动深度更新任务
             aiInstance.startAISearch(isRed);
 
@@ -897,15 +892,14 @@ public class PvMActivityAI {
                 }
 
                 if (activity.roundView != null) {
-                    // 确保即使AI被中断，也能显示最后的深度信息
-                    if (currentDepth > 0) {
-                        activity.roundView.setSearchDepth(currentDepth, isRed);
-                    }
-                    activity.roundView.setMoveScore(aiInstance.currentAIScore);
-                    // 支招完成后，重置为非支招模式
-                    activity.roundView.setSuggestMode(false);
-                    // 发送深度为0的调用，隐藏"AI正在思考"提示，但保留深度信息
-                    activity.roundView.setSearchDepth(0, isRed);
+                    final int finalScore = aiInstance.currentAIScore;
+                    activity.runOnUiThread(() -> {
+                        if (activity.roundView != null) {
+                            activity.roundView.setMoveScore(finalScore);
+                            activity.roundView.setSearchDepth(0, isRed);
+                            activity.roundView.setSuggestMode(false);
+                        }
+                    });
                 }
 
                 aiInstance.finishAnalyzing();
@@ -1164,6 +1158,14 @@ public class PvMActivityAI {
         
         if (this.activity == null || this.activity.chessInfo == null || this.activity.chessView == null) {
             return;
+        }
+        
+        // 立即在UI线程显示"AI正在思考"动画，并清除旧的支招信息
+        if (this.activity.roundView != null) {
+            this.activity.runOnUiThread(() -> {
+                this.activity.roundView.setSuggestMoveText("");
+                this.activity.roundView.setSuggestMode(true);
+            });
         }
         
         startAISearch(isRed);
