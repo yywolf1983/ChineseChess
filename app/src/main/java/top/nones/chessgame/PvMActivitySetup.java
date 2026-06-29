@@ -438,6 +438,8 @@ public class PvMActivitySetup {
                         if (activity.roundView != null) {
                             activity.roundView.requestDraw();
                         }
+                        // 摆棋结束后评估局面分数
+                        activity.triggerPositionEvaluation();
                     }
                 }
             });
@@ -480,6 +482,8 @@ public class PvMActivitySetup {
                         if (activity.roundView != null) {
                             activity.roundView.requestDraw();
                         }
+                        // 摆棋结束后评估局面分数
+                        activity.triggerPositionEvaluation();
                     }
                 }
             });
@@ -602,6 +606,11 @@ public class PvMActivitySetup {
             if (activity.chessInfo.IsSetupMode) {
                 // 关闭摆棋模式，检查摆棋是否完成
                 finishSetup();
+                // 恢复摆棋按钮文字
+                android.view.View setupBtn = activity.findViewById(R.id.btn_setup);
+                if (setupBtn instanceof android.widget.Button) {
+                    ((android.widget.Button) setupBtn).setText("摆棋");
+                }
                 // 隐藏摆棋模式视图
                 if (activity.setupModeView != null) {
                     activity.setupModeView.setVisibility(View.GONE);
@@ -609,6 +618,13 @@ public class PvMActivitySetup {
                 // 恢复回合信息视图
                 if (activity.roundView != null) {
                     activity.roundView.setVisibility(View.VISIBLE);
+                    // 确保RoundView的chessInfo引用是最新的
+                    activity.roundView.setChessInfo(activity.chessInfo);
+                }
+                // 确保ChessView的chessInfo引用是最新的
+                if (activity.chessView != null) {
+                    activity.chessView.setChessInfo(activity.chessInfo);
+                    activity.chessView.requestDraw();
                 }
                 // 摆棋结束后默认设置为双人模式
                 activity.gameMode = 0;
@@ -627,6 +643,18 @@ public class PvMActivitySetup {
                 activity.stopTurnTimer();
                 // 开启摆棋模式
                 activity.chessInfo.IsSetupMode = true;
+                // 将摆棋按钮文字改为"完成"
+                android.view.View setupBtn = activity.findViewById(R.id.btn_setup);
+                if (setupBtn instanceof android.widget.Button) {
+                    ((android.widget.Button) setupBtn).setText("完成");
+                }
+                // 清除旧的支招提示线和走棋轨迹
+                activity.chessInfo.suggestMoves = new java.util.ArrayList<>();
+                activity.chessInfo.suggestMoveLabels = new java.util.ArrayList<>();
+                activity.chessInfo.suggestMovesIsRed = new java.util.ArrayList<>();
+                activity.chessInfo.prePos = null;
+                activity.chessInfo.curPos = null;
+                activity.chessInfo.ret = new java.util.concurrent.CopyOnWriteArrayList<>();
                 // 显示摆棋模式视图
                 if (activity.setupModeView != null) {
                     // 确保布局参数正确

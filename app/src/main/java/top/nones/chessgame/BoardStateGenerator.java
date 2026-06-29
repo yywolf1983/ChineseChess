@@ -159,7 +159,8 @@ public class BoardStateGenerator {
                     }
                     
                     Utils.LogUtils.d("BoardStateGenerator", "界面重新绘制完成");
-
+                    // 棋谱导航后重新评估局面分数
+                    activity.triggerPositionEvaluation();
                 }
             } else {
                 Utils.LogUtils.d("BoardStateGenerator", "没有走法记录，使用初始棋盘状态");
@@ -220,6 +221,8 @@ public class BoardStateGenerator {
                     if (activity.controlsManager != null) {
                         activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
                     }
+                    // 棋谱导航后重新评估局面分数
+                    activity.triggerPositionEvaluation();
 
                 }
             }

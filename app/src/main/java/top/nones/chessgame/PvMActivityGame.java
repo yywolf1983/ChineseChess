@@ -283,25 +283,8 @@ public class PvMActivityGame {
                             // 增加继续对局后的回合计数器
                             activity.continueGameRoundCount++;
 
-                            // 获取当前局面的评分（在后台线程中执行）
-                            if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
-                                new Thread(() -> {
-                                    AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
-                                    int score = moveWithScore.score;
-                                    
-                                    // 确保评分始终以红方为基准
-                                    boolean isRedTurn = activity.chessInfo.IsRedGo;
-                                    score = PvMActivity.normalizeScore(score, isRedTurn);
-                                    
-                                    final int finalScore = score;
-                                    // 更新评分显示
-                                    activity.runOnUiThread(() -> {
-                                        if (activity.roundView != null) {
-                                            activity.roundView.setMoveScore(finalScore);
-                                        }
-                                    });
-                                }).start();
-                            }
+                            // 人类落子后立即快速评估当前局面分数
+                            activity.triggerPositionEvaluation();
                             
                             // 重新绘制界面
                                 if (activity.chessView != null) {

@@ -97,18 +97,24 @@ public class PvMActivityControls {
                     activity.currentTurnStartTime = 0;
                     activity.updateTimeDisplay();
 
-                    // 重新绘制界面
+                    // 重新绘制界面，更新所有视图的chessInfo引用
                     if (activity.chessView != null) {
                         activity.chessView.setChessInfo(activity.chessInfo);
                         activity.chessView.requestDraw();
                     }
                     if (activity.roundView != null) {
                         activity.roundView.setChessInfo(activity.chessInfo);
+                        activity.roundView.setMoveScore(0);
                         activity.roundView.requestDraw();
                     }
                     if (activity.setupModeView != null) {
                         activity.setupModeView.setChessInfo(activity.chessInfo);
                         activity.setupModeView.setVisibility(View.GONE);
+                    }
+                    // 确保摆棋按钮文字恢复为"摆棋"
+                    android.view.View setupBtn = activity.findViewById(R.id.btn_setup);
+                    if (setupBtn instanceof android.widget.Button) {
+                        ((android.widget.Button) setupBtn).setText("摆棋");
                     }
                     LogUtils.d("PvMActivityControls", "handleRetryButton completed");
                 } catch (Exception e) {
@@ -153,6 +159,8 @@ public class PvMActivityControls {
                             if (activity.roundView != null) {
                                 activity.roundView.requestDraw();
                             }
+                            // 悔棋后重新评估局面分数
+                            activity.triggerPositionEvaluation();
                         }
                     } catch (CloneNotSupportedException e) {
                         LogUtils.e("PvMActivityControls", "Error in recall", e);
@@ -180,6 +188,8 @@ public class PvMActivityControls {
                             if (activity.roundView != null) {
                                 activity.roundView.requestDraw();
                             }
+                            // 悔棋到初始状态后重新评估局面分数
+                            activity.triggerPositionEvaluation();
                         }
                     } catch (CloneNotSupportedException e) {
                         LogUtils.e("PvMActivityControls", "Error in recall initial state", e);
@@ -576,26 +586,8 @@ public class PvMActivityControls {
                                             // 检查游戏状态，包括强制变着和和棋条件
                                             checkGameStatus(isRed);
 
-                                            // 获取当前局面的评分（在后台线程中执行）
-                                            // 只在非双人对战模式下获取评分，避免双人对战时显示AI思考
-                                            if (activity.pikafishAI != null && activity.pikafishAI.isInitialized() && activity.gameMode != 0) {
-                                                new Thread(() -> {
-                                                    AICore.PikafishAI.MoveWithScore moveWithScore = activity.pikafishAI.getBestMoveWithScore(activity.chessInfo);
-                                                    int score = moveWithScore.score;
-                                                    
-                                                    // 确保评分始终以红方为基准
-                                                    boolean isRedTurn = activity.chessInfo.IsRedGo;
-                                                    score = PvMActivity.normalizeScore(score, isRedTurn);
-                                                    
-                                                    final int finalScore = score;
-                                                    // 更新评分显示
-                                                    activity.runOnUiThread(() -> {
-                                                        if (activity.roundView != null) {
-                                                            activity.roundView.setMoveScore(finalScore);
-                                                        }
-                                                    });
-                                                }).start();
-                                            }
+                                            // 获取当前局面的评分（快速评估）
+                                            activity.triggerPositionEvaluation();
                                             
                                             // 重新绘制界面
                                                 if (activity.chessView != null) {

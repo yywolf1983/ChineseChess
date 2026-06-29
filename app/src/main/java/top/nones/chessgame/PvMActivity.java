@@ -265,6 +265,35 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         return String.format("%02d:%02d", minutes, seconds);
     }
     
+    /**
+     * 公共方法：触发当前局面快速评分（depth 1，约300ms返回）
+     * 在任何棋子移动、悔棋、摆棋结束、棋谱导航等场景后调用
+     */
+    public void triggerPositionEvaluation() {
+        if (pikafishAI != null && pikafishAI.isInitialized() && chessInfo != null) {
+            // 保存当前局面快照，避免评估过程中棋盘被修改
+            final ChessInfo snapshotInfo = new ChessInfo();
+            for (int r = 0; r < 10; r++) {
+                for (int c = 0; c < 9; c++) {
+                    snapshotInfo.piece[r][c] = chessInfo.piece[r][c];
+                }
+            }
+            snapshotInfo.IsRedGo = chessInfo.IsRedGo;
+            snapshotInfo.setting = chessInfo.setting;
+            final boolean isRedTurnNow = chessInfo.IsRedGo;
+            new Thread(() -> {
+                int score = pikafishAI.evaluatePositionQuickly(snapshotInfo);
+                score = normalizeScore(score, isRedTurnNow);
+                final int finalScore = score;
+                runOnUiThread(() -> {
+                    if (roundView != null) {
+                        roundView.setMoveScore(finalScore);
+                    }
+                });
+            }).start();
+        }
+    }
+    
     // 标准化评分，确保显示优势方积分
     public static int normalizeScore(int score, boolean isRedTurn) {
         // 确保评分始终以红方为基准

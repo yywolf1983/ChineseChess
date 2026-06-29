@@ -965,6 +965,93 @@ public class PikafishAI {
         return new MoveWithScore(getDefaultMove(chessInfo), 0);
     }
     
+    /**
+     * 快速评估当前局面分数（depth 1，极短时间）
+     * 用于人类落子后立即显示局面评分，不干扰后续AI正式搜索
+     */
+    public int evaluatePositionQuickly(ChessInfo chessInfo) {
+        if (!initialized || reader == null) {
+            LogUtils.e("PikafishAI", "evaluatePositionQuickly: AI未初始化");
+            return 0;
+        }
+        if (isSearching) {
+            LogUtils.i("PikafishAI", "evaluatePositionQuickly: AI正在搜索，先停止当前搜索");
+            shouldStop = true;
+            sendCommand("stop");
+            // 等待搜索停止
+            long waitStart = System.currentTimeMillis();
+            while (isSearching && System.currentTimeMillis() - waitStart < 500) {
+                try { Thread.sleep(20); } catch (InterruptedException ignored) {}
+            }
+            if (isSearching) {
+                LogUtils.i("PikafishAI", "evaluatePositionQuickly: 等待停止超时，继续执行");
+            }
+        }
+
+        try {
+            // 标记正在搜索，防止其他搜索干扰
+            shouldStop = false;
+            isSearching = true;
+
+            String fen = boardToFEN(chessInfo);
+            sendCommand("position fen " + fen);
+            // 使用最低参数保证快速评估
+            sendCommand("setoption name MultiPV value 1");
+            sendCommand("setoption name Contempt value 0");
+            sendCommand("go depth 1 movetime 300");
+
+            int score = 0;
+            long startTime = System.currentTimeMillis();
+            long maxWait = 2000; // 最多等2秒
+
+            while (!Thread.currentThread().isInterrupted()) {
+                if (System.currentTimeMillis() - startTime > maxWait) {
+                    sendCommand("stop");
+                    break;
+                }
+                try {
+                    if (reader.ready()) {
+                        String line = reader.readLine();
+                        if (line == null) break;
+                        if (line.startsWith("info")) {
+                            String[] parts = line.split(" ");
+                            for (int i = 0; i < parts.length; i++) {
+                                if (parts[i].equals("score") && i + 2 < parts.length) {
+                                    if (parts[i + 1].equals("cp")) {
+                                        try {
+                                            score = Integer.parseInt(parts[i + 2]);
+                                        } catch (NumberFormatException ignored) {}
+                                    } else if (parts[i + 1].equals("mate")) {
+                                        try {
+                                            int mateIn = Integer.parseInt(parts[i + 2]);
+                                            score = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
+                                        } catch (NumberFormatException ignored) {}
+                                    }
+                                }
+                            }
+                        } else if (line.startsWith("bestmove")) {
+                            break;
+                        }
+                    } else {
+                        Thread.sleep(5);
+                    }
+                } catch (IOException e) {
+                    LogUtils.e("PikafishAI", "evaluatePositionQuickly 读取异常: " + e.getMessage());
+                    break;
+                }
+            }
+
+            LogUtils.i("PikafishAI", "快速评估完成，score=" + score + "，耗时=" + (System.currentTimeMillis() - startTime) + "ms");
+            return score;
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "evaluatePositionQuickly 异常: " + e.getMessage());
+            return 0;
+        } finally {
+            isSearching = false;
+            shouldStop = false;
+        }
+    }
+
     private Move getDefaultMove(ChessInfo chessInfo) {
         // 在模拟器中返回一个简单的默认走法
         // 这里实现一个简单的走法逻辑，选择第一个可移动棋子的第一个合法移动
