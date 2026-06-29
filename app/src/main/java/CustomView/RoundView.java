@@ -700,7 +700,15 @@ public class RoundView extends View {
                            cachedRedCheckmated || cachedBlackCheckmated || 
                            cachedRedStalemated || cachedBlackStalemated;
         
-        if (isGameOver || hasWinner) {
+        boolean isDraw = isGameOver
+            && !cachedRedCheckmated
+            && !cachedBlackCheckmated
+            && !cachedRedStalemated
+            && !cachedBlackStalemated
+            && cachedRedKingExists
+            && cachedBlackKingExists;
+            
+            if (isGameOver || hasWinner) {
             String winText = "";
             int winColor = Color.rgb(0, 0, 0);
             
@@ -710,6 +718,9 @@ public class RoundView extends View {
             } else if (!cachedBlackKingExists || cachedBlackCheckmated || cachedBlackStalemated) {
                 winText = "红方胜利！";
                 winColor = Color.rgb(255, 0, 0);
+            } else if (isDraw) {
+                winText = "和棋！";
+                winColor = Color.rgb(128, 128, 128);
             } else if (isGameOver) {
                 winText = chessInfo.IsRedGo ? "黑方胜利！" : "红方胜利！";
                 winColor = chessInfo.IsRedGo ? Color.rgb(0, 0, 0) : Color.rgb(255, 0, 0);

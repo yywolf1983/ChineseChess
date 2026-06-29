@@ -173,15 +173,31 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                             if (chessInfo.piece[i][j] <= 7) {
                                 int num = chessInfo.piece[i][j] - 1;
                                 if (BP != null && num >= 0 && num < BP.length && BP[num] != null) {
-                                    pSrcRect = new Rect(0, 0, BP[num].getWidth(), BP[num].getHeight());
-                                    canvas.drawBitmap(BP[num], pSrcRect, pDesRect, null);
+                                    if (boardFlipped) {
+                                        canvas.save();
+                                        canvas.rotate(180, Scale(j * 85 + 42), Scale(drawY * 85 + 80));
+                                        pSrcRect = new Rect(0, 0, BP[num].getWidth(), BP[num].getHeight());
+                                        canvas.drawBitmap(BP[num], pSrcRect, pDesRect, null);
+                                        canvas.restore();
+                                    } else {
+                                        pSrcRect = new Rect(0, 0, BP[num].getWidth(), BP[num].getHeight());
+                                        canvas.drawBitmap(BP[num], pSrcRect, pDesRect, null);
+                                    }
                                 }
                             }
                             if (chessInfo.piece[i][j] >= 8) {
                                 int num = chessInfo.piece[i][j] - 8;
                                 if (RP != null && num >= 0 && num < RP.length && RP[num] != null) {
-                                    pSrcRect = new Rect(0, 0, RP[num].getWidth(), RP[num].getHeight());
-                                    canvas.drawBitmap(RP[num], pSrcRect, pDesRect, null);
+                                    if (boardFlipped) {
+                                        canvas.save();
+                                        canvas.rotate(180, Scale(j * 85 + 42), Scale(drawY * 85 + 80));
+                                        pSrcRect = new Rect(0, 0, RP[num].getWidth(), RP[num].getHeight());
+                                        canvas.drawBitmap(RP[num], pSrcRect, pDesRect, null);
+                                        canvas.restore();
+                                    } else {
+                                        pSrcRect = new Rect(0, 0, RP[num].getWidth(), RP[num].getHeight());
+                                        canvas.drawBitmap(RP[num], pSrcRect, pDesRect, null);
+                                    }
                                 }
                             }
                         }
@@ -203,14 +219,28 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 if (isRedPiece && R_box != null) {
                     pSrcRect = new Rect(0, 0, R_box.getWidth(), R_box.getHeight());
                     pDesRect = new Rect(Scale(drawX * 85 - 4), Scale(displayY * 85 + 34), Scale(drawX * 85 + 88), Scale(displayY * 85 + 126));
-                    canvas.drawBitmap(R_box, pSrcRect, pDesRect, null);
+                    if (boardFlipped) {
+                        canvas.save();
+                        canvas.rotate(180, Scale(drawX * 85 + 42), Scale(displayY * 85 + 80));
+                        canvas.drawBitmap(R_box, pSrcRect, pDesRect, null);
+                        canvas.restore();
+                    } else {
+                        canvas.drawBitmap(R_box, pSrcRect, pDesRect, null);
+                    }
                 } else if (B_box != null) {
                     pSrcRect = new Rect(0, 0, B_box.getWidth(), B_box.getHeight());
                     pDesRect = new Rect(Scale(drawX * 85 - 4), Scale(displayY * 85 + 34), Scale(drawX * 85 + 88), Scale(displayY * 85 + 126));
-                    canvas.drawBitmap(B_box, pSrcRect, pDesRect, null);
+                    if (boardFlipped) {
+                        canvas.save();
+                        canvas.rotate(180, Scale(drawX * 85 + 42), Scale(displayY * 85 + 80));
+                        canvas.drawBitmap(B_box, pSrcRect, pDesRect, null);
+                        canvas.restore();
+                    } else {
+                        canvas.drawBitmap(B_box, pSrcRect, pDesRect, null);
+                    }
                 }
                 
-                        // 绘制可移动位置，使用增大后的棋子尺寸 92x92
+                // 绘制可移动位置，使用增大后的棋子尺寸 92x92
                 if (chessInfo.ret != null) {
                     Iterator<Pos> it = chessInfo.ret.iterator();
                     while (it.hasNext()) {
@@ -221,7 +251,14 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         if (Pot != null) {
                             pSrcRect = new Rect(0, 0, Pot.getWidth(), Pot.getHeight());
                             pDesRect = new Rect(Scale(x * 85 - 4), Scale(displayPosY * 85 + 34), Scale(x * 85 + 88), Scale(displayPosY * 85 + 126));
-                            canvas.drawBitmap(Pot, pSrcRect, pDesRect, null);
+                            if (boardFlipped) {
+                                canvas.save();
+                                canvas.rotate(180, Scale(x * 85 + 42), Scale(displayPosY * 85 + 80));
+                                canvas.drawBitmap(Pot, pSrcRect, pDesRect, null);
+                                canvas.restore();
+                            } else {
+                                canvas.drawBitmap(Pot, pSrcRect, pDesRect, null);
+                            }
                         }
                     }
                 }
