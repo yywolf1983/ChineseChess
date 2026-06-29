@@ -359,12 +359,14 @@ public class RoundView extends View {
         // 绘制背景
         canvas.drawRect(0, 0, width, height, backgroundPaint);
         
-        // 绘制边框 - 使用dp单位确保不同屏幕一致性
+        // 绘制边框 - 使用dp单位确保不同屏幕一致性，颜色随行棋方变化
         float borderPadding = convertDpToPixel(3, getContext());
         float cornerRadius = convertDpToPixel(6, getContext());
         android.graphics.RectF rectF = new android.graphics.RectF(
             borderPadding, borderPadding, 
             width - borderPadding, height - borderPadding);
+        // 红方行棋用红色边框，黑方行棋用深色边框
+        borderPaint.setColor(chessInfo.IsRedGo ? Color.rgb(180, 40, 40) : Color.rgb(35, 35, 35));
         canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint);
         
         // 计算垂直间距
