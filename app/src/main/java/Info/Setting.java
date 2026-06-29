@@ -19,7 +19,7 @@ public class Setting implements Serializable {
         mLevel = sharedPreferences.getInt("mLevel", 3);
         depth = sharedPreferences.getInt("depth", 10);
         skillLevel = sharedPreferences.getInt("skillLevel", 20);
-        multiPV = sharedPreferences.getInt("multiPV", 1);
+        multiPV = sharedPreferences.getInt("multiPV", 0);
         contempt = sharedPreferences.getInt("contempt", 20);
         forceVariation = sharedPreferences.getBoolean("forceVariation", true);
     }
