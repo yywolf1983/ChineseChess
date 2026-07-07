@@ -1,2 +1,4 @@
 rootProject.name = 'chessgame.nones.top'
 include ':app'
+include ':registration-lib'
+project(':registration-lib').projectDir = new File(rootProject.projectDir, '../anddex/registration-lib')
