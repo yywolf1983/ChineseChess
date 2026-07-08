@@ -29,6 +29,9 @@ public class PhotoCaptureManager {
     private static final int CAMERA_REQUEST_CODE = 100;
     private static final int GALLERY_REQUEST_CODE = 101;
 
+    public static final int CAMERA_PERMISSION_REQUEST_CODE = 1006;
+    public static final int GALLERY_PERMISSION_REQUEST_CODE = 1007;
+
     private final PvMActivity activity;
     private final AtomicBoolean isLaunchingCamera = new AtomicBoolean(false);
     private final AtomicBoolean isLaunchingGallery = new AtomicBoolean(false);
@@ -40,8 +43,6 @@ public class PhotoCaptureManager {
     public PhotoCaptureManager(PvMActivity activity) {
         this.activity = activity;
     }
-
-    private static final int CAMERA_PERMISSION_REQUEST_CODE = 1006;
 
     public void handleCameraClick() {
         if (!isLaunchingCamera.compareAndSet(false, true)) {
@@ -58,6 +59,7 @@ public class PhotoCaptureManager {
 
         if (!hasCameraPermission()) {
             LogUtils.d("PvMActivity", "相机权限未授予，请求权限");
+            android.widget.Toast.makeText(activity, "请授予相机权限以拍照识别", android.widget.Toast.LENGTH_SHORT).show();
             ActivityCompat.requestPermissions(activity,
                     new String[]{android.Manifest.permission.CAMERA},
                     CAMERA_PERMISSION_REQUEST_CODE);
@@ -97,6 +99,19 @@ public class PhotoCaptureManager {
         long now = System.currentTimeMillis();
         if (now - lastGalleryLaunchTime.get() < CAMERA_COOLDOWN_MS) {
             LogUtils.d("PvMActivity", "图片选择器冷却中，跳过 (距上次启动=" + (now - lastGalleryLaunchTime.get()) + "ms)");
+            isLaunchingGallery.set(false);
+            return;
+        }
+
+        if (!hasStoragePermission()) {
+            LogUtils.d("PvMActivity", "存储权限未授予，请求权限");
+            android.widget.Toast.makeText(activity, "请授予存储权限以选择图片", android.widget.Toast.LENGTH_SHORT).show();
+            String permission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                    ? android.Manifest.permission.READ_MEDIA_IMAGES
+                    : android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
+            ActivityCompat.requestPermissions(activity,
+                    new String[]{permission},
+                    GALLERY_PERMISSION_REQUEST_CODE);
             isLaunchingGallery.set(false);
             return;
         }
@@ -147,27 +162,30 @@ public class PhotoCaptureManager {
     private boolean processCameraResult(Intent data) {
         LogUtils.d("PvMActivity", "相机返回: cameraImageFile=" + (cameraImageFile != null ? cameraImageFile.getAbsolutePath() : "null"));
 
-        Bitmap bitmap = null;
-        if (cameraImageFile != null && cameraImageFile.exists()) {
-            bitmap = BitmapFactory.decodeFile(cameraImageFile.getAbsolutePath());
-            LogUtils.d("PvMActivity", "从文件加载图片: " + (bitmap != null ? bitmap.getWidth() + "x" + bitmap.getHeight() : "null"));
-        } else if (data != null && data.getExtras() != null) {
-            LogUtils.d("PvMActivity", "尝试从data extras获取图片");
-            bitmap = (Bitmap) data.getExtras().get("data");
-            if (bitmap != null) {
-                LogUtils.d("PvMActivity", "从data获取图片: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+        try {
+            Bitmap bitmap = null;
+            if (cameraImageFile != null && cameraImageFile.exists()) {
+                bitmap = BitmapFactory.decodeFile(cameraImageFile.getAbsolutePath());
+                LogUtils.d("PvMActivity", "从文件加载图片: " + (bitmap != null ? bitmap.getWidth() + "x" + bitmap.getHeight() : "null"));
+            } else if (data != null && data.getExtras() != null) {
+                LogUtils.d("PvMActivity", "尝试从data extras获取图片");
+                bitmap = (Bitmap) data.getExtras().get("data");
+                if (bitmap != null) {
+                    LogUtils.d("PvMActivity", "从data获取图片: " + bitmap.getWidth() + "x" + bitmap.getHeight());
+                }
             }
-        }
 
-        if (bitmap != null) {
-            bitmap = rotateImageIfNeeded(bitmap);
-            bitmap = scaleImage(bitmap, 1024);
-            activity.processRecognitionResult(bitmap);
-            return true;
-        }
+            if (bitmap != null) {
+                bitmap = rotateImageIfNeeded(bitmap);
+                bitmap = scaleImage(bitmap, 1024);
+                activity.processRecognitionResult(bitmap);
+                return true;
+            }
 
-        cleanupCameraFile();
-        return false;
+            return false;
+        } finally {
+            cleanupCameraFile();
+        }
     }
 
     private boolean processGalleryResult(Intent data) {
@@ -266,5 +284,28 @@ public class PhotoCaptureManager {
             return ActivityCompat.checkSelfPermission(activity, android.Manifest.permission.READ_MEDIA_IMAGES) == PackageManager.PERMISSION_GRANTED;
         }
         return ActivityCompat.checkSelfPermission(activity, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    public boolean handlePermissionResult(int requestCode, int[] grantResults) {
+        if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                LogUtils.d("PvMActivity", "相机权限已授予，重新启动相机");
+                handleCameraClick();
+            } else {
+                LogUtils.d("PvMActivity", "相机权限被拒绝");
+                android.widget.Toast.makeText(activity, "需要相机权限才能拍照识别", android.widget.Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        } else if (requestCode == GALLERY_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                LogUtils.d("PvMActivity", "存储权限已授予，重新启动图片选择器");
+                handleGalleryClick();
+            } else {
+                LogUtils.d("PvMActivity", "存储权限被拒绝");
+                android.widget.Toast.makeText(activity, "需要存储权限才能选择图片", android.widget.Toast.LENGTH_SHORT).show();
+            }
+            return true;
+        }
+        return false;
     }
 }

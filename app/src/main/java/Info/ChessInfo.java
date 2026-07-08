@@ -21,58 +21,45 @@ public class ChessInfo implements Cloneable, Serializable {
     // 线程安全锁对象
     private final transient Object lock = new Object();
 
-    // 使用volatile确保可见性
-    public volatile int[][] piece;
-    public volatile boolean IsRedGo;
-    public volatile Pos prePos;
-    public volatile Pos curPos;
-    public volatile boolean IsChecked;
-    // 使用线程安全的List
-    public volatile List<Pos> ret;
-    public volatile int[] Select;
-    public volatile boolean isMachine;
-    public volatile int status;
-    public volatile int peaceRound;
-    public volatile int totalMoves; // 总走步数
-    public volatile int attackNum_B;
-    public volatile int attackNum_R;
+    public int[][] piece;
+    public boolean IsRedGo;
+    public Pos prePos;
+    public Pos curPos;
+    public boolean IsChecked;
+    public List<Pos> ret;
+    public int[] Select;
+    public boolean isMachine;
+    public int status;
+    public int peaceRound;
+    public int totalMoves;
+    public int attackNum_B;
+    public int attackNum_R;
 
-    public volatile boolean IsSetupMode;
-    public volatile Setting setting;
+    public boolean IsSetupMode;
+    public Setting setting;
     
-    // 支招相关字段（使用volatile确保可见性）
-    public volatile Pos suggestFromPos;
-    public volatile Pos suggestToPos;
-    // 多步支招路线：每条路线是一个Move对象列表（包含from和to）
-    // 使用线程安全的List
-    public volatile List<Move> suggestMoves;
-    // 支招步数标注：格式 "1", "2", "3", "4", "5"（用于棋盘圆圈显示）
-    public volatile List<String> suggestMoveLabels;
-    // 支招每步是否红方：用于颜色区分
-    public volatile List<Boolean> suggestMovesIsRed;
-    // 支招走法中文记谱：格式 "炮二平五", "士4进5"等（用于头部显示）
-    public volatile List<String> suggestMoveNotations;
+    public Pos suggestFromPos;
+    public Pos suggestToPos;
+    public List<Move> suggestMoves;
+    public List<String> suggestMoveLabels;
+    public List<Boolean> suggestMovesIsRed;
+    public List<String> suggestMoveNotations;
     
-    // 和棋判断相关字段
-    // 使用线程安全的Map
-    public volatile Map<String, Integer> positionHistory; // 局面历史记录，用于检测重复局面
-    public volatile int consecutiveCheckRed; // 红方连续将军次数
-    public volatile int consecutiveCheckBlack; // 黑方连续将军次数
-    public volatile boolean lastMoveWasCheck; // 上一步是否为将军
+    public Map<String, Integer> positionHistory;
+    public int consecutiveCheckRed;
+    public int consecutiveCheckBlack;
+    public boolean lastMoveWasCheck;
     
-    // 长捉检测相关字段
-    public volatile int consecutiveAttackRed; // 红方连续攻击同一棋子次数
-    public volatile int consecutiveAttackBlack; // 黑方连续攻击同一棋子次数
-    public volatile Pos lastAttackedPiecePos; // 上一次被攻击的棋子位置
-    public volatile int lastAttackedPieceType; // 上一次被攻击的棋子类型
+    public int consecutiveAttackRed;
+    public int consecutiveAttackBlack;
+    public Pos lastAttackedPiecePos;
+    public int lastAttackedPieceType;
     
-    // 规则判定统计
-    public volatile int forbiddenMoveRed; // 红方禁止着法计数
-    public volatile int forbiddenMoveBlack; // 黑方禁止着法计数
+    public int forbiddenMoveRed;
+    public int forbiddenMoveBlack;
     
-    // 强制变着相关字段
-    public volatile boolean forceVariation; // 是否处于强制变着模式
-    public volatile int variationRandomness; // 变着随机性等级（1-5）
+    public boolean forceVariation;
+    public int variationRandomness;
 
     public ChessInfo() {
         init();

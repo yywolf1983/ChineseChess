@@ -44,20 +44,17 @@ public class PvMActivityAI {
     
     // 初始化线程池
     private void initExecutorService() {
-        // 优化线程池配置，根据CPU核心数动态调整
         int availableProcessors = Runtime.getRuntime().availableProcessors();
-        int corePoolSize = Math.max(4, Math.min(availableProcessors, 8)); // 增加核心线程数
-        int maximumPoolSize = Math.max(8, Math.min(availableProcessors * 2, 16)); // 增加最大线程数
-        long keepAliveTime = 60L; // 延长空闲线程存活时间
+        int corePoolSize = Math.max(1, Math.min(availableProcessors / 2, 2));
+        int maximumPoolSize = Math.max(2, Math.min(availableProcessors, 4));
+        long keepAliveTime = 30L;
         
-        // 初始化线程池
         executorService = new java.util.concurrent.ThreadPoolExecutor(
             corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
-            new java.util.concurrent.ArrayBlockingQueue<>(50), // 大幅增加队列大小
+            new java.util.concurrent.ArrayBlockingQueue<>(20),
             java.util.concurrent.Executors.defaultThreadFactory(),
-            new java.util.concurrent.ThreadPoolExecutor.DiscardOldestPolicy() // 队列满时丢弃旧任务，避免主线程执行重任务
+            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()
         );
-        // 允许核心线程超时，避免空闲时占用资源
         executorService.allowCoreThreadTimeOut(true);
     }
     
@@ -80,7 +77,7 @@ public class PvMActivityAI {
             if (this.activity.chessInfo != null && this.activity.chessInfo.status == 1) {
                 if (this.activity.chessInfo.isThreefoldRepetition()) {
                     // 根据设置决定是否启用强制变着模式
-                    if (PvMActivity.setting != null && PvMActivity.setting.forceVariation) {
+                    if (this.activity.setting != null && this.activity.setting.forceVariation) {
                         // 启用强制变着模式
                         this.activity.chessInfo.forceVariation = true;
                         this.activity.chessInfo.variationRandomness = 3; // 设置中等随机性
@@ -101,12 +98,12 @@ public class PvMActivityAI {
                 }
                 
                 // 确保使用最新的设置
-                if (PvMActivity.setting != null && this.activity.chessInfo.setting != PvMActivity.setting) {
-                    this.activity.chessInfo.setting = PvMActivity.setting;
+                if (this.activity.setting != null && this.activity.chessInfo.setting != this.activity.setting) {
+                    this.activity.chessInfo.setting = this.activity.setting;
                     // 更新PikafishAI的设置
                     if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
-                        int skillLevel = PvMActivity.setting.skillLevel;
-                        int multiPV = PvMActivity.setting.multiPV;
+                        int skillLevel = this.activity.setting.skillLevel;
+                        int multiPV = this.activity.setting.multiPV;
                         this.activity.pikafishAI.updateSettings(skillLevel, multiPV);
                     }
                 }
@@ -373,7 +370,7 @@ public class PvMActivityAI {
             // 检查当前局面是否已经是重复局面，如果是则强制AI变着
             if (this.activity.chessInfo.isThreefoldRepetition()) {
                 // 检查用户是否开启了强制变着功能
-                boolean forceVariationEnabled = PvMActivity.setting != null && PvMActivity.setting.forceVariation;
+                boolean forceVariationEnabled = this.activity.setting != null && this.activity.setting.forceVariation;
                 
                 if (forceVariationEnabled) {
                     // 启用强制变着模式
@@ -756,14 +753,14 @@ public class PvMActivityAI {
         long checkStartMs = System.currentTimeMillis();
 
         // 确保使用最新的设置
-        if (PvMActivity.setting != null && this.activity.chessInfo.setting != PvMActivity.setting) {
-            this.activity.chessInfo.setting = PvMActivity.setting;
+        if (this.activity.setting != null && this.activity.chessInfo.setting != this.activity.setting) {
+            this.activity.chessInfo.setting = this.activity.setting;
             // 更新PikafishAI的设置
             if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
-                int skillLevel = PvMActivity.setting.skillLevel;
-                int multiPV = PvMActivity.setting.multiPV;
-                int depth = PvMActivity.setting.depth;
-                int thinkingTime = PvMActivity.setting.mLevel;
+                int skillLevel = this.activity.setting.skillLevel;
+                int multiPV = this.activity.setting.multiPV;
+                int depth = this.activity.setting.depth;
+                int thinkingTime = this.activity.setting.mLevel;
                 Runnable applySettingsTask = () ->
                 {
                     long startMs = System.currentTimeMillis();

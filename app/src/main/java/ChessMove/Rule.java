@@ -296,27 +296,22 @@ public class Rule {
             while (x >= 0 && x < 9 && y >= 0 && y < 10) {
                 int pieceId = piece[y][x];
                 if (pieceId != 0) {
-                    // 检查是否是对方的车或炮
                     boolean isEnemy = isRedKing ? (pieceId >= 1 && pieceId <= 7) : (pieceId >= 8 && pieceId <= 14);
                     if (isEnemy) {
-                        if (pieceId == 5 || pieceId == 12) { // 车
-                            // 车需要在直线上没有障碍物才能攻击到王
+                        if (pieceId == 5 || pieceId == 12) {
                             if (obstacleCount == 0) {
                                 Log.e("Rule", "将军检测: 车在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
-                        } else if (pieceId == 6 || pieceId == 13) { // 炮
-                            // 炮需要有一个炮架才能攻击
+                        } else if (pieceId == 6 || pieceId == 13) {
                             if (obstacleCount == 1) {
                                 Log.e("Rule", "将军检测: 炮在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
                         }
-                        // 对于敌方非车炮棋子，停止检查这个方向
                         if (pieceId != 6 && pieceId != 13 && pieceId != 5 && pieceId != 12) {
                             break;
                         }
-                        // 对于敌方车炮棋子，增加障碍物计数
                         obstacleCount++;
                     } else {
                         obstacleCount++;
@@ -324,43 +319,6 @@ public class Rule {
                 }
                 x += dir[0];
                 y += dir[1];
-            }
-        }
-        
-        // 额外检查：遍历整个棋盘，检查所有对方炮的攻击
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
-                int pieceId = piece[y][x];
-                boolean isEnemyCannon = isRedKing ? (pieceId == 6) : (pieceId == 13);
-                if (isEnemyCannon) {
-                    // 检查炮是否与王在同一条直线上
-                    if (x == kingX || y == kingY) {
-                        int obstacleCount = 0;
-                        if (x == kingX) {
-                            // 同一列
-                            int start = Math.min(y, kingY) + 1;
-                            int end = Math.max(y, kingY);
-                            for (int i = start; i < end; i++) {
-                                if (piece[i][x] != 0) {
-                                    obstacleCount++;
-                                }
-                            }
-                        } else {
-                            // 同一行
-                            int start = Math.min(x, kingX) + 1;
-                            int end = Math.max(x, kingX);
-                            for (int i = start; i < end; i++) {
-                                if (piece[y][i] != 0) {
-                                    obstacleCount++;
-                                }
-                            }
-                        }
-                        // 炮需要有一个炮架才能攻击到王
-                        if (obstacleCount == 1) {
-                            return true;
-                        }
-                    }
-                }
             }
         }
         

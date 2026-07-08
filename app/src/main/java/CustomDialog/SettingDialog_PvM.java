@@ -15,26 +15,15 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import top.nones.chessgame.PvMActivity;
-import static top.nones.chessgame.PvMActivity.selectMusic;
 import top.nones.chessgame.R;
 import Utils.LogUtils;
+import Utils.SoundManager;
 
 /**
  * Created by 77304 on 2021/4/14.
  */
 
 public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedChangeListener, SeekBar.OnSeekBarChangeListener, View.OnClickListener {
-    // 添加playEffect方法
-    private void playEffect(android.media.MediaPlayer mediaPlayer) {
-        if (mediaPlayer != null && PvMActivity.setting != null && PvMActivity.setting.isEffectPlay) {
-            try {
-                mediaPlayer.seekTo(0);
-                mediaPlayer.start();
-            } catch (Exception e) {
-                LogUtils.e("SettingDialog_PvM", "操作失败", e);
-            }
-        }
-    }
     public Button posBtn, negBtn;
     public Button timeMinusBtn, timePlusBtn;
     public Button depthMinusBtn, depthPlusBtn;
@@ -57,28 +46,33 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public int multiPV; // 多主变搜索（0-5）
     public boolean forceVariation; // 是否开启强制变着
 
+    private void playSelectSound() {
+        PvMActivity activity = PvMActivity.getInstance();
+        if (activity != null) {
+            SoundManager.playEffect(activity.selectMusic);
+        }
+    }
+    
     public SettingDialog_PvM(Context context) {
         super(context, R.style.CustomDialog);
 
-        // 添加空值检查，防止崩溃
-        if (PvMActivity.setting != null) {
-            isMusicPlay = PvMActivity.setting.isMusicPlay;
-            isEffectPlay = PvMActivity.setting.isEffectPlay;
-            // 直接使用mLevel作为思考时间
-            thinkingTime = PvMActivity.setting.mLevel;
-            searchDepth = PvMActivity.setting.depth;
-            skillLevel = PvMActivity.setting.skillLevel;
-            multiPV = PvMActivity.setting.multiPV;
-            forceVariation = PvMActivity.setting.forceVariation;
+        PvMActivity activity = PvMActivity.getInstance();
+        if (activity != null && activity.setting != null) {
+            isMusicPlay = activity.setting.isMusicPlay;
+            isEffectPlay = activity.setting.isEffectPlay;
+            thinkingTime = activity.setting.mLevel;
+            searchDepth = activity.setting.depth;
+            skillLevel = activity.setting.skillLevel;
+            multiPV = activity.setting.multiPV;
+            forceVariation = activity.setting.forceVariation;
         } else {
-            // 设置默认值
             isMusicPlay = true;
             isEffectPlay = true;
-            thinkingTime = 5; // 默认5秒
-            searchDepth = 10; // 默认搜索深度10
-            skillLevel = 20; // 默认最高技能级别
-            multiPV = 0; // 默认单一主变
-            forceVariation = true; // 默认开启强制变着
+            thinkingTime = 5;
+            searchDepth = 10;
+            skillLevel = 20;
+            multiPV = 0;
+            forceVariation = true;
         }
         
         // 确保思考时间在合理范围内
@@ -251,7 +245,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.timeMinusBtn) {
                 // 减少思考时间
-                playEffect(selectMusic);
+                playSelectSound();
                 if (thinkingTime > 1) {
                     thinkingTime--;
                     timeSeekBar.setProgress(thinkingTime);
@@ -259,7 +253,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.timePlusBtn) {
                 // 增加思考时间
-                playEffect(selectMusic);
+                playSelectSound();
                 if (thinkingTime < 60) {
                     thinkingTime++;
                     timeSeekBar.setProgress(thinkingTime);
@@ -267,7 +261,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.depthMinusBtn) {
                 // 减少搜索深度
-                playEffect(selectMusic);
+                playSelectSound();
                 if (searchDepth > 5) {
                     searchDepth--;
                     depthSeekBar.setProgress(searchDepth);
@@ -275,7 +269,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.depthPlusBtn) {
                 // 增加搜索深度
-                playEffect(selectMusic);
+                playSelectSound();
                 if (searchDepth < 120) {
                     searchDepth++;
                     depthSeekBar.setProgress(searchDepth);
@@ -283,7 +277,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.skillLevelMinusBtn) {
                 // 减少技能级别
-                playEffect(selectMusic);
+                playSelectSound();
                 if (skillLevel > 1) {
                     skillLevel--;
                     skillLevelSeekBar.setProgress(skillLevel);
@@ -291,7 +285,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.skillLevelPlusBtn) {
                 // 增加技能级别
-                playEffect(selectMusic);
+                playSelectSound();
                 if (skillLevel < 20) {
                     skillLevel++;
                     skillLevelSeekBar.setProgress(skillLevel);
@@ -299,7 +293,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.multiPVMinusBtn) {
                 // 减少MultiPV
-                playEffect(selectMusic);
+                playSelectSound();
                 if (multiPV > 0) {
                     multiPV--;
                     multiPVSeekBar.setProgress(multiPV);
@@ -307,7 +301,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 }
             } else if (id == R.id.multiPVPlusBtn) {
                 // 增加MultiPV
-                playEffect(selectMusic);
+                playSelectSound();
                 if (multiPV < 5) {
                     multiPV++;
                     multiPVSeekBar.setProgress(multiPV);
@@ -319,45 +313,38 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         
         // 保存设置的方法
         private void saveSettings() {
-            // 保存设置到PvMActivity.setting
-            if (PvMActivity.setting != null) {
-                PvMActivity.setting.isMusicPlay = isMusicPlay;
-                PvMActivity.setting.isEffectPlay = isEffectPlay;
-                // 直接保存思考时间，不再转换为mLevel
-                // 由于PikafishAI现在直接使用思考时间，我们不需要转换
-                PvMActivity.setting.mLevel = thinkingTime;
-                PvMActivity.setting.depth = searchDepth;
-                PvMActivity.setting.skillLevel = skillLevel;
-                PvMActivity.setting.multiPV = multiPV;
-                PvMActivity.setting.forceVariation = forceVariation;
-                // 立即生效：更新音乐播放状态
-                if (isMusicPlay && PvMActivity.backMusic != null && !PvMActivity.backMusic.isPlaying()) {
-                    PvMActivity.backMusic.start();
-                } else if (!isMusicPlay && PvMActivity.backMusic != null && PvMActivity.backMusic.isPlaying()) {
-                    PvMActivity.backMusic.pause();
-                }
-                // 保存设置到SharedPreferences
-                PvMActivity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
+            PvMActivity activity = PvMActivity.getInstance();
+            if (activity != null && activity.setting != null) {
+                activity.setting.isMusicPlay = isMusicPlay;
+                activity.setting.isEffectPlay = isEffectPlay;
+                activity.setting.mLevel = thinkingTime;
+                activity.setting.depth = searchDepth;
+                activity.setting.skillLevel = skillLevel;
+                activity.setting.multiPV = multiPV;
+                activity.setting.forceVariation = forceVariation;
                 
-                // 同时更新chessInfo.setting，确保AI使用最新设置
+                if (isMusicPlay && activity.backMusic != null && !activity.backMusic.isPlaying()) {
+                    activity.backMusic.start();
+                } else if (!isMusicPlay && activity.backMusic != null && activity.backMusic.isPlaying()) {
+                    activity.backMusic.pause();
+                }
+                
+                activity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
+                
                 try {
-                    PvMActivity activity = PvMActivity.getInstance();
-                    if (activity != null) {
-                        if (activity.chessInfo != null) {
-                            activity.chessInfo.setting = PvMActivity.setting;
-                        }
-                        
-                        // 更新PikafishAI的设置
-                        if (activity.pikafishAI != null) {
-                            new Thread(
-                                () -> {
-                                    long startMs = System.currentTimeMillis();
-                                    activity.pikafishAI.updateSettings(skillLevel, multiPV, searchDepth, thinkingTime);
-                                    LogUtils.i("Perf", "dialog.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
-                                },
-                                "dialog-update-settings"
-                            ).start();
-                        }
+                    if (activity.chessInfo != null) {
+                        activity.chessInfo.setting = activity.setting;
+                    }
+                    
+                    if (activity.pikafishAI != null) {
+                        new Thread(
+                            () -> {
+                                long startMs = System.currentTimeMillis();
+                                activity.pikafishAI.updateSettings(skillLevel, multiPV, searchDepth, thinkingTime);
+                                LogUtils.i("Perf", "dialog.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
+                            },
+                            "dialog-update-settings"
+                        ).start();
                     }
                 } catch (Exception e) {
                     LogUtils.e("SettingDialog_PvM", "更新设置失败: " + e.getMessage());
@@ -374,7 +361,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
 
     @Override
     public void onCheckedChanged(RadioGroup radioGroup, @IdRes int i) {
-        playEffect(selectMusic);
+        playSelectSound();
         RadioButton checked = (RadioButton) findViewById(radioGroup.getCheckedRadioButtonId());
         int id = radioGroup.getId();
         if (id == R.id.musicGroup) {
@@ -401,7 +388,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     @Override
     public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
         if (fromUser) {
-            playEffect(selectMusic);
+            playSelectSound();
             if (seekBar == timeSeekBar) {
                 // 确保思考时间在1-60秒之间
                 thinkingTime = Math.max(1, Math.min(60, progress));

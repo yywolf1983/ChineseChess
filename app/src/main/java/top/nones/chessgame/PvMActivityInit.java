@@ -109,13 +109,13 @@ public class PvMActivityInit {
             GameResourceManager manager = GameResourceManager.getInstance();
             manager.initSoundEffects(activity);
             
-            PvMActivity.selectMusic = manager.getSelectMusic();
-            PvMActivity.clickMusic = manager.getClickMusic();
-            PvMActivity.captureMusic = manager.getCaptureMusic();
-            PvMActivity.checkMusic = manager.getCheckMusic();
-            PvMActivity.winMusic = manager.getWinMusic();
+            activity.selectMusic = manager.getSelectMusic();
+            activity.clickMusic = manager.getClickMusic();
+            activity.captureMusic = manager.getCaptureMusic();
+            activity.checkMusic = manager.getCheckMusic();
+            activity.winMusic = manager.getWinMusic();
             
-            LogUtils.d("PvMActivity", "音效初始化完成 selectMusic=" + PvMActivity.selectMusic + " clickMusic=" + PvMActivity.clickMusic + " checkMusic=" + PvMActivity.checkMusic);
+            LogUtils.d("PvMActivity", "音效初始化完成 selectMusic=" + activity.selectMusic + " clickMusic=" + activity.clickMusic + " checkMusic=" + activity.checkMusic);
         } catch (Exception e) {
             Log.e("PvMActivityInit", "音效初始化失败: " + e.getMessage());
         }
@@ -823,16 +823,16 @@ public class PvMActivityInit {
             // 初始化音乐的代码直接在这里实现
             try {
                 // 初始化背景音乐
-                if (PvMActivity.backMusic == null) {
+                if (activity.backMusic == null) {
                     try {
                         if (activity != null) {
                             GameResourceManager manager = GameResourceManager.getInstance();
                             manager.initBackgroundMusic(activity);
-                            PvMActivity.backMusic = manager.getBackMusic();
-                            if (PvMActivity.backMusic != null) {
-                                PvMActivity.backMusic.setLooping(true);
+                            activity.backMusic = manager.getBackMusic();
+                            if (activity.backMusic != null) {
+                                activity.backMusic.setLooping(true);
                                 if (activity.setting != null && activity.setting.isMusicPlay) {
-                                    PvMActivity.backMusic.start();
+                                    activity.backMusic.start();
                                 }
                             }
                         }

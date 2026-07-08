@@ -161,8 +161,8 @@ public class NotationManager {
                     // 初始化棋盘状态为初始状态
                     activity.chessInfo = new ChessInfo();
                     activity.infoSet = new Info.InfoSet();
-                    if (PvMActivity.setting != null) {
-                        activity.chessInfo.setting = PvMActivity.setting;
+                    if (activity.setting != null) {
+                        activity.chessInfo.setting = activity.setting;
                     }
                     if (activity.chessView != null) {
                         activity.chessView.setChessInfo(activity.chessInfo);

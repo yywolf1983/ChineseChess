@@ -21,8 +21,8 @@ public class MoveSimulator {
             // 确保setting属性被正确设置
             if (info.setting != null) {
                 newInfo.setting = info.setting;
-            } else if (PvMActivity.setting != null) {
-                newInfo.setting = PvMActivity.setting;
+            } else if (activity != null && activity.setting != null) {
+                newInfo.setting = activity.setting;
             }
         } catch (CloneNotSupportedException e) {
             LogUtils.e("MoveSimulator", "克隆棋局信息失败", e);

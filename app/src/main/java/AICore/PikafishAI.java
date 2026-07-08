@@ -30,8 +30,8 @@ public class PikafishAI {
     private BufferedWriter writer;
     private boolean initialized = false;
     private Context context;
-    private volatile boolean isSearching = false;
-    private volatile boolean shouldStop = false;
+    private final java.util.concurrent.atomic.AtomicBoolean isSearching = new java.util.concurrent.atomic.AtomicBoolean(false);
+    private final java.util.concurrent.atomic.AtomicBoolean shouldStop = new java.util.concurrent.atomic.AtomicBoolean(false);
     
     // 初始化状态回调接口
     public interface InitializationListener {
@@ -610,8 +610,8 @@ public class PikafishAI {
             }
             
             // 先确保停止之前的搜索
-            shouldStop = true;
-            if (isSearching) {
+            shouldStop.set(true);
+            if (isSearching.get()) {
                 sendCommand("stop");
                 // 短暂等待让stop命令生效
                 try {
@@ -622,8 +622,8 @@ public class PikafishAI {
             }
             
             // 重置标志位开始新搜索
-            shouldStop = false;
-            isSearching = true;
+            shouldStop.set(false);
+            isSearching.set(true);
             
             // 重置当前深度
             currentDepth = 0;
@@ -679,18 +679,15 @@ public class PikafishAI {
                 sendCommand("setoption name Skill Level value 20");
                 LogUtils.i("PikafishAI", "强制变着模式：技能级别设为20");
             } else {
-                // 正常模式：使用默认参数
-                int multiPV = 1; // 默认值
-                int contempt = 20; // 默认值
-                // 尝试获取用户设置的MultiPV值
-                try {
-                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                    Object settingObj = pvmaClass.getField("setting").get(null);
-                    if (settingObj != null) {
-                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
+                int multiPV = 1;
+                int contempt = 20;
+                if (chessInfo != null && chessInfo.setting != null) {
+                    multiPV = chessInfo.setting.multiPV;
+                    try {
+                        contempt = chessInfo.setting.contempt;
+                    } catch (Exception e) {
+                        LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
                     }
-                } catch (Exception e) {
-                    // 忽略错误，使用默认值
                 }
                 LogUtils.i("PikafishAI", "正常模式：使用参数 - MultiPV=" + multiPV + ", Contempt=" + contempt);
                 // 按照设置进行，不设置最小值限制
@@ -861,7 +858,7 @@ public class PikafishAI {
                             }
                             
                             // 如果需要停止，发送stop命令并继续等待bestmove
-                            if (shouldStop && bestMoveHolder[0] == null) {
+                            if (shouldStop.get() && bestMoveHolder[0] == null) {
                                 LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
                                 sendCommand("stop");
                             }
@@ -889,7 +886,7 @@ public class PikafishAI {
                     return getBestMoveWithScore(chessInfo);
                 }
             } finally {
-                isSearching = false;
+                isSearching.set(false);
                 // 保存最终的搜索深度
                 final int finalDepth = currentDepth;
                 // 更新RoundView中的搜索深度
@@ -912,7 +909,7 @@ public class PikafishAI {
             
             // 计算实际搜索时间
             long actualSearchTime = System.currentTimeMillis() - startTime;
-            LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", 节点数: " + nodes + ", 节点/秒: " + nps + ", 搜索时间: " + actualSearchTime + "ms, 已停止: " + shouldStop);
+            LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", 节点数: " + nodes + ", 节点/秒: " + nps + ", 搜索时间: " + actualSearchTime + "ms, 已停止: " + shouldStop.get());
             
             if (bestMoveHolder[0] != null) {
                 String selectedMove = bestMoveHolder[0];
@@ -974,24 +971,24 @@ public class PikafishAI {
             LogUtils.e("PikafishAI", "evaluatePositionQuickly: AI未初始化");
             return 0;
         }
-        if (isSearching) {
+        if (isSearching.get()) {
             LogUtils.i("PikafishAI", "evaluatePositionQuickly: AI正在搜索，先停止当前搜索");
-            shouldStop = true;
+            shouldStop.set(true);
             sendCommand("stop");
             // 等待搜索停止
             long waitStart = System.currentTimeMillis();
-            while (isSearching && System.currentTimeMillis() - waitStart < 500) {
+            while (isSearching.get() && System.currentTimeMillis() - waitStart < 500) {
                 try { Thread.sleep(20); } catch (InterruptedException ignored) {}
             }
-            if (isSearching) {
+            if (isSearching.get()) {
                 LogUtils.i("PikafishAI", "evaluatePositionQuickly: 等待停止超时，继续执行");
             }
         }
 
         try {
             // 标记正在搜索，防止其他搜索干扰
-            shouldStop = false;
-            isSearching = true;
+            shouldStop.set(false);
+            isSearching.set(true);
 
             String fen = boardToFEN(chessInfo);
             sendCommand("position fen " + fen);
@@ -1047,8 +1044,8 @@ public class PikafishAI {
             LogUtils.e("PikafishAI", "evaluatePositionQuickly 异常: " + e.getMessage());
             return 0;
         } finally {
-            isSearching = false;
-            shouldStop = false;
+            isSearching.set(false);
+            shouldStop.set(false);
         }
     }
 
@@ -1171,8 +1168,8 @@ public class PikafishAI {
     
     // 中断AI搜索
     public void interrupt() {
-        shouldStop = true;
-        if (isSearching) {
+        shouldStop.set(true);
+        if (isSearching.get()) {
             sendCommand("stop");
         }
     }
@@ -1180,36 +1177,25 @@ public class PikafishAI {
     // 更新设置
     public void updateSettings(int skillLevel, int multiPV) {
         if (initialized) {
-            // 设置多主变（MultiPV）
-            // 按照设置进行，不设置最小值限制
             sendCommand("setoption name MultiPV value " + multiPV);
             LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
             
-            // 设置技能级别
             sendCommand("setoption name Skill Level value " + skillLevel);
             LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
             
-            // 尝试获取Contempt设置
-            int contempt = 20; // 默认值
+            int contempt = 20;
             try {
-                Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                Object settingObj = pvmaClass.getField("setting").get(null);
-                if (settingObj != null) {
-                    try {
-                        contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
-                    } catch (NoSuchFieldException e) {
-                        LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
-                    }
+                Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
+                if (setting != null) {
+                    contempt = setting.contempt;
                 }
             } catch (Exception e) {
                 LogUtils.e("PikafishAI", "获取Contempt设置失败: " + e.getMessage());
             }
             
-            // 设置 Contempt 值
             sendCommand("setoption name Contempt value " + contempt);
             LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
             
-            // 等待参数设置完成（使用非阻塞方式）
             sendCommand("isready");
             waitForReadyOk();
         }
@@ -1252,36 +1238,25 @@ public class PikafishAI {
     // 更新设置（包含所有参数）
     public void updateSettings(int skillLevel, int multiPV, int depth, int thinkingTime) {
         if (initialized) {
-            // 设置多主变（MultiPV）
-            // 按照设置进行，不设置最小值限制
             sendCommand("setoption name MultiPV value " + multiPV);
             LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
             
-            // 设置技能级别
             sendCommand("setoption name Skill Level value " + skillLevel);
             LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
             
-            // 尝试获取Contempt设置
-            int contempt = 20; // 默认值
+            int contempt = 20;
             try {
-                Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                Object settingObj = pvmaClass.getField("setting").get(null);
-                if (settingObj != null) {
-                    try {
-                        contempt = (int) settingObj.getClass().getField("contempt").get(settingObj);
-                    } catch (NoSuchFieldException e) {
-                        LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
-                    }
+                Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
+                if (setting != null) {
+                    contempt = setting.contempt;
                 }
             } catch (Exception e) {
                 LogUtils.e("PikafishAI", "获取Contempt设置失败: " + e.getMessage());
             }
             
-            // 设置 Contempt 值
             sendCommand("setoption name Contempt value " + contempt);
             LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
             
-            // 等待参数设置完成（使用非阻塞方式）
             sendCommand("isready");
             waitForReadyOk();
         }
@@ -1313,8 +1288,8 @@ public class PikafishAI {
             }
             
             // 先确保停止之前的搜索
-            shouldStop = true;
-            if (isSearching) {
+            shouldStop.set(true);
+            if (isSearching.get()) {
                 sendCommand("stop");
                 // 短暂等待让stop命令生效
                 try {
@@ -1325,8 +1300,8 @@ public class PikafishAI {
             }
             
             // 重置标志位开始新搜索
-            shouldStop = false;
-            isSearching = true;
+            shouldStop.set(false);
+            isSearching.set(true);
             
             // 重置当前深度
             currentDepth = 0;
@@ -1499,7 +1474,7 @@ public class PikafishAI {
                                 break;
                             }
                             
-                            if (shouldStop && bestMoveHolder[0] == null) {
+                            if (shouldStop.get() && bestMoveHolder[0] == null) {
                                 LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
                                 sendCommand("stop");
                             }
@@ -1525,7 +1500,7 @@ public class PikafishAI {
                     return getPvSequenceWithScore(chessInfo);
                 }
             } finally {
-                isSearching = false;
+                isSearching.set(false);
                 final int finalDepth = currentDepth;
                 try {
                     PvMActivity activity = top.nones.chessgame.PvMActivity.getInstance();
@@ -1582,8 +1557,8 @@ public class PikafishAI {
     public void close() {
         try {
             // 先中断搜索
-            shouldStop = true;
-            isSearching = false;
+            shouldStop.set(true);
+            isSearching.set(false);
             
             // 关闭 writer
             if (writer != null) {

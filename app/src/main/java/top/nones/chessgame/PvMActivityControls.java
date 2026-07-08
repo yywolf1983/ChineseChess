@@ -70,8 +70,8 @@ public class PvMActivityControls {
                         // 创建新的ChessInfo对象
                         activity.chessInfo = new ChessInfo();
                         // 重新设置setting属性
-                        if (PvMActivity.setting != null) {
-                            activity.chessInfo.setting = PvMActivity.setting;
+                        if (activity.setting != null) {
+                            activity.chessInfo.setting = activity.setting;
                         }
                         // 确保摆棋模式被关闭
                         activity.chessInfo.IsSetupMode = false;
@@ -258,15 +258,15 @@ public class PvMActivityControls {
                         activity.roundView.setGameMode(which);
                     }
                     // 重新读取设置，确保新模式下使用最新设置
-                    if (PvMActivity.setting != null && activity.chessInfo != null) {
-                        activity.chessInfo.setting = PvMActivity.setting;
+                    if (activity.setting != null && activity.chessInfo != null) {
+                        activity.chessInfo.setting = activity.setting;
                     }
                     // 更新PikafishAI的设置
                     if (activity.pikafishAI != null) {
-                        int skillLevel = PvMActivity.setting != null ? PvMActivity.setting.skillLevel : 20;
-                        int multiPV = PvMActivity.setting != null ? PvMActivity.setting.multiPV : 1;
-                        int depth = PvMActivity.setting != null ? PvMActivity.setting.depth : 10;
-                        int thinkingTime = PvMActivity.setting != null ? PvMActivity.setting.mLevel : 5;
+                        int skillLevel = activity.setting != null ? activity.setting.skillLevel : 20;
+                        int multiPV = activity.setting != null ? activity.setting.multiPV : 1;
+                        int depth = activity.setting != null ? activity.setting.depth : 10;
+                        int thinkingTime = activity.setting != null ? activity.setting.mLevel : 5;
                         new Thread(
                             () -> {
                                 long startMs = System.currentTimeMillis();
@@ -766,7 +766,7 @@ public class PvMActivityControls {
                 // 如果刚刚执行了强制变着，跳过强制变着检查
                 if (!justExecutedForceVariation) {
                     // 检查用户是否开启了强制变着功能
-                    boolean forceVariationEnabled = PvMActivity.setting != null && PvMActivity.setting.forceVariation;
+                    boolean forceVariationEnabled = activity.setting != null && activity.setting.forceVariation;
                     
                     // 检查三次重复局面，后台强制变着并显示浮窗提示
                     if (activity.chessInfo.isThreefoldRepetition()) {

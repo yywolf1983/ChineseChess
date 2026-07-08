@@ -10,26 +10,15 @@ import android.widget.RadioButton;
 import android.widget.RadioGroup;
 
 import top.nones.chessgame.R;
-import static top.nones.chessgame.PvMActivity.selectMusic;
 import top.nones.chessgame.PvMActivity;
 import Utils.LogUtils;
+import Utils.SoundManager;
 
 /**
  * Created by 77304 on 2021/4/19.
  */
 
 public class RetryDialog extends Dialog implements RadioGroup.OnCheckedChangeListener, View.OnClickListener {
-    // 添加playEffect方法
-    private void playEffect(android.media.MediaPlayer mediaPlayer) {
-        if (mediaPlayer != null && PvMActivity.setting != null && PvMActivity.setting.isEffectPlay) {
-            try {
-                mediaPlayer.seekTo(0);
-                mediaPlayer.start();
-            } catch (Exception e) {
-                LogUtils.e("RetryDialog", "操作失败", e);
-            }
-        }
-    }
     
     public Button posBtn, negBtn;
     public RadioGroup holdGroup;
@@ -93,7 +82,10 @@ public class RetryDialog extends Dialog implements RadioGroup.OnCheckedChangeLis
 
     @Override
     public void onCheckedChanged(RadioGroup radioGroup, @IdRes int i) {
-        playEffect(selectMusic);
+        PvMActivity activity = PvMActivity.getInstance();
+        if (activity != null) {
+            SoundManager.playEffect(activity.selectMusic);
+        }
         RadioButton checked = (RadioButton) findViewById(radioGroup.getCheckedRadioButtonId());
         int id = radioGroup.getId();
         if (id == R.id.holdGroup) {

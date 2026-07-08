@@ -71,14 +71,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public static final int MIN_CLICK_DELAY_TIME = 100;
     public static long curClickTime = 0L;
     public static long lastClickTime = 0L;
-    public static Setting setting;
-    public static MediaPlayer backMusic;
-    public static MediaPlayer selectMusic;
-    public static MediaPlayer clickMusic;
-    public static MediaPlayer captureMusic;
-    public static MediaPlayer checkMusic;
-    public static MediaPlayer winMusic;
-    public static SharedPreferences sharedPreferences;
+    
+    // 实例变量，不再使用静态变量避免内存泄漏
+    public Setting setting;
+    public MediaPlayer backMusic;
+    public MediaPlayer selectMusic;
+    public MediaPlayer clickMusic;
+    public MediaPlayer captureMusic;
+    public MediaPlayer checkMusic;
+    public MediaPlayer winMusic;
+    public SharedPreferences sharedPreferences;
     public RelativeLayout relativeLayout;
     public ChessInfo chessInfo;
     public InfoSet infoSet;
@@ -802,16 +804,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        if (requestCode == 1006) {
-            if (grantResults.length > 0 && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                // 相机权限已授予，重新启动相机
-                LogUtils.d("PvMActivity", "相机权限已授予，重新启动相机");
-                if (photoCaptureManager != null) {
-                    photoCaptureManager.handleCameraClick();
-                }
-            } else {
-                Toast.makeText(this, "需要相机权限才能拍照识别", Toast.LENGTH_SHORT).show();
-            }
+        if (photoCaptureManager != null) {
+            photoCaptureManager.handlePermissionResult(requestCode, grantResults);
         }
     }
     
@@ -895,15 +889,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             LogUtils.i("Perf", "onDestroy background cleanup cost=" + (System.currentTimeMillis() - cleanupStartMs) + "ms");
         }, "pvm-destroy-cleanup").start();
 
-        GameResourceManager.getInstance().release();
-        
-        backMusic = null;
-        selectMusic = null;
-        clickMusic = null;
-        captureMusic = null;
-        checkMusic = null;
-        winMusic = null;
-        setting = null;
         // 清理静态引用
         if (weakInstance != null && weakInstance.get() == this) {
             weakInstance.clear();
