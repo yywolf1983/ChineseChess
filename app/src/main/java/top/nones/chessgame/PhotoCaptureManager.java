@@ -41,6 +41,8 @@ public class PhotoCaptureManager {
         this.activity = activity;
     }
 
+    private static final int CAMERA_PERMISSION_REQUEST_CODE = 1006;
+
     public void handleCameraClick() {
         if (!isLaunchingCamera.compareAndSet(false, true)) {
             LogUtils.d("PvMActivity", "相机已在启动中，跳过");
@@ -50,6 +52,15 @@ public class PhotoCaptureManager {
         long now = System.currentTimeMillis();
         if (now - lastCameraLaunchTime.get() < CAMERA_COOLDOWN_MS) {
             LogUtils.d("PvMActivity", "相机冷却中，跳过 (距上次启动=" + (now - lastCameraLaunchTime.get()) + "ms)");
+            isLaunchingCamera.set(false);
+            return;
+        }
+
+        if (!hasCameraPermission()) {
+            LogUtils.d("PvMActivity", "相机权限未授予，请求权限");
+            ActivityCompat.requestPermissions(activity,
+                    new String[]{android.Manifest.permission.CAMERA},
+                    CAMERA_PERMISSION_REQUEST_CODE);
             isLaunchingCamera.set(false);
             return;
         }
