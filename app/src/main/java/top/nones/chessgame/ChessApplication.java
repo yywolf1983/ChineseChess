@@ -8,7 +8,6 @@ public class ChessApplication extends Application {
     public void onCreate() {
         RegGateConfig.init(this)
                 .mainActivity(PvMActivity.class)
-                .trialDays(7)
                 .build();
         super.onCreate();
     }
