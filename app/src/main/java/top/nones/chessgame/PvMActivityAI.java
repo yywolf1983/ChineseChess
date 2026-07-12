@@ -29,7 +29,6 @@ public class PvMActivityAI {
     private java.util.concurrent.ThreadPoolExecutor executorService;
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     private java.util.concurrent.ScheduledFuture<?> depthUpdateFuture;
-    private static final long AI_TIMEOUT_BUFFER_MS = 2000; // AI计算超时缓冲时间2秒（引擎内部已有 maxSearchTime 兜底）
     
     public PvMActivityAI(PvMActivity activity) {
         this.activity = activity;

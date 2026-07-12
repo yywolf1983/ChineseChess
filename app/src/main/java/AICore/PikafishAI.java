@@ -24,7 +24,11 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class PikafishAI {
     private static final long INIT_TIMEOUT_MS = 5000;
-    private static final long MAX_SEARCH_TIME_BUFFER_MS = 2000;
+    // 超时缓冲：取 timeMs 的 50% 但不超过 2000ms，最短 800ms
+    // 短时限（1s→800ms缓冲→总计1.8s）、长时限（60s→2000ms缓冲→总计62s）
+    private long getSearchTimeBuffer(long timeMs) {
+        return Math.max(800, Math.min(2000, timeMs / 2));
+    }
     private static final int MAX_INIT_RETRIES = 3;
     private static final long INIT_RETRY_DELAY_MS = 1000;
 
@@ -620,7 +624,7 @@ public class PikafishAI {
             List<String> possibleMoves = new ArrayList<>();
             int score = 0;
             long startTime = System.currentTimeMillis();
-            long maxSearchTime = timeMs + MAX_SEARCH_TIME_BUFFER_MS;
+            long maxSearchTime = timeMs + getSearchTimeBuffer(timeMs);
 
             while (!Thread.currentThread().isInterrupted()) {
                 long elapsed = System.currentTimeMillis() - startTime;
@@ -862,7 +866,7 @@ public class PikafishAI {
             List<String> pvMoveList = new ArrayList<>();
             int score = 0;
             long startTime = System.currentTimeMillis();
-            long maxSearchTime = timeMs + MAX_SEARCH_TIME_BUFFER_MS;
+            long maxSearchTime = timeMs + getSearchTimeBuffer(timeMs);
             int infoLineCount = 0;
             int maxDepthSeen = 0;
 
