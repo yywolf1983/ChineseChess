@@ -549,7 +549,7 @@
                 android:textSize="14sp"
                 android:textColor="#9C27B0"
                 android:textStyle="bold"
-                android:text="0变" />
+                android:text="1变" />
         </LinearLayout>
 
         <LinearLayout
@@ -604,7 +604,7 @@
                 android:layout_weight="1"
                 android:textSize="10sp"
                 android:textColor="#999999"
-                android:text="0变" />
+                android:text="1变" />
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
