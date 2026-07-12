@@ -440,11 +440,12 @@ public class PikafishAI {
         }
     }
 
-    /** 根据设备核心数自动计算线程数（为 UI 预留 1-2 核） */
+    /** 根据设备核心数自动计算线程数 */
     private int computeAutoThreads() {
         int totalCores = Runtime.getRuntime().availableProcessors();
-        // 棋类引擎对 UI 线程占用极少，预留 1 核足够
-        int reservedCores = totalCores <= 2 ? 1 : (totalCores <= 6 ? 1 : 2);
+        // 棋类引擎搜索时 UI 线程几乎空闲，仅预留 1 核
+        // proot 模式通常用全部核心，这里尽量接近
+        int reservedCores = totalCores <= 2 ? 0 : 1;
         return Math.max(1, totalCores - reservedCores);
     }
 
@@ -646,32 +647,54 @@ public class PikafishAI {
     }
 
     // ========== 哈希表大小计算 ==========
-    private static volatile Long cachedMaxMemory = null;
+    // Hash 表分配在 native 内存，不受 Java 堆限制，应基于设备物理内存计算
+    private static volatile Long cachedTotalMemory = null;
 
-    private long getMaxMemory() {
-        if (cachedMaxMemory == null) {
-            synchronized (PikafishAI.class) {
-                if (cachedMaxMemory == null) {
-                    cachedMaxMemory = Runtime.getRuntime().maxMemory();
+    /** 获取设备物理内存总量（字节），读取 /proc/meminfo */
+    private long getTotalPhysicalMemory() {
+        if (cachedTotalMemory != null) return cachedTotalMemory;
+        synchronized (PikafishAI.class) {
+            if (cachedTotalMemory != null) return cachedTotalMemory;
+            long memTotal = 0;
+            try (java.io.FileReader fr = new java.io.FileReader("/proc/meminfo");
+                 java.io.BufferedReader br = new java.io.BufferedReader(fr)) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    if (line.startsWith("MemTotal:")) {
+                        String[] parts = line.trim().split("\\s+");
+                        if (parts.length >= 2) {
+                            memTotal = Long.parseLong(parts[1]) * 1024; // kB → bytes
+                        }
+                        break;
+                    }
                 }
+            } catch (Exception e) {
+                LogUtils.w("PikafishAI", "读取 /proc/meminfo 失败，使用 Java 堆估算: " + e.getMessage());
             }
+            if (memTotal <= 0) {
+                // 降级：用 Java 堆 * 4 作为粗略估算
+                memTotal = Runtime.getRuntime().maxMemory() * 4;
+            }
+            cachedTotalMemory = memTotal;
+            LogUtils.i("PikafishAI", "设备物理内存: " + (memTotal / 1024 / 1024) + "MB");
+            return memTotal;
         }
-        return cachedMaxMemory;
     }
 
     private int getOptimalHashSize() {
         try {
-            long maxMemory = getMaxMemory();
-            int maxMemoryMB = (int) (maxMemory / (1024 * 1024));
-            // 保守分配：Hash 表大小控制在堆内存 10% 以内，避免 OOM
-            // NNUE 约占 10-50MB，加上引擎运行时开销，总 native 内存可能很大
-            if (maxMemoryMB >= 4096) return 256;    // 4GB+ 设备: 256MB
-            else if (maxMemoryMB >= 2048) return 128; // 2-4GB 设备: 128MB
-            else if (maxMemoryMB >= 1024) return 64;  // 1-2GB 设备: 64MB
-            else if (maxMemoryMB >= 512) return 32;   // 512MB-1GB 设备: 32MB
+            long totalMem = getTotalPhysicalMemory();
+            int totalMemMB = (int) (totalMem / (1024 * 1024));
+            // Hash 表是 native 内存，不受 Java 堆限制
+            // 分配策略：物理内存的 5-10%，留足空间给 NNUE(50MB) + 引擎运行时 + Android 系统
+            if (totalMemMB >= 6144) return 512;    // 6GB+ 设备: 512MB
+            else if (totalMemMB >= 4096) return 256; // 4-6GB 设备: 256MB
+            else if (totalMemMB >= 2048) return 128; // 2-4GB 设备: 128MB
+            else if (totalMemMB >= 1024) return 64;  // 1-2GB 设备: 64MB
+            else if (totalMemMB >= 512) return 32;   // 512MB-1GB 设备: 32MB
             else return 16;                           // 小内存设备: 16MB
         } catch (Exception e) {
-            return 64; // 默认值更保守
+            return 64; // 默认值
         }
     }
 
