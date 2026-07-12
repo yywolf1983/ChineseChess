@@ -47,6 +47,12 @@ public class Setting implements Serializable {
         editor.putBoolean("forceVariation", forceVariation);
         editor.putInt("threads", threads);
         editor.putInt("hashMB", hashMB);
+        if (numaPolicy != null) {
+            editor.putString("numaPolicy", numaPolicy);
+        }
+        if (evalFile != null) {
+            editor.putString("evalFile", evalFile);
+        }
         editor.apply();
     }
 }

@@ -40,6 +40,9 @@ public class PikafishAI {
     private static native void nativeCleanup();
 
     private static volatile boolean libraryLoaded = false;
+    // 全局初始化锁：确保 close() 和 initialize() 不会并发执行
+    // （Activity 重建时旧 onDestroy 的后台 close 可能与新 onCreate 的 init 竞争）
+    private static final Object GLOBAL_INIT_LOCK = new Object();
 
     static {
         boolean loaded = false;
@@ -138,11 +141,13 @@ public class PikafishAI {
 
     // ========== 初始化（带重试）==========
     private void initialize() {
-        synchronized (initLock) {
-            if (initialized) return;
-            if (initInProgress) return;
-            initInProgress = true;
-        }
+        // 全局锁：确保与 close() 互斥，防止 Activity 重建时新旧实例竞争 native 引擎
+        synchronized (GLOBAL_INIT_LOCK) {
+            synchronized (initLock) {
+                if (initialized) return;
+                if (initInProgress) return;
+                initInProgress = true;
+            }
 
         if (initListener != null) {
             runOnUiThread(() -> initListener.onInitializationStarted());
@@ -168,6 +173,7 @@ public class PikafishAI {
 
         synchronized (initLock) { initInProgress = false; }
         notifyInitFailed();
+        } // synchronized (GLOBAL_INIT_LOCK)
     }
 
     /**
@@ -371,13 +377,13 @@ public class PikafishAI {
         // Threads
         boolean threadsAuto = cachedThreads <= 0;
         int threadCount = threadsAuto ? computeAutoThreads() : cachedThreads;
-        cachedThreads = threadCount;
+        // 注意：不修改 cachedThreads，保持用户设置（0=自动），下次调用时重新计算
         sendCommand("setoption name Threads value " + threadCount);
 
         // Hash
         boolean hashAuto = cachedHashMB <= 0;
         int hashSize = hashAuto ? getOptimalHashSize() : cachedHashMB;
-        cachedHashMB = hashSize;
+        // 注意：不修改 cachedHashMB，保持用户设置（0=自动），下次调用时重新计算
         sendCommand("setoption name Hash value " + hashSize);
 
         // Skill Level
@@ -389,7 +395,7 @@ public class PikafishAI {
         // NumaPolicy
         sendCommand("setoption name NumaPolicy value " + cachedNumaPolicy);
 
-        // MultiPV（引擎要求 MultiPV >= 1；设置中 0 表示禁用多主变→下发 1）
+        // MultiPV（引擎要求 MultiPV >= 1）
         int engineMultiPV = Math.max(1, cachedMultiPV);
         sendCommand("setoption name MultiPV value " + engineMultiPV);
 
@@ -929,14 +935,12 @@ public class PikafishAI {
             isSearching.set(true);
             drainOutputQueue();
 
-            // 同步最新设置，确保 Skill Level / Contempt 等参数与当前局面一致
-            syncSettingsFromChessInfo(chessInfo);
-
             String fen = boardToFEN(chessInfo);
-            // 快速评估：使用用户设置的引擎参数（Skill Level、Contempt、Threads、Hash 等全部下发）
-            // MultiPV 固定为 1（快速评估只需单路主变）
-            applyAllEngineOptions();
-            sendCommand("setoption name MultiPV value 1");
+            // 快速评估：复用引擎现有参数，不下发 Hash/Threads（避免重分配和性能损耗）
+            // 仅确保 MultiPV=1（快速评估只需单路主变）
+            if (cachedMultiPV > 1) {
+                sendCommand("setoption name MultiPV value 1");
+            }
             sendCommand("position fen " + fen);
             // 快速评估固定 depth=1、movetime=300ms，保证响应速度
             sendCommand("go depth 1 movetime 300");
@@ -977,6 +981,10 @@ public class PikafishAI {
             LogUtils.e("PikafishAI", "快速评估异常: " + e.getMessage());
             return 0;
         } finally {
+            // 恢复 MultiPV 设置（如果之前修改过）
+            if (cachedMultiPV > 1) {
+                sendCommand("setoption name MultiPV value " + cachedMultiPV);
+            }
             isSearching.set(false);
             shouldStop.set(false);
             searchLock.unlock();
@@ -1225,10 +1233,12 @@ public class PikafishAI {
     }
 
     public void close() {
-        shouldStop.set(true);
-        isSearching.set(false);
+        // 持有全局锁，防止与新 PikafishAI 的 initialize() 并发
+        synchronized (GLOBAL_INIT_LOCK) {
+            shouldStop.set(true);
+            isSearching.set(false);
 
-        boolean engineQuitCleanly = false;
+            boolean engineQuitCleanly = false;
 
         try {
             // 1. 先发送 quit 命令，让引擎主动关闭 stdout 管道
@@ -1284,6 +1294,7 @@ public class PikafishAI {
         initLatchRef.set(new CountDownLatch(1));
         synchronized (initLock) { initInProgress = false; }
         LogUtils.i("PikafishAI", "引擎已关闭" + (engineQuitCleanly ? "（正常退出）" : "（强制退出）"));
+        } // synchronized (GLOBAL_INIT_LOCK)
     }
 
     private void updateUIAfterSearch(int finalDepth) {
