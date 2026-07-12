@@ -108,24 +108,48 @@ public class ChessRecognitionService {
 
         } catch (Exception e) {
             Log.e(TAG, "Failed to initialize ONNX models: " + e.getMessage(), e);
-            initialized = true;
+            initialized = false;
         }
     }
 
     private File extractModelFile(String modelName) throws IOException {
         File cacheDir = context.getCacheDir();
         File modelFile = new File(cacheDir, modelName);
-        if (modelFile.exists()) return modelFile;
+
+        // 获取 assets 中原始文件大小（noCompress 配置后 openFd 可直接获取）
+        long expectedSize = -1;
+        try (android.content.res.AssetFileDescriptor afd = context.getAssets().openFd(modelName)) {
+            expectedSize = afd.getLength();
+        } catch (Exception ignored) {
+        }
+
+        // 如果已存在且大小匹配，直接返回
+        if (modelFile.exists() && modelFile.length() > 0) {
+            if (expectedSize <= 0 || modelFile.length() == expectedSize) {
+                return modelFile;
+            }
+            Log.w(TAG, "模型文件大小不匹配 (expected=" + expectedSize
+                + ", actual=" + modelFile.length() + ")，重新提取: " + modelName);
+            modelFile.delete();
+        }
 
         Log.d(TAG, "Extracting model from assets: " + modelName);
+        long totalBytes = 0;
         try (InputStream is = context.getAssets().open(modelName);
              FileOutputStream fos = new FileOutputStream(modelFile)) {
             byte[] buffer = new byte[4096];
             int bytesRead;
             while ((bytesRead = is.read(buffer)) != -1) {
                 fos.write(buffer, 0, bytesRead);
+                totalBytes += bytesRead;
             }
         }
+
+        if (totalBytes <= 0) {
+            throw new IOException("模型文件复制后大小为 0: " + modelName);
+        }
+
+        Log.d(TAG, "Model extracted: " + modelName + " (" + totalBytes + " bytes)");
         return modelFile;
     }
 

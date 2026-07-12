@@ -18,6 +18,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -38,17 +39,26 @@ public class PikafishAI {
     private static native String nativeReadLine();
     private static native void nativeCleanup();
 
+    private static volatile boolean libraryLoaded = false;
+
     static {
+        boolean loaded = false;
         try {
             System.loadLibrary("pikafish");
+            loaded = true;
             LogUtils.i("PikafishAI", "libpikafish.so 加载成功 (JNI)");
         } catch (UnsatisfiedLinkError e) {
             LogUtils.e("PikafishAI", "加载 libpikafish.so 失败: " + e.getMessage());
+        } catch (Throwable t) {
+            LogUtils.e("PikafishAI", "加载 libpikafish.so 抛出异常: " + t.getClass().getName()
+                + ": " + t.getMessage(), t);
         }
+        libraryLoaded = loaded;
     }
 
     // ========== 状态字段（跨线程访问，需 volatile 或 Atomic）==========
     private volatile boolean initialized = false;
+    private volatile boolean nativeInited = false;
     private final AtomicReference<CountDownLatch> initLatchRef = new AtomicReference<>(new CountDownLatch(1));
     private volatile boolean initInProgress = false;
     private Context context;
@@ -57,16 +67,23 @@ public class PikafishAI {
     private final AtomicInteger currentDepth = new AtomicInteger(0);
 
     // ========== 线程安全锁 ==========
-    /** 保护所有 nativeSendCommand/nativeReadLine 调用，防止多线程交错发送命令导致引擎崩溃 */
+    /**
+     * 保护所有写入类 native 调用（nativeSendCommand / nativeCleanup），
+     * 防止多线程交错写入导致引擎命令解析错误或崩溃。
+     * 注意：nativeReadLine 由单一的输出读取线程调用，UCI 引擎的 stdin/stdout 是独立管道，
+     * 读写并发是安全的，因此读操作不需要持有此锁。
+     */
     private final ReentrantLock nativeLock = new ReentrantLock();
     /** 保护搜索操作（getBestMoveWithScore/getPvSequenceWithScore/evaluatePositionQuickly）互斥 */
     private final ReentrantLock searchLock = new ReentrantLock();
+    /** 标记有待应用的引擎参数（搜索中无法下发 setoption，延迟到下次搜索前应用） */
+    private final AtomicBoolean pendingOptionsUpdate = new AtomicBoolean(false);
 
     // ========== 缓存设置 ==========
     // 所有默认值与 Info.Setting 类中的默认值保持一致
     private volatile int cachedSkillLevel = 20;   // 技能级别 (1-20, 20=满血)
     private volatile int cachedDepth = 10;        // 搜索深度 (5-120)
-    private volatile int cachedMultiPV = 0;       // 多主变 (0-5, 0=禁用)
+    private volatile int cachedMultiPV = 1;       // 多主变 (1-5, 1=单主变无额外开销)
     private volatile int cachedTimeSeconds = 3;   // 思考时间（秒, 1-60）
     private volatile int cachedThreads = 0;       // 线程数 (0=自动)
     private volatile int cachedHashMB = 0;        // 哈希表 MB (0=自动)
@@ -77,7 +94,9 @@ public class PikafishAI {
     private Thread outputReaderThread;
     private final BlockingQueue<String> outputQueue = new LinkedBlockingQueue<>();
     private volatile boolean readerRunning = false;
+    private volatile boolean readerExited = false;
     private final Object initLock = new Object();
+    private static final long ENGINE_QUIT_TIMEOUT_MS = 3000;
 
     // ========== 初始化回调 ==========
     public interface InitializationListener {
@@ -151,6 +170,19 @@ public class PikafishAI {
         notifyInitFailed();
     }
 
+    /**
+     * 手动触发重新初始化（初始化失败后重试）。
+     * 线程安全，若已在初始化中则直接返回。
+     */
+    public void retryInitialize() {
+        if (initialized) return;
+        synchronized (initLock) {
+            if (initialized) return;
+            if (initInProgress) return;
+        }
+        new Thread(() -> initialize()).start();
+    }
+
     /** 单次初始化尝试，成功返回 true */
     private boolean tryInitializeOnce() {
         initialized = false;
@@ -166,15 +198,52 @@ public class PikafishAI {
                 return false;
             }
 
+            // 验证 NNUE 文件可读
+            File nnueFile = new File(nnuePath);
+            if (!nnueFile.canRead() || nnueFile.length() <= 0) {
+                LogUtils.e("PikafishAI", "NNUE 文件不可读或为空: " + nnuePath
+                    + " canRead=" + nnueFile.canRead() + " length=" + nnueFile.length());
+                return false;
+            }
+
             // 2. 获取 native library 目录
             String libPath = context.getApplicationInfo().nativeLibraryDir;
 
-            // 3. 调用 JNI 初始化（此时引擎已启动，内部发了 uci 命令）
-            boolean initOk = nativeInit(nnuePath, libPath);
-            if (!initOk) {
-                LogUtils.e("PikafishAI", "nativeInit 返回 false");
+            // 3. 初始化前内存诊断
+            Runtime rt = Runtime.getRuntime();
+            long freeMemory = rt.freeMemory();
+            long totalMemory = rt.totalMemory();
+            long maxMemory = rt.maxMemory();
+            long availableHeap = maxMemory - totalMemory + freeMemory;
+            LogUtils.i("PikafishAI", "初始化前内存状态 - 可用堆=" + (availableHeap / 1024 / 1024)
+                + "MB, 最大堆=" + (maxMemory / 1024 / 1024) + "MB, NNUE大小=" + (nnueFile.length() / 1024 / 1024) + "MB");
+
+            // 4. 调用 JNI 初始化（此时引擎已启动，内部发了 uci 命令）
+            if (!libraryLoaded) {
+                LogUtils.e("PikafishAI", "库未加载，无法初始化引擎");
                 return false;
             }
+            LogUtils.i("PikafishAI", "调用 nativeInit: nnuePath=" + nnuePath
+                + " size=" + nnueFile.length() + " libPath=" + libPath);
+            long initStartTime = System.currentTimeMillis();
+            boolean initOk;
+            try {
+                initOk = nativeInit(nnuePath, libPath);
+            } catch (Throwable t) {
+                // nativeInit 可能抛出 UnsatisfiedLinkError 或其他 Error
+                long cost = System.currentTimeMillis() - initStartTime;
+                LogUtils.e("PikafishAI", "nativeInit 抛出异常 (耗时=" + cost + "ms): "
+                    + t.getClass().getName() + ": " + t.getMessage(), t);
+                return false;
+            }
+            long initCost = System.currentTimeMillis() - initStartTime;
+            if (!initOk) {
+                LogUtils.e("PikafishAI", "nativeInit 返回 false (耗时=" + initCost + "ms)");
+                return false;
+            }
+            LogUtils.i("PikafishAI", "nativeInit 返回成功 (耗时=" + initCost + "ms)");
+            // nativeInit 返回成功后才标记，确保 cleanup 时可以安全调用 nativeCleanup
+            nativeInited = true;
 
             // 4. 引擎启动成功后，再启动输出读取线程
             startOutputReaderThread();
@@ -231,9 +300,22 @@ public class PikafishAI {
     /** 初始化失败后的清理 */
     private void cleanupAfterFailedInit() {
         stopOutputReaderThread();
-        nativeLock.lock();
-        try { nativeCleanup(); } catch (Exception ignored) {}
-        finally { nativeLock.unlock(); }
+        // 只有 nativeInit 成功返回后才调用 nativeCleanup，避免对半初始化状态调用清理
+        if (nativeInited) {
+            nativeLock.lock();
+            try {
+                if (libraryLoaded) {
+                    nativeCleanup();
+                }
+            } catch (Throwable t) {
+                LogUtils.w("PikafishAI", "cleanupAfterFailedInit: nativeCleanup 抛出异常: "
+                    + t.getClass().getName() + ": " + t.getMessage());
+            } finally {
+                nativeLock.unlock();
+            }
+            // 无论 nativeCleanup 是否成功，都重置标志，避免重复调用
+            nativeInited = false;
+        }
         initialized = false;
         outputQueue.clear();
         // 重置 latch 以备重试
@@ -250,7 +332,7 @@ public class PikafishAI {
     private static final int VALID_DEPTH_MAX = 120;
     private static final int VALID_TIME_SEC_MIN = 1;
     private static final int VALID_TIME_SEC_MAX = 60;
-    private static final int VALID_MULTIPV_MIN = 0;
+    private static final int VALID_MULTIPV_MIN = 1;
     private static final int VALID_MULTIPV_MAX = 5;
     private static final int VALID_CONTEMPT_MIN = -100;
     private static final int VALID_CONTEMPT_MAX = 100;
@@ -385,28 +467,41 @@ public class PikafishAI {
 
     // ========== 输出读取线程 ==========
     private void startOutputReaderThread() {
+        if (!libraryLoaded) {
+            LogUtils.w("PikafishAI", "库未加载，不启动输出读取线程");
+            readerExited = true;
+            return;
+        }
         readerRunning = true;
+        readerExited = false;
         outputReaderThread = new Thread(() -> {
             LogUtils.i("PikafishAI", "输出读取线程启动");
-            while (readerRunning) {
-                try {
-                    String line = nativeReadLine();
-                    if (line == null) {
-                        // EOF (引擎关闭)
-                        LogUtils.i("PikafishAI", "输出读取线程: 收到 EOF");
+            try {
+                while (readerRunning) {
+                    try {
+                        String line = nativeReadLine();
+                        if (line == null) {
+                            // EOF (引擎关闭)
+                            LogUtils.i("PikafishAI", "输出读取线程: 收到 EOF");
+                            break;
+                        }
+                        outputQueue.offer(line);
+                    } catch (Throwable t) {
+                        // 捕获 Exception 和 Error，确保线程退出时能正确设置标志
+                        if (readerRunning) {
+                            LogUtils.e("PikafishAI", "输出读取异常: " + t.getClass().getName()
+                                + ": " + t.getMessage(), t);
+                        }
                         break;
                     }
-                    outputQueue.offer(line);
-                } catch (Exception e) {
-                    if (readerRunning) {
-                        LogUtils.e("PikafishAI", "输出读取异常: " + e.getMessage());
-                    }
-                    break;
                 }
+            } finally {
+                readerExited = true;
+                readerRunning = false;
+                LogUtils.i("PikafishAI", "输出读取线程退出");
             }
-            LogUtils.i("PikafishAI", "输出读取线程退出");
         }, "pikafish-output-reader");
-        outputReaderThread.setDaemon(true);
+        outputReaderThread.setDaemon(false);
         outputReaderThread.start();
     }
 
@@ -441,11 +536,19 @@ public class PikafishAI {
     /**
      * 线程安全地向引擎发送命令。
      * 所有 nativeSendCommand 调用必须经过此方法，防止多线程交错写入导致引擎崩溃。
+     * 库未加载时直接返回，避免 UnsatisfiedLinkError。
      */
     private void sendCommand(String command) {
+        if (!libraryLoaded) {
+            LogUtils.w("PikafishAI", "库未加载，跳过命令: " + command);
+            return;
+        }
         nativeLock.lock();
         try {
             nativeSendCommand(command);
+        } catch (Throwable t) {
+            LogUtils.e("PikafishAI", "nativeSendCommand 抛出异常: " + t.getClass().getName()
+                + ": " + t.getMessage() + ", command=" + command, t);
         } finally {
             nativeLock.unlock();
         }
@@ -457,26 +560,47 @@ public class PikafishAI {
             File cacheDir = context.getCacheDir();
             File nnueFile = new File(cacheDir, "pikafish.nnue");
 
-            // 如果已存在且大小正确，直接返回
-            if (nnueFile.exists()) {
-                LogUtils.i("PikafishAI", "NNUE 文件已存在: " + nnueFile.getAbsolutePath());
-                return nnueFile.getAbsolutePath();
+            // 获取 assets 中原始文件大小（noCompress 配置后 openFd 可直接获取）
+            long expectedSize = -1;
+            try (android.content.res.AssetFileDescriptor afd = context.getAssets().openFd("pikafish.nnue")) {
+                expectedSize = afd.getLength();
+            } catch (Exception ignored) {
+                // openFd 失败时忽略，后续按旧逻辑处理
             }
 
+            // 如果已存在且大小匹配，直接返回
+            if (nnueFile.exists() && nnueFile.length() > 0) {
+                if (expectedSize <= 0 || nnueFile.length() == expectedSize) {
+                    LogUtils.i("PikafishAI", "NNUE 文件已存在: " + nnueFile.length() + " bytes");
+                    return nnueFile.getAbsolutePath();
+                }
+                LogUtils.w("PikafishAI", "NNUE 文件大小不匹配 (expected=" + expectedSize
+                    + ", actual=" + nnueFile.length() + ")，重新复制");
+                nnueFile.delete();
+            }
+
+            // 复制文件
+            long totalBytes = 0;
             try (InputStream is = context.getAssets().open("pikafish.nnue");
                  FileOutputStream os = new FileOutputStream(nnueFile)) {
                 byte[] buffer = new byte[8192];
                 int length;
-                long totalBytes = 0;
                 while ((length = is.read(buffer)) > 0) {
                     os.write(buffer, 0, length);
                     totalBytes += length;
                 }
-                LogUtils.i("PikafishAI", "NNUE 文件复制成功: " + totalBytes + " bytes -> " + nnueFile.getAbsolutePath());
             }
+
+            if (totalBytes <= 0) {
+                LogUtils.e("PikafishAI", "NNUE 文件复制后大小为 0");
+                nnueFile.delete();
+                return null;
+            }
+
+            LogUtils.i("PikafishAI", "NNUE 文件复制成功: " + totalBytes + " bytes -> " + nnueFile.getAbsolutePath());
             return nnueFile.getAbsolutePath();
         } catch (Exception e) {
-            LogUtils.e("PikafishAI", "复制 NNUE 文件失败: " + e.getMessage());
+            LogUtils.e("PikafishAI", "复制 NNUE 文件失败: " + e.getMessage(), e);
             return null;
         }
     }
@@ -516,18 +640,32 @@ public class PikafishAI {
     }
 
     // ========== 哈希表大小计算 ==========
+    private static volatile Long cachedMaxMemory = null;
+
+    private long getMaxMemory() {
+        if (cachedMaxMemory == null) {
+            synchronized (PikafishAI.class) {
+                if (cachedMaxMemory == null) {
+                    cachedMaxMemory = Runtime.getRuntime().maxMemory();
+                }
+            }
+        }
+        return cachedMaxMemory;
+    }
+
     private int getOptimalHashSize() {
         try {
-            long maxMemory = Runtime.getRuntime().maxMemory();
+            long maxMemory = getMaxMemory();
             int maxMemoryMB = (int) (maxMemory / (1024 * 1024));
-            // 按 JVM 堆内存比例分配 Hash，引擎 Hash + NNUE + App 应控制在堆的 60% 内
-            if (maxMemoryMB >= 2048) return 512;
-            else if (maxMemoryMB >= 1024) return 256;
-            else if (maxMemoryMB >= 384) return 128;   // 降低阈值，覆盖更多中端机型
-            else if (maxMemoryMB >= 256) return 64;
-            else return 32;
+            // 保守分配：Hash 表大小控制在堆内存 10% 以内，避免 OOM
+            // NNUE 约占 10-50MB，加上引擎运行时开销，总 native 内存可能很大
+            if (maxMemoryMB >= 4096) return 256;    // 4GB+ 设备: 256MB
+            else if (maxMemoryMB >= 2048) return 128; // 2-4GB 设备: 128MB
+            else if (maxMemoryMB >= 1024) return 64;  // 1-2GB 设备: 64MB
+            else if (maxMemoryMB >= 512) return 32;   // 512MB-1GB 设备: 32MB
+            else return 16;                           // 小内存设备: 16MB
         } catch (Exception e) {
-            return 128;
+            return 64; // 默认值更保守
         }
     }
 
@@ -568,10 +706,21 @@ public class PikafishAI {
             return new MoveWithScore(getDefaultMove(chessInfo), 0);
         }
 
-        // 获取搜索锁（非阻塞，抢不到说明已有搜索在运行）
+        // 获取搜索锁（等待快速评估等短期操作完成，最多等2秒）
         if (!searchLock.tryLock()) {
-            LogUtils.w("PikafishAI", "已有搜索在运行，跳过本次请求");
-            return new MoveWithScore(getDefaultMove(chessInfo), 0);
+            LogUtils.i("PikafishAI", "搜索锁被占用，等待释放...");
+            long waitStart = System.currentTimeMillis();
+            while (!searchLock.tryLock()) {
+                if (System.currentTimeMillis() - waitStart > 2000) {
+                    LogUtils.e("PikafishAI", "等待搜索锁超时（2s），放弃本次搜索");
+                    return new MoveWithScore(getDefaultMove(chessInfo), 0);
+                }
+                try { Thread.sleep(50); } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return new MoveWithScore(getDefaultMove(chessInfo), 0);
+                }
+            }
+            LogUtils.i("PikafishAI", "搜索锁已获取（等待了" + (System.currentTimeMillis() - waitStart) + "ms）");
         }
 
         try {
@@ -583,6 +732,12 @@ public class PikafishAI {
             // 停止之前的搜索并清空残留输出
             stopPreviousSearch();
             drainOutputQueue();
+
+            // 应用延迟的引擎参数（搜索中无法下发的 setoption）
+            if (pendingOptionsUpdate.compareAndSet(true, false)) {
+                applyAllEngineOptions();
+                LogUtils.i("PikafishAI", "已应用延迟的引擎参数");
+            }
 
             shouldStop.set(false);
             isSearching.set(true);
@@ -626,21 +781,33 @@ public class PikafishAI {
             long startTime = System.currentTimeMillis();
             long maxSearchTime = timeMs + getSearchTimeBuffer(timeMs);
 
+            boolean stopSent = false;
+            long stopSentTime = 0;
             while (!Thread.currentThread().isInterrupted()) {
                 long elapsed = System.currentTimeMillis() - startTime;
-                if (elapsed > maxSearchTime) {
-                    LogUtils.w("PikafishAI", "搜索超时, 强制停止");
-                    sendCommand("stop");
-                    break;
-                }
 
-                if (shouldStop.get() && bestMoveStr == null) {
-                    sendCommand("stop");
+                // 超时或收到停止信号时发送 stop（只发一次），继续等待 bestmove
+                // 确保拿到引擎确认的最优招法，而非搜索中间状态的候选
+                if (!stopSent) {
+                    if (elapsed > maxSearchTime) {
+                        LogUtils.w("PikafishAI", "搜索超时, 强制停止");
+                        sendCommand("stop");
+                        stopSent = true;
+                        stopSentTime = elapsed;
+                    } else if (shouldStop.get()) {
+                        LogUtils.i("PikafishAI", "收到停止信号, 停止搜索");
+                        sendCommand("stop");
+                        stopSent = true;
+                        stopSentTime = elapsed;
+                    }
+                } else if (elapsed - stopSentTime > 1000) {
+                    // stop 发送后 1 秒还未收到 bestmove，放弃等待
+                    LogUtils.e("PikafishAI", "停止后等待 bestmove 超时（1s）");
+                    break;
                 }
 
                 String line = readLineWithTimeout(100);
                 if (line == null) {
-                    if (shouldStop.get()) break;
                     continue;
                 }
 
@@ -824,15 +991,31 @@ public class PikafishAI {
             return new PvSequenceWithScore(new ArrayList<>(), 0);
         }
 
-        // 获取搜索锁
+        // 获取搜索锁（等待快速评估等短期操作完成，最多等2秒）
         if (!searchLock.tryLock()) {
-            LogUtils.w("PikafishAI", "已有搜索在运行，跳过 PV 序列请求");
-            return new PvSequenceWithScore(new ArrayList<>(), 0);
+            LogUtils.i("PikafishAI", "搜索锁被占用（PV序列），等待释放...");
+            long waitStart = System.currentTimeMillis();
+            while (!searchLock.tryLock()) {
+                if (System.currentTimeMillis() - waitStart > 2000) {
+                    LogUtils.e("PikafishAI", "等待搜索锁超时（2s），放弃 PV 序列请求");
+                    return new PvSequenceWithScore(new ArrayList<>(), 0);
+                }
+                try { Thread.sleep(50); } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return new PvSequenceWithScore(new ArrayList<>(), 0);
+                }
+            }
         }
 
         try {
             stopPreviousSearch();
             drainOutputQueue();
+
+            // 应用延迟的引擎参数（搜索中无法下发的 setoption）
+            if (pendingOptionsUpdate.compareAndSet(true, false)) {
+                applyAllEngineOptions();
+                LogUtils.i("PikafishAI", "已应用延迟的引擎参数（PV序列）");
+            }
 
             // 调用方已通过 updateSettings 同步并下发参数，此处直接使用缓存值
             int depth = cachedDepth;
@@ -870,20 +1053,32 @@ public class PikafishAI {
             int infoLineCount = 0;
             int maxDepthSeen = 0;
 
+            boolean stopSent = false;
+            long stopSentTime = 0;
             while (!Thread.currentThread().isInterrupted()) {
                 long elapsed = System.currentTimeMillis() - startTime;
-                if (elapsed > maxSearchTime) {
-                    LogUtils.w("PikafishAI", "搜索超时(" + elapsed + "ms >= " + maxSearchTime + "ms)，强制停止");
-                    sendCommand("stop");
+
+                // 超时或收到停止信号时发送 stop（只发一次），继续等待 bestmove
+                // 确保拿到引擎确认的最优招法，而非搜索中间状态的候选
+                if (!stopSent) {
+                    if (elapsed > maxSearchTime) {
+                        LogUtils.w("PikafishAI", "搜索超时(" + elapsed + "ms >= " + maxSearchTime + "ms)，强制停止");
+                        sendCommand("stop");
+                        stopSent = true;
+                        stopSentTime = elapsed;
+                    } else if (shouldStop.get()) {
+                        LogUtils.i("PikafishAI", "收到停止信号, 停止搜索");
+                        sendCommand("stop");
+                        stopSent = true;
+                        stopSentTime = elapsed;
+                    }
+                } else if (elapsed - stopSentTime > 1000) {
+                    LogUtils.e("PikafishAI", "停止后等待 bestmove 超时（1s）");
                     break;
-                }
-                if (shouldStop.get() && bestMoveStr == null) {
-                    sendCommand("stop");
                 }
 
                 String line = readLineWithTimeout(100);
                 if (line == null) {
-                    if (shouldStop.get()) break;
                     continue;
                 }
 
@@ -1004,19 +1199,28 @@ public class PikafishAI {
         // 统一校验所有参数范围
         validateAndClampAllParams();
 
-        // 一次性下发全部引擎参数
-        applyAllEngineOptions();
+        // 搜索进行中不下发 setoption（尤其 Hash 会重新分配置换表内存，导致 native 崩溃）
+        if (isSearching.get()) {
+            pendingOptionsUpdate.set(true);
+            LogUtils.i("PikafishAI", "搜索进行中，引擎参数延迟应用: SkillLevel=" + cachedSkillLevel +
+                " MultiPV=" + cachedMultiPV + " Depth=" + cachedDepth +
+                " Time=" + cachedTimeSeconds + "s Threads=" + cachedThreads +
+                " Hash=" + cachedHashMB + "MB");
+        } else {
+            // 一次性下发全部引擎参数
+            applyAllEngineOptions();
 
-        LogUtils.i("PikafishAI", "更新设置: SkillLevel=" + cachedSkillLevel +
-            " MultiPV=" + cachedMultiPV + " Depth=" + cachedDepth +
-            " Time=" + cachedTimeSeconds + "s Threads=" + cachedThreads +
-            " Hash=" + cachedHashMB + "MB");
+            LogUtils.i("PikafishAI", "更新设置: SkillLevel=" + cachedSkillLevel +
+                " MultiPV=" + cachedMultiPV + " Depth=" + cachedDepth +
+                " Time=" + cachedTimeSeconds + "s Threads=" + cachedThreads +
+                " Hash=" + cachedHashMB + "MB");
 
-        // 非阻塞发送 isready（不等待 readyok，避免 ANR）
-        sendCommand("isready");
-        // 仅在无搜索时清理输出队列，避免清空搜索结果
-        if (!isSearching.get()) {
-            drainOutputQueue();
+            // 非阻塞发送 isready（不等待 readyok，避免 ANR）
+            sendCommand("isready");
+            // 仅在无搜索时清理输出队列，避免清空搜索结果
+            if (!isSearching.get()) {
+                drainOutputQueue();
+            }
         }
     }
 
@@ -1024,26 +1228,53 @@ public class PikafishAI {
         shouldStop.set(true);
         isSearching.set(false);
 
-        // 停止输出读取线程
-        stopOutputReaderThread();
+        boolean engineQuitCleanly = false;
 
-        // 发送 quit 并等待引擎退出
         try {
+            // 1. 先发送 quit 命令，让引擎主动关闭 stdout 管道
+            //    这样 nativeReadLine 会返回 null（EOF），读取线程自然退出
             sendCommand("quit");
-            // 等待引擎管道断开（nativeReadLine 返回 null 表示EOF）
-            try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+
+            // 2. 等待读取线程检测到 EOF 并自然退出（带超时）
+            long waitStart = System.currentTimeMillis();
+            while (System.currentTimeMillis() - waitStart < ENGINE_QUIT_TIMEOUT_MS) {
+                if (readerExited) {
+                    engineQuitCleanly = true;
+                    LogUtils.i("PikafishAI", "引擎已正常退出（读取线程检测到 EOF）");
+                    break;
+                }
+                try { Thread.sleep(50); } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+
+            if (!engineQuitCleanly) {
+                LogUtils.w("PikafishAI", "引擎退出超时（" + ENGINE_QUIT_TIMEOUT_MS + "ms），强制停止读取线程");
+                // 强制停止读取线程（注意：阻塞在 nativeReadLine 的线程可能无法响应中断）
+                stopOutputReaderThread();
+            }
         } catch (Exception e) {
             LogUtils.e("PikafishAI", "发送 quit 命令异常: " + e.getMessage());
+            // 异常情况下也确保停止读取线程
+            stopOutputReaderThread();
         }
 
-        // 调用 JNI cleanup（线程安全，持有 nativeLock）
-        nativeLock.lock();
-        try {
-            nativeCleanup();
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "关闭引擎异常: " + e.getMessage());
-        } finally {
-            nativeLock.unlock();
+        // 3. 调用 JNI cleanup（线程安全，持有 nativeLock）
+        if (nativeInited) {
+            nativeLock.lock();
+            try {
+                if (libraryLoaded) {
+                    nativeCleanup();
+                }
+            } catch (Throwable t) {
+                LogUtils.e("PikafishAI", "关闭引擎 nativeCleanup 抛出异常: "
+                    + t.getClass().getName() + ": " + t.getMessage());
+            } finally {
+                nativeLock.unlock();
+            }
+            // 无论 nativeCleanup 是否成功，都重置标志，避免重复调用
+            nativeInited = false;
         }
 
         initialized = false;
@@ -1052,7 +1283,7 @@ public class PikafishAI {
         // 重建 latch 以备下次初始化
         initLatchRef.set(new CountDownLatch(1));
         synchronized (initLock) { initInProgress = false; }
-        LogUtils.i("PikafishAI", "引擎已关闭");
+        LogUtils.i("PikafishAI", "引擎已关闭" + (engineQuitCleanly ? "（正常退出）" : "（强制退出）"));
     }
 
     private void updateUIAfterSearch(int finalDepth) {

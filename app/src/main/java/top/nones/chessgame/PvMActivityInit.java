@@ -898,12 +898,21 @@ public class PvMActivityInit {
             if (activity != null && activity.roundView != null) {
                 activity.runOnUiThread(new AILoadingCompleteRunnable(activity));
             }
+            // PikafishAI 初始化完成后，再启动 ONNX 识别服务初始化，
+            // 避免两个重量级 native 初始化并发导致内存压力崩溃
+            if (activity != null) {
+                activity.initRecognitionService();
+            }
         }
-        
+
         @Override
         public void onInitializationFailed() {
             if (activity != null && activity.roundView != null) {
                 activity.runOnUiThread(new AILoadingFailureRunnable(activity));
+            }
+            // 即使 AI 初始化失败，也启动识别服务（用户仍可使用拍照识别功能）
+            if (activity != null) {
+                activity.initRecognitionService();
             }
         }
     }

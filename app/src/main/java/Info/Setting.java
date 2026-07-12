@@ -10,7 +10,7 @@ public class Setting implements Serializable {
     public int mLevel;           // 思考时间（秒）
     public int depth;            // 搜索深度
     public int skillLevel;       // 技能级别 (1-20)
-    public int multiPV;          // 多主变 (0-5)
+    public int multiPV;          // 多主变 (1-5)
     public int contempt;         // 蔑视值
     public boolean forceVariation;  // 强制变着
 
@@ -26,7 +26,7 @@ public class Setting implements Serializable {
         mLevel = Math.max(1, Math.min(60, sharedPreferences.getInt("mLevel", 3)));
         depth = Math.max(5, Math.min(120, sharedPreferences.getInt("depth", 10)));
         skillLevel = Math.max(1, Math.min(20, sharedPreferences.getInt("skillLevel", 20)));
-        multiPV = Math.max(0, Math.min(5, sharedPreferences.getInt("multiPV", 0)));
+        multiPV = Math.max(1, Math.min(5, sharedPreferences.getInt("multiPV", 1)));
         contempt = sharedPreferences.getInt("contempt", 20);
         forceVariation = sharedPreferences.getBoolean("forceVariation", true);
         threads = sharedPreferences.getInt("threads", 0);

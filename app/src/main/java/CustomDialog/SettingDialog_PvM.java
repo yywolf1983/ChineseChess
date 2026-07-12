@@ -43,7 +43,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public int thinkingTime; // 思考时间（秒）
     public int searchDepth; // 搜索深度
     public int skillLevel; // 技能级别（1-20）
-    public int multiPV; // 多主变搜索（0-5）
+    public int multiPV; // 多主变搜索（1-5）
     public boolean forceVariation; // 是否开启强制变着
 
     private void playSelectSound() {
@@ -71,7 +71,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             thinkingTime = 3;    // 与 Info.Setting 默认值一致
             searchDepth = 10;    // 与 Info.Setting 默认值一致
             skillLevel = 20;     // 与 Info.Setting 默认值一致
-            multiPV = 0;         // 与 Info.Setting 默认值一致
+            multiPV = 1;         // 与 Info.Setting 默认值一致
             forceVariation = true;
         }
         
@@ -79,7 +79,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         thinkingTime = Math.max(1, Math.min(60, thinkingTime));
         searchDepth = Math.max(5, Math.min(120, searchDepth));
         skillLevel = Math.max(1, Math.min(20, skillLevel));
-        multiPV = Math.max(0, Math.min(5, multiPV));
+        multiPV = Math.max(1, Math.min(5, multiPV));
     }
 
     public SeekBar depthSeekBar;
@@ -126,8 +126,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         // 设置技能级别滑块
         skillLevelSeekBar.setProgress(skillLevel);
         skillLevelValue.setText(skillLevel + "级");
-        // 设置MultiPV滑块
-        multiPVSeekBar.setProgress(multiPV); // 直接映射 0-5
+        // 设置MultiPV滑块（1-5）
+        multiPVSeekBar.setProgress(multiPV);
         multiPVValue.setText(multiPV + "变");
         // 设置强制变着选项
         if (forceVariation) {
@@ -297,7 +297,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             } else if (id == R.id.multiPVMinusBtn) {
                 // 减少MultiPV
                 playSelectSound();
-                if (multiPV > 0) {
+                if (multiPV > 1) {
                     multiPV--;
                     multiPVSeekBar.setProgress(multiPV);
                     multiPVValue.setText(multiPV + "变");
@@ -396,8 +396,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 skillLevel = Math.max(1, Math.min(20, progress));
                 skillLevelValue.setText(skillLevel + "级");
             } else if (seekBar == multiPVSeekBar) {
-                // 确保MultiPV在0-5之间（直接映射）
-                int newMultiPV = Math.max(0, Math.min(5, progress));
+                // 确保MultiPV在1-5之间
+                int newMultiPV = Math.max(1, Math.min(5, progress));
                 if (newMultiPV != multiPV) {
                     multiPV = newMultiPV;
                     multiPVValue.setText(multiPV + "变");
@@ -419,7 +419,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     }
 
     private void showMultiPVChangeHint() {
-        int suggestTime = multiPV * 3;
+        // multiPV=1 无额外开销，不提示；multiPV>=2 时每条变线需要额外搜索时间
+        if (multiPV <= 1) {
+            return;
+        }
+        int suggestTime = (multiPV - 1) * 3;
         String message = "MultiPV=" + multiPV + "，建议思考时间至少" + suggestTime + "秒";
         android.widget.Toast toast = android.widget.Toast.makeText(getContext(), message, android.widget.Toast.LENGTH_LONG);
         toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);

@@ -575,9 +575,9 @@
                 android:layout_weight="1"
                 android:layout_marginLeft="10dp"
                 android:layout_marginRight="10dp"
-                android:min="0"
+                android:min="1"
                 android:max="5"
-                android:progress="0"
+                android:progress="1"
                 android:progressTint="#9C27B0"
                 android:thumbTint="#9C27B0"
                 android:progressBackgroundTint="#E0E0E0" />

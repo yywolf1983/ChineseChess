@@ -147,9 +147,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         init.init();
         init.initViews();
         init.initBackgroundTasks();
-        
-        // 初始化识别服务
-        initRecognitionService();
+        // 识别服务(ONNX)的初始化延迟到 PikafishAI 初始化完成后触发，
+        // 避免两个重量级 native 初始化并发执行导致内存压力崩溃
         
         // 初始化时间更新线程
         initTimeUpdateExecutor();
@@ -549,7 +548,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 初始化识别服务
     private volatile boolean recognitionInitDone = false;
 
-    private void initRecognitionService() {
+    void initRecognitionService() {
         if (recognitionService == null) {
             new Thread(() -> {
                 try {

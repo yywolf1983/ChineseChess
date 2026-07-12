@@ -53,6 +53,11 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+
+    aaptOptions {
+        // NNUE 和 ONNX 模型文件不压缩存储，避免运行时解压导致内存峰值和文件损坏风险
+        noCompress 'nnue', 'onnx'
+    }
 }
 
 dependencies {

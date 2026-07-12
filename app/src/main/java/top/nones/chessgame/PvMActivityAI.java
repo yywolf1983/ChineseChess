@@ -105,8 +105,22 @@ public class PvMActivityAI {
         
         startAISearch(isRed);
         
-        if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized() || this.activity.chessInfo.piece == null) {
+        // 空值检查 + 等待引擎初始化完成（异步初始化可能还在进行中）
+        if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || this.activity.chessInfo.piece == null) {
+            LogUtils.w("PvMActivityAI", "AI计算: 基础对象为空，无法计算");
             return null;
+        }
+        
+        // 等待引擎初始化完成（最多等待5秒），避免初始化未完成时直接返回null
+        if (!this.activity.pikafishAI.isInitialized()) {
+            // 先尝试触发重新初始化（如果之前失败了）
+            this.activity.pikafishAI.retryInitialize();
+            LogUtils.i("PvMActivityAI", "AI计算: 引擎未初始化，等待初始化完成...");
+            if (!this.activity.pikafishAI.waitForInit(8000)) {
+                LogUtils.e("PvMActivityAI", "AI计算: 等待引擎初始化超时");
+                return null;
+            }
+            LogUtils.i("PvMActivityAI", "AI计算: 引擎初始化完成，继续计算");
         }
         
         if (this.activity.chessInfo.piece.length != 10) {
@@ -815,20 +829,33 @@ public class PvMActivityAI {
             // 引擎内部已有 maxSearchTime 兜底超时，当前已在后台线程中，
             // 直接调用避免嵌套 submit 到同一 executor 导致死锁
             try {
-                if (activity.pikafishAI != null && activity.pikafishAI.isInitialized() && activity.chessInfo != null) {
-                    PikafishAI.PvSequenceWithScore pvSequenceWithScore = activity.pikafishAI.getPvSequenceWithScore(activity.chessInfo);
-                    if (pvSequenceWithScore != null) {
-                        cachedPvSequence = pvSequenceWithScore;
-                        if (pvSequenceWithScore.pvSequence != null && !pvSequenceWithScore.pvSequence.isEmpty()) {
-                            move = pvSequenceWithScore.pvSequence.get(0);
+                if (activity.pikafishAI != null && activity.chessInfo != null) {
+                    // 等待引擎初始化完成（最多等待5秒）
+                    if (!activity.pikafishAI.isInitialized()) {
+                        // 先尝试触发重新初始化（如果之前失败了）
+                        activity.pikafishAI.retryInitialize();
+                        LogUtils.i("PvMActivityAI", "支招: 引擎未初始化，等待初始化完成...");
+                        if (!activity.pikafishAI.waitForInit(8000)) {
+                            LogUtils.e("PvMActivityAI", "支招: 等待引擎初始化超时");
                         }
-                        score = pvSequenceWithScore.score;
-                        score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
-                        aiInstance.currentAIScore = score;
                     }
-                    currentDepth = activity.pikafishAI.getCurrentDepth();
+                    if (activity.pikafishAI.isInitialized()) {
+                        PikafishAI.PvSequenceWithScore pvSequenceWithScore = activity.pikafishAI.getPvSequenceWithScore(activity.chessInfo);
+                        if (pvSequenceWithScore != null) {
+                            cachedPvSequence = pvSequenceWithScore;
+                            if (pvSequenceWithScore.pvSequence != null && !pvSequenceWithScore.pvSequence.isEmpty()) {
+                                move = pvSequenceWithScore.pvSequence.get(0);
+                            }
+                            score = pvSequenceWithScore.score;
+                            score = PvMActivity.normalizeScore(score, activity.chessInfo.IsRedGo);
+                            aiInstance.currentAIScore = score;
+                        }
+                        currentDepth = activity.pikafishAI.getCurrentDepth();
+                    } else {
+                        LogUtils.e("PvMActivityAI", "支招: 引擎初始化失败，无法计算");
+                    }
                 } else {
-                    LogUtils.e("PvMActivityAI", "空值检查失败，activity.chessInfo或activity.pikafishAI为null");
+                    LogUtils.e("PvMActivityAI", "支招: 空值检查失败，activity.chessInfo或activity.pikafishAI为null");
                 }
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "AI计算异常: " + e.getMessage());
