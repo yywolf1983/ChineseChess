@@ -75,8 +75,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
             forceVariation = true;
         }
         
-        // 确保思考时间在合理范围内
+        // 确保所有参数在合理范围内
         thinkingTime = Math.max(1, Math.min(60, thinkingTime));
+        searchDepth = Math.max(5, Math.min(120, searchDepth));
+        skillLevel = Math.max(1, Math.min(20, skillLevel));
+        multiPV = Math.max(0, Math.min(5, multiPV));
     }
 
     public SeekBar depthSeekBar;

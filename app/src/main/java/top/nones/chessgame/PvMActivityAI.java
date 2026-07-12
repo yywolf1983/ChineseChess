@@ -104,7 +104,9 @@ public class PvMActivityAI {
                     if (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized()) {
                         int skillLevel = this.activity.setting.skillLevel;
                         int multiPV = this.activity.setting.multiPV;
-                        this.activity.pikafishAI.updateSettings(skillLevel, multiPV);
+                        int depth = this.activity.setting.depth;
+                        int thinkingTime = this.activity.setting.mLevel;
+                        this.activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
                     }
                 }
             }
@@ -185,12 +187,13 @@ public class PvMActivityAI {
             
             PikafishAI.MoveWithScore moveWithScore = null;
             
-            // 计算超时时间：设置的时间 + 缓冲时间
-            int thinkingTime = 10; // 默认10秒
-            if (this.activity.chessInfo.setting != null) {
-                thinkingTime = this.activity.chessInfo.setting.mLevel;
-            }
-            long aiTimeoutMs = thinkingTime * 1000 + AI_TIMEOUT_BUFFER_MS;
+            // 计算超时时间：有效思考时间（已含skillLevel削弱） + 缓冲
+            int effectiveTimeMs = (this.activity.pikafishAI != null && this.activity.pikafishAI.isInitialized())
+                ? this.activity.pikafishAI.getEffectiveThinkTimeMs()
+                : (this.activity.chessInfo != null && this.activity.chessInfo.setting != null
+                    ? this.activity.chessInfo.setting.mLevel * 1000
+                    : 10000);
+            long aiTimeoutMs = effectiveTimeMs + AI_TIMEOUT_BUFFER_MS;
             
             // 始终使用 AI 计算（带超时机制），即使是强制变着模式
             try {
@@ -824,13 +827,30 @@ public class PvMActivityAI {
             // 使用Future和超时机制来避免长时间阻塞
             java.util.concurrent.Future<PikafishAI.PvSequenceWithScore> future = null;
 
-            // 计算超时时间：设置的时间 + 缓冲时间
-            int thinkingTime = 10; // 默认10秒
-            if (activity.chessInfo != null && activity.chessInfo.setting != null) {
-                thinkingTime = activity.chessInfo.setting.mLevel;
+            // 前置：同步最新设置到引擎
+            if (activity.chessInfo != null && activity.setting != null) {
+                activity.chessInfo.setting = activity.setting;
+                LogUtils.i("PvMActivityAI", "当前设置: depth=" + activity.setting.depth
+                    + " mLevel=" + activity.setting.mLevel
+                    + " skillLevel=" + activity.setting.skillLevel
+                    + " multiPV=" + activity.setting.multiPV);
+                if (activity.pikafishAI != null && activity.pikafishAI.isInitialized()) {
+                    activity.pikafishAI.updateSettings(
+                        activity.setting.skillLevel,
+                        activity.setting.multiPV,
+                        activity.setting.depth,
+                        activity.setting.mLevel);
+                }
             }
-            long aiTimeoutMs = thinkingTime * 1000 + AI_TIMEOUT_BUFFER_MS;
-            LogUtils.i("PvMActivityAI", "AI计算超时时间: " + aiTimeoutMs + "ms (设置时间: " + (thinkingTime * 1000) + "ms + 缓冲: " + AI_TIMEOUT_BUFFER_MS + "ms)");
+
+            // 计算超时时间：有效思考时间（含skillLevel削弱） + 缓冲
+            int effectiveTimeMs = (activity.pikafishAI != null && activity.pikafishAI.isInitialized())
+                ? activity.pikafishAI.getEffectiveThinkTimeMs()
+                : activity.chessInfo != null && activity.chessInfo.setting != null
+                    ? activity.chessInfo.setting.mLevel * 1000
+                    : 10000;
+            long aiTimeoutMs = effectiveTimeMs + AI_TIMEOUT_BUFFER_MS;
+            LogUtils.i("PvMActivityAI", "AI支招超时时间: " + aiTimeoutMs + "ms (有效时间: " + effectiveTimeMs + "ms + 缓冲: " + AI_TIMEOUT_BUFFER_MS + "ms)");
 
             try {
                 if (activity.pikafishAI != null && activity.pikafishAI.isInitialized() && activity.chessInfo != null && aiInstance.executorService != null) {

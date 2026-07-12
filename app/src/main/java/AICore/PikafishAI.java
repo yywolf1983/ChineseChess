@@ -14,6 +14,8 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
 public class PikafishAI {
@@ -21,1027 +23,584 @@ public class PikafishAI {
     private static final int DEFAULT_TIME_MS = 10000;
     private static final int MIN_DEPTH = 5;
     private static final int MIN_TIME_MS = 1000;
-    private static final long INIT_TIMEOUT_MS = 10000;
-    private static final long SHUTDOWN_WAIT_SECONDS = 5;
-    private static final long MAX_SEARCH_TIME_BUFFER_MS = 5000; // 额外缓冲时间5秒
-    
-    private Process process;
-    private BufferedReader reader;
-    private BufferedWriter writer;
+    private static final long INIT_TIMEOUT_MS = 5000;
+    private static final long MAX_SEARCH_TIME_BUFFER_MS = 5000;
+
+    // ========== JNI Native 方法 ==========
+    private static native boolean nativeInit(String nnuePath, String libPath);
+    private static native void nativeSendCommand(String command);
+    private static native String nativeReadLine();
+    private static native void nativeCleanup();
+
+    static {
+        try {
+            System.loadLibrary("pikafish");
+            LogUtils.i("PikafishAI", "libpikafish.so 加载成功 (JNI)");
+        } catch (UnsatisfiedLinkError e) {
+            LogUtils.e("PikafishAI", "加载 libpikafish.so 失败: " + e.getMessage());
+        }
+    }
+
+    // ========== 状态字段 ==========
     private boolean initialized = false;
     private Context context;
     private final java.util.concurrent.atomic.AtomicBoolean isSearching = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final java.util.concurrent.atomic.AtomicBoolean shouldStop = new java.util.concurrent.atomic.AtomicBoolean(false);
-    
-    // 初始化状态回调接口
+    private int currentDepth = 0;
+
+    // ========== 缓存设置 ==========
+    private int cachedSkillLevel = 20;   // 技能级别 (1-20, 20=满血)
+    private int cachedDepth = 10;        // 搜索深度
+    private int cachedMultiPV = 1;       // 多主变
+    private int cachedTimeSeconds = 5;   // 思考时间（秒）
+    private int cachedThreads = 1;       // 线程数
+    private int cachedHashMB = 128;      // 哈希表 (MB)
+
+    // 输出读取线程
+    private Thread outputReaderThread;
+    private final BlockingQueue<String> outputQueue = new LinkedBlockingQueue<>();
+    private volatile boolean readerRunning = false;
+
+    // ========== 初始化回调 ==========
     public interface InitializationListener {
         void onInitializationStarted();
         void onInitializationCompleted();
         void onInitializationFailed();
     }
-    
+
     private InitializationListener initListener = null;
-    
+
     public void setInitializationListener(InitializationListener listener) {
         this.initListener = listener;
     }
-    
-    public PikafishAI(Context context) {
-        this.context = context;
-        // 在后台线程中初始化，避免阻塞主线程
-        new Thread(() -> {
-            initialize();
-        }).start();
-    }
-    
-    private void initialize() {
-        // 重置初始化状态
-        initialized = false;
-        process = null;
-        reader = null;
-        writer = null;
-        
-        // 通知初始化开始
-        if (initListener != null) {
-            try {
-                // 确保在主线程回调
-                if (context instanceof android.app.Activity) {
-                    ((android.app.Activity) context).runOnUiThread(() -> {
-                        initListener.onInitializationStarted();
-                    });
-                } else {
-                    initListener.onInitializationStarted();
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "回调初始化开始失败: " + e.getMessage());
-            }
-        }
-        
-        try {
-            // 检查是否在模拟器中运行
-            boolean isEmulator = isRunningInEmulator();
-            if (isEmulator) {
-                LogUtils.e("PikafishAI", "在模拟器中运行，尝试初始化AI");
-            }
-            
-            // 复制神经网络文件到缓存目录
-            copyNNUEFile();
-            
-            // 获取Pikafish可执行文件的路径
-            String binaryPath = context.getApplicationInfo().nativeLibraryDir + "/libpikafish.so";
-            
-            // 检查文件是否存在
-            File binaryFile = new File(binaryPath);
-            if (!binaryFile.exists()) {
-                // 尝试从assets复制
-                copyBinary();
-                binaryPath = context.getCacheDir().getAbsolutePath() + "/pikafish";
-                binaryFile = new File(binaryPath);
-                if (!binaryFile.exists()) {
-                    LogUtils.e("PikafishAI", "无法找到pikafish可执行文件");
-                    return;
-                }
-            }
-            
-            // 设置可执行权限
-            try {
-                // 尝试多种权限设置方式
-                Process chmodProcess = Runtime.getRuntime().exec("chmod 755 " + binaryPath);
-                int chmodExitCode = chmodProcess.waitFor();
-                
-                // 验证文件权限
-                boolean isExecutable = binaryFile.canExecute();
-                
-                // 如果仍然不可执行，尝试使用另一种方式
-                if (!isExecutable) {
-                    chmodProcess = Runtime.getRuntime().exec("chmod u+x " + binaryPath);
-                    chmodExitCode = chmodProcess.waitFor();
-                    isExecutable = binaryFile.canExecute();
-                }
-                
-                if (!isExecutable) {
-                    LogUtils.e("PikafishAI", "无法设置pikafish可执行权限");
-                    return;
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "设置权限失败: " + e.getMessage(), e);
-                return;
-            }
-            
-            // 启动Pikafish进程
-            try {
-                ProcessBuilder pb = new ProcessBuilder(binaryPath);
-                pb.redirectErrorStream(true);
-                // 设置工作目录为缓存目录，确保引擎能找到pikafish.nnue文件
-                pb.directory(context.getCacheDir());
-                process = pb.start();
-                
-                // 检查进程是否成功启动
-                if (process == null) {
-                    LogUtils.e("PikafishAI", "启动进程失败: process为null");
-                    return;
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "启动进程失败: " + e.getMessage(), e);
-                
-                // 尝试使用proot启动
-                try {
-                    String prootPath = context.getCacheDir().getAbsolutePath() + "/proot";
-                    
-                    // 复制proot到应用目录
-                    try {
-                        // 根据CPU架构选择合适的proot文件
-                        String prootName = "proot-v5.3.0-aarch64-static";
-                        String cpuAbi = android.os.Build.CPU_ABI;
-                        if (cpuAbi.contains("arm")) {
-                            prootName = "proot-v5.3.0-arm-static";
-                        }
-                        
-                        InputStream is = context.getAssets().open(prootName);
-                        FileOutputStream os = new FileOutputStream(prootPath);
-                        byte[] buffer = new byte[1024];
-                        int length;
-                        while ((length = is.read(buffer)) > 0) {
-                            os.write(buffer, 0, length);
-                        }
-                        is.close();
-                        os.close();
-                        
-                        // 设置proot可执行权限
-                        Process chmodProcess = Runtime.getRuntime().exec("chmod 755 " + prootPath);
-                        chmodProcess.waitFor();
-                        LogUtils.e("PikafishAI", "复制并设置proot权限成功");
-                    } catch (Exception ex) {
-                        LogUtils.e("PikafishAI", "复制proot失败: " + ex.getMessage());
-                        return;
-                    }
-                    
-                    // 使用proot启动pikafish
-                    LogUtils.e("PikafishAI", "尝试使用proot启动: " + prootPath + " " + binaryPath);
-                    ProcessBuilder pb = new ProcessBuilder(prootPath, "--bind=/system", "--bind=/vendor", "--bind=/data", binaryPath);
-                    pb.redirectErrorStream(true);
-                    // 设置工作目录为缓存目录，确保引擎能找到pikafish.nnue文件
-                    pb.directory(context.getCacheDir());
-                    process = pb.start();
-                    
-                    // 检查进程是否成功启动
-                    if (process == null) {
-                        LogUtils.e("PikafishAI", "使用proot启动进程失败: process为null");
-                        return;
-                    }
-                    
-                    LogUtils.e("PikafishAI", "使用proot启动进程成功");
-                    LogUtils.i("PikafishAI", "使用proot启动进程成功");
-                } catch (Exception ex) {
-                    LogUtils.e("PikafishAI", "使用proot启动失败: " + ex.getMessage());
-                    LogUtils.e("PikafishAI", "使用proot启动失败: " + ex.getMessage());
-                    ex.printStackTrace();
-                    return;
-                }
-            }
-            
-            // 检查进程是否存活
-            if (process == null) {
-                LogUtils.e("PikafishAI", "进程未启动");
-                return;
-            }
-            
-            reader = new BufferedReader(new InputStreamReader(process.getInputStream()));
-            writer = new BufferedWriter(new OutputStreamWriter(process.getOutputStream()));
-            
-            // 发送UCI命令初始化
-            sendCommand("uci");
-            
-            // 读取初始化响应（使用非阻塞方式）
-            String line;
-            long startTime = System.currentTimeMillis();
-            boolean uciOkReceived = false;
-            
-            while (!uciOkReceived && System.currentTimeMillis() - startTime <= INIT_TIMEOUT_MS) {
-                if (reader.ready()) {
-                    line = reader.readLine();
-                    if (line != null) {
-                        LogUtils.e("PikafishAI", "初始化响应: " + line);
-                        LogUtils.d("PikafishAI", "初始化响应: " + line);
-                        if (line.equals("uciok")) {
-                            uciOkReceived = true;
-                            initialized = true;
-                            LogUtils.e("PikafishAI", "UCI初始化成功");
-                            LogUtils.i("PikafishAI", "UCI初始化成功");
-                        }
-                    }
-                }
-                if (!uciOkReceived) {
-                    try {
-                        Thread.sleep(50); // 短暂休眠，避免CPU占用过高
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                        break;
-                    }
-                }
-            }
-            
-            if (!uciOkReceived) {
-                LogUtils.e("PikafishAI", "UCI初始化超时");
-                LogUtils.e("PikafishAI", "UCI初始化超时");
-            }
-            
-            if (initialized) {
-                // 设置基本参数
-                // 1. 设置线程数（根据设备CPU核心数，至少给系统保留2-4个核心）
-                int totalCores = Runtime.getRuntime().availableProcessors();
-                int reservedCores;
-                if (totalCores <= 4) {
-                    reservedCores = 2; // 4核及以下设备，保留2个核心
-                } else if (totalCores <= 8) {
-                    reservedCores = 3; // 8核及以下设备，保留3个核心
-                } else {
-                    reservedCores = 4; // 8核以上设备，保留4个核心
-                }
-                int threadCount = Math.max(1, totalCores - reservedCores);
-                sendCommand("setoption name Threads value " + threadCount);
-                LogUtils.i("PikafishAI", "设置线程数: " + threadCount + " (总核心数: " + totalCores + ", 保留核心数: " + reservedCores + ")");
-                
-                // 2. 设置哈希表大小（根据设备内存情况）
-                int hashSize = getOptimalHashSize();
-                sendCommand("setoption name Hash value " + hashSize);
-                LogUtils.i("PikafishAI", "设置哈希表大小: " + hashSize + " MB");
-                
-                // 3. 获取设置值
-                int skillLevel = 20;
-                int multiPV = 1;
-                int contempt = 20;
-                try {
-                    Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
-                    if (setting != null) {
-                        skillLevel = setting.skillLevel;
-                        multiPV = setting.multiPV;
-                        try {
-                            contempt = setting.contempt;
-                        } catch (Exception e) {
-                            LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
-                        }
-                    }
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "获取设置值失败: " + e.getMessage());
-                }
-                
-                // 4. 设置多主变（MultiPV）
-                // 按照设置进行，不设置最小值限制
-                sendCommand("setoption name MultiPV value " + multiPV);
-                LogUtils.i("PikafishAI", "设置MultiPV: " + multiPV);
-                
-                // 5. 设置技能级别
-                sendCommand("setoption name Skill Level value " + skillLevel);
-                LogUtils.i("PikafishAI", "设置技能级别: " + skillLevel);
-                
-                // 6. 设置 Contempt 值，鼓励引擎寻求胜利而非和棋，减少循环走法
-                sendCommand("setoption name Contempt value " + contempt);
-                LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
-                
-                // 等待参数设置完成
-                sendCommand("isready");
-                
-                // 等待就绪（使用非阻塞方式）
-                startTime = System.currentTimeMillis();
-                boolean readyOkReceived = false;
-                
-                while (!readyOkReceived && System.currentTimeMillis() - startTime <= INIT_TIMEOUT_MS) {
-                    if (reader.ready()) {
-                        line = reader.readLine();
-                        if (line != null) {
-                            LogUtils.e("PikafishAI", "就绪响应: " + line);
-                            LogUtils.d("PikafishAI", "就绪响应: " + line);
-                            if (line.equals("readyok")) {
-                                readyOkReceived = true;
-                                LogUtils.e("PikafishAI", "就绪成功");
-                                LogUtils.i("PikafishAI", "就绪成功");
-                            }
-                        }
-                    }
-                    if (!readyOkReceived) {
-                        try {
-                            Thread.sleep(50); // 短暂休眠，避免CPU占用过高
-                        } catch (InterruptedException e) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    }
-                }
-                
-                if (!readyOkReceived) {
-                    LogUtils.e("PikafishAI", "就绪超时");
-                    LogUtils.e("PikafishAI", "就绪超时");
-                }
-            }
-            
-            LogUtils.e("PikafishAI", "初始化完成，状态: " + initialized);
-            LogUtils.i("PikafishAI", "初始化完成，状态: " + initialized);
-            
-            // 通知初始化完成
-            if (initListener != null) {
-                try {
-                    if (context instanceof android.app.Activity) {
-                        ((android.app.Activity) context).runOnUiThread(() -> {
-                            if (initialized) {
-                                initListener.onInitializationCompleted();
-                            } else {
-                                initListener.onInitializationFailed();
-                            }
-                        });
-                    } else {
-                        if (initialized) {
-                            initListener.onInitializationCompleted();
-                        } else {
-                            initListener.onInitializationFailed();
-                        }
-                    }
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "回调初始化完成失败: " + e.getMessage());
-                }
-            }
-            
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "初始化失败: " + e.getMessage(), e);
-            // 确保资源被释放
-            close();
-            
-            // 通知初始化失败
-            if (initListener != null) {
-                try {
-                    if (context instanceof android.app.Activity) {
-                        ((android.app.Activity) context).runOnUiThread(() -> {
-                            initListener.onInitializationFailed();
-                        });
-                    } else {
-                        initListener.onInitializationFailed();
-                    }
-                } catch (Exception ex) {
-                    LogUtils.e("PikafishAI", "回调初始化失败异常: " + ex.getMessage());
-                }
-            }
-        }
-    }
-    
-    private boolean isRunningInEmulator() {
-        String brand = android.os.Build.BRAND;
-        String model = android.os.Build.MODEL;
-        String product = android.os.Build.PRODUCT;
-        
-        // 检查常见的模拟器标识
-        if (brand.equals("generic") || model.contains("sdk") || model.contains("emulator") || 
-            product.equals("sdk") || product.equals("google_sdk") || product.equals("sdk_gphone64_arm64")) {
-            return true;
-        }
-        
-        // 检查是否存在模拟器特有的文件
-        try {
-            File qemuFile = new File("/system/bin/qemu-props");
-            if (qemuFile.exists()) {
-                return true;
-            }
-        } catch (Exception e) {
-            // 忽略异常
-        }
-        
-        return false;
-    }
-    
-    private void copyNNUEFile() {
-        try {
-            LogUtils.e("PikafishAI", "开始复制神经网络文件");
-            InputStream is = context.getAssets().open("pikafish.nnue");
-            FileOutputStream os = new FileOutputStream(context.getCacheDir().getAbsolutePath() + "/pikafish.nnue");
-            
-            byte[] buffer = new byte[1024];
-            int length;
-            int totalBytes = 0;
-            while ((length = is.read(buffer)) > 0) {
-                os.write(buffer, 0, length);
-                totalBytes += length;
-            }
-            
-            is.close();
-            os.close();
-            LogUtils.e("PikafishAI", "复制神经网络文件成功，大小: " + totalBytes + " bytes");
-            LogUtils.i("PikafishAI", "复制神经网络文件成功");
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "复制神经网络文件失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "操作失败", e);
-        }
-    }
-    
-    private void copyBinary() {
-        try {
-            // 根据设备架构选择合适的二进制文件
-            String binaryName = "pikafish-armv8";
-            String prootName = "proot-v5.3.0-aarch64-static";
-            String cpuAbi = android.os.Build.CPU_ABI;
-            LogUtils.e("PikafishAI", "设备架构: " + cpuAbi);
-            LogUtils.i("PikafishAI", "设备架构: " + cpuAbi);
-            
-            // 根据CPU架构选择合适的二进制文件
-            if (cpuAbi.contains("arm64")) {
-                binaryName = "pikafish-armv8";
-                prootName = "proot-v5.3.0-aarch64-static";
-            } else if (cpuAbi.contains("arm")) {
-                binaryName = "pikafish-armv8";
-                prootName = "proot-v5.3.0-arm-static";
-            }
-            
-            LogUtils.e("PikafishAI", "选择的二进制文件: " + binaryName);
-            LogUtils.e("PikafishAI", "选择的proot文件: " + prootName);
-            
-            // 尝试打开文件，如果失败则尝试其他版本
-            try {
-                // 复制可执行文件
-                LogUtils.e("PikafishAI", "开始复制主二进制文件: " + binaryName);
-                InputStream is = context.getAssets().open(binaryName);
-                FileOutputStream os = new FileOutputStream(context.getCacheDir().getAbsolutePath() + "/pikafish");
-                
-                byte[] buffer = new byte[1024];
-                int length;
-                int totalBytes = 0;
-                while ((length = is.read(buffer)) > 0) {
-                    os.write(buffer, 0, length);
-                    totalBytes += length;
-                }
-                
-                is.close();
-                os.close();
-                LogUtils.e("PikafishAI", "复制主二进制文件成功，大小: " + totalBytes + " bytes");
-                LogUtils.i("PikafishAI", "复制主二进制文件成功");
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "复制主二进制文件失败，尝试备用版本: " + e.getMessage());
-                LogUtils.e("PikafishAI", "复制主二进制文件失败，尝试备用版本: " + e.getMessage());
-                // 尝试备用版本
-                binaryName = "pikafish-armv8-dotprod";
-                LogUtils.e("PikafishAI", "开始复制备用二进制文件: " + binaryName);
-                InputStream is = context.getAssets().open(binaryName);
-                FileOutputStream os = new FileOutputStream(context.getCacheDir().getAbsolutePath() + "/pikafish");
-                
-                byte[] buffer = new byte[1024];
-                int length;
-                int totalBytes = 0;
-                while ((length = is.read(buffer)) > 0) {
-                    os.write(buffer, 0, length);
-                    totalBytes += length;
-                }
-                
-                is.close();
-                os.close();
-                LogUtils.e("PikafishAI", "复制备用二进制文件成功，大小: " + totalBytes + " bytes");
-                LogUtils.i("PikafishAI", "复制备用二进制文件成功");
-            }
-            
-            // 复制神经网络文件（已经在copyNNUEFile()中处理）
-            
-            LogUtils.e("PikafishAI", "二进制文件复制完成");
-            LogUtils.i("PikafishAI", "二进制文件复制完成");
-            
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "复制二进制文件失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "操作失败", e);
-        }
-    }
-    
-    /**
-     * 根据设备内存情况计算最佳哈希表大小
-     * @return 哈希表大小（MB）
-     */
-    private int getOptimalHashSize() {
-        try {
-            // 获取设备总内存
-            Runtime runtime = Runtime.getRuntime();
-            long maxMemory = runtime.maxMemory(); // 应用可使用的最大内存
-            
-            // 转换为MB
-            int maxMemoryMB = (int) (maxMemory / (1024 * 1024));
-            LogUtils.i("PikafishAI", "设备最大可用内存: " + maxMemoryMB + " MB");
-            
-            // 根据内存大小设置哈希表大小
-            if (maxMemoryMB >= 2048) {
-                return 512; // 2GB以上内存，使用512MB哈希表
-            } else if (maxMemoryMB >= 1024) {
-                return 256; // 1GB-2GB内存，使用256MB哈希表
-            } else if (maxMemoryMB >= 512) {
-                return 128; // 512MB-1GB内存，使用128MB哈希表
-            } else {
-                return 64; // 小于512MB内存，使用64MB哈希表
-            }
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "计算哈希表大小失败: " + e.getMessage());
-            return 128; // 出错时默认使用128MB
-        }
-    }
-    
-    private void sendCommand(String command) {
-        try {
-            if (writer != null) {
-                writer.write(command + "\n");
-                writer.flush();
-                LogUtils.d("PikafishAI", "发送命令: " + command);
-            } else {
-                LogUtils.e("PikafishAI", "发送命令失败: writer为null");
-            }
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "发送命令失败: " + e.getMessage());
-        }
-    }
-    
-    // 用于存储走法和评分的类
+
+    // ========== MoveWithScore / PvSequenceWithScore ==========
     public static class MoveWithScore {
         public Move move;
         public int score;
-
         public MoveWithScore(Move move, int score) {
             this.move = move;
             this.score = score;
         }
     }
-    
-    // 用于存储完整 pv 走法序列和评分的类
+
     public static class PvSequenceWithScore {
         public java.util.List<Move> pvSequence;
         public int score;
-        
         public PvSequenceWithScore(java.util.List<Move> pvSequence, int score) {
             this.pvSequence = pvSequence;
             this.score = score;
         }
     }
 
-    public Move getBestMove(ChessInfo chessInfo) {
-        return getBestMoveWithScore(chessInfo).move;
+    // ========== 构造函数 ==========
+    public PikafishAI(Context context) {
+        this.context = context;
+        new Thread(() -> initialize()).start();
     }
 
-    // 用于存储当前搜索深度
-    private int currentDepth = 0;
+    // ========== 初始化 ==========
+    private void initialize() {
+        initialized = false;
+        readerRunning = false;
+        outputQueue.clear();
 
-    // 获取当前搜索深度
+        if (initListener != null) {
+            runOnUiThread(() -> initListener.onInitializationStarted());
+        }
+
+        try {
+            // 1. 复制 NNUE 文件到缓存目录
+            String nnuePath = copyNNUEFile();
+            if (nnuePath == null) {
+                notifyInitFailed();
+                return;
+            }
+
+            // 2. 获取 native library 目录
+            String libPath = context.getApplicationInfo().nativeLibraryDir;
+
+            // 3. 启动输出读取线程
+            startOutputReaderThread();
+
+            // 4. 调用 JNI 初始化
+            boolean initOk = nativeInit(nnuePath, libPath);
+
+            if (!initOk) {
+                LogUtils.e("PikafishAI", "nativeInit 返回 false");
+                notifyInitFailed();
+                return;
+            }
+
+            // 5. 等待 uciok（nativeInit 成功后应该很快收到）
+            String line = readLineWithTimeout(INIT_TIMEOUT_MS);
+            if (line == null || !line.equals("uciok")) {
+                LogUtils.e("PikafishAI", "等待 uciok 超时, 收到: " + line);
+                notifyInitFailed();
+                return;
+            }
+
+            initialized = true;
+            LogUtils.i("PikafishAI", "JNI 引擎初始化成功");
+
+            // 6. 设置参数
+            setupEngineOptions();
+
+            // 7. 发送 isready 确认
+            nativeSendCommand("isready");
+            line = readLineWithTimeout(INIT_TIMEOUT_MS);
+            if (line == null || !line.equals("readyok")) {
+                LogUtils.e("PikafishAI", "等待 readyok 超时, 收到: " + line);
+            }
+
+            if (initListener != null) {
+                runOnUiThread(() -> initListener.onInitializationCompleted());
+            }
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "初始化异常: " + e.getMessage(), e);
+            notifyInitFailed();
+        }
+    }
+
+    private void setupEngineOptions() {
+        // 从设置读取用户参数
+        readSettingsFromFile();
+
+        // 1. 线程数（自动计算）
+        int threadCount = cachedThreads > 0 ? cachedThreads : computeAutoThreads();
+        cachedThreads = threadCount;
+        nativeSendCommand("setoption name Threads value " + threadCount);
+
+        // 2. 哈希表（自动计算）
+        int hashSize = cachedHashMB > 0 ? cachedHashMB : getOptimalHashSize();
+        cachedHashMB = hashSize;
+        nativeSendCommand("setoption name Hash value " + hashSize);
+
+        // 3. EvalFile 已在 nativeInit 中通过绝对路径设置，这里不再重复发送
+
+        // 4. MultiPV
+        nativeSendCommand("setoption name MultiPV value " + Math.max(1, cachedMultiPV));
+
+        // 5. Clear Hash：新游戏时清空
+        nativeSendCommand("setoption name Clear Hash");
+
+        LogUtils.i("PikafishAI",
+            "引擎参数: Threads=" + threadCount + " Hash=" + hashSize
+            + "MB MultiPV=" + cachedMultiPV);
+    }
+
+    /** 从 SharedPreferences 读取引擎内部参数到缓存（仅限自动配置项，不覆盖用户设置） */
+    private void readSettingsFromFile() {
+        try {
+            Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
+            if (setting != null) {
+                // 只读取引擎内部参数（0=自动）；depth/skillLevel/multiPV/mLevel 由调用方显式传入
+                cachedThreads = setting.threads;
+                cachedHashMB = setting.hashMB;
+            }
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "读取设置失败: " + e.getMessage());
+        }
+    }
+
+    /** 根据设备核心数自动计算线程数 */
+    private int computeAutoThreads() {
+        int totalCores = Runtime.getRuntime().availableProcessors();
+        int reservedCores = totalCores <= 4 ? 2 : (totalCores <= 8 ? 3 : 4);
+        return Math.max(1, totalCores - reservedCores);
+    }
+
+    /**
+     * 根据 skillLevel 计算削弱因子
+     * skillLevel 1-20: 20=满血(1.0x), 10=半血(0.5x), 1=最弱(0.25x)
+     */
+    private float getSkillFactor() {
+        // 非线性映射让低级别明显变弱：skillLevel²/400 在20级时=1.0，1级时=0.0025
+        // 改用线性+保底：skillLevel 20→1.0, 1→0.25
+        return 0.25f + 0.75f * (cachedSkillLevel / 20.0f);
+    }
+
+    /**
+     * 获取技能削弱后的搜索深度
+     */
+    private int getEffectiveDepth() {
+        float factor = getSkillFactor();
+        int eff = Math.round(cachedDepth * factor);
+        return Math.max(MIN_DEPTH, eff);
+    }
+
+    /**
+     * 获取技能削弱后的思考时间（毫秒）
+     */
+    private int getEffectiveTimeMs() {
+        float factor = getSkillFactor();
+        int baseMs = cachedTimeSeconds * 1000;
+        int eff = Math.round(baseMs * factor);
+        return Math.max(MIN_TIME_MS, eff);
+    }
+
+    /**
+     * 供外部使用的有效思考时间（已含 skillLevel 削弱，单位毫秒）
+     * 调用方可以用此值作为超时计算的基准
+     */
+    public int getEffectiveThinkTimeMs() {
+        return getEffectiveTimeMs();
+    }
+
+    private void notifyInitFailed() {
+        if (initListener != null) {
+            runOnUiThread(() -> initListener.onInitializationFailed());
+        }
+    }
+
+    private void runOnUiThread(Runnable action) {
+        if (context instanceof android.app.Activity) {
+            ((android.app.Activity) context).runOnUiThread(action);
+        } else {
+            action.run();
+        }
+    }
+
+    // ========== 输出读取线程 ==========
+    private void startOutputReaderThread() {
+        readerRunning = true;
+        outputReaderThread = new Thread(() -> {
+            LogUtils.i("PikafishAI", "输出读取线程启动");
+            while (readerRunning) {
+                try {
+                    String line = nativeReadLine();
+                    if (line == null) {
+                        // EOF (引擎关闭)
+                        LogUtils.i("PikafishAI", "输出读取线程: 收到 EOF");
+                        break;
+                    }
+                    outputQueue.offer(line);
+                } catch (Exception e) {
+                    if (readerRunning) {
+                        LogUtils.e("PikafishAI", "输出读取异常: " + e.getMessage());
+                    }
+                    break;
+                }
+            }
+            LogUtils.i("PikafishAI", "输出读取线程退出");
+        }, "pikafish-output-reader");
+        outputReaderThread.setDaemon(true);
+        outputReaderThread.start();
+    }
+
+    // ========== 带超时的行读取 ==========
+    private String readLineWithTimeout(long timeoutMs) {
+        try {
+            String line = outputQueue.poll(timeoutMs, TimeUnit.MILLISECONDS);
+            return line;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return null;
+        }
+    }
+
+    // ========== NNUE 文件复制 ==========
+    private String copyNNUEFile() {
+        try {
+            File cacheDir = context.getCacheDir();
+            File nnueFile = new File(cacheDir, "pikafish.nnue");
+
+            // 如果已存在且大小正确，直接返回
+            if (nnueFile.exists()) {
+                LogUtils.i("PikafishAI", "NNUE 文件已存在: " + nnueFile.getAbsolutePath());
+                return nnueFile.getAbsolutePath();
+            }
+
+            InputStream is = context.getAssets().open("pikafish.nnue");
+            FileOutputStream os = new FileOutputStream(nnueFile);
+            byte[] buffer = new byte[8192];
+            int length;
+            long totalBytes = 0;
+            while ((length = is.read(buffer)) > 0) {
+                os.write(buffer, 0, length);
+                totalBytes += length;
+            }
+            is.close();
+            os.close();
+            LogUtils.i("PikafishAI", "NNUE 文件复制成功: " + totalBytes + " bytes -> " + nnueFile.getAbsolutePath());
+            return nnueFile.getAbsolutePath();
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "复制 NNUE 文件失败: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 清空哈希表（新游戏时应调用）
+     */
+    public void clearHash() {
+        if (initialized) {
+            nativeSendCommand("setoption name Clear Hash");
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+            LogUtils.i("PikafishAI", "哈希表已清空");
+        }
+    }
+
+    /**
+     * 在每次搜索前同步 chessInfo.setting 到本地缓存
+     */
+    private void syncSettingsFromChessInfo(ChessInfo chessInfo) {
+        if (chessInfo == null || chessInfo.setting == null) return;
+        Info.Setting s = chessInfo.setting;
+        cachedSkillLevel = Math.max(1, Math.min(20, s.skillLevel));
+        cachedDepth = Math.max(MIN_DEPTH, s.depth);
+        cachedMultiPV = Math.max(1, s.multiPV);
+        cachedTimeSeconds = Math.max(1, Math.min(60, s.mLevel));
+        cachedThreads = s.threads;
+        cachedHashMB = s.hashMB;
+    }
+
+    // ========== 哈希表大小计算 ==========
+    private int getOptimalHashSize() {
+        try {
+            long maxMemory = Runtime.getRuntime().maxMemory();
+            int maxMemoryMB = (int) (maxMemory / (1024 * 1024));
+            if (maxMemoryMB >= 2048) return 512;
+            else if (maxMemoryMB >= 1024) return 256;
+            else if (maxMemoryMB >= 512) return 128;
+            else return 64;
+        } catch (Exception e) {
+            return 128;
+        }
+    }
+
+    // ========== 公共 API ==========
+
+    public boolean isInitialized() {
+        return initialized;
+    }
+
     public int getCurrentDepth() {
         return currentDepth;
     }
 
+    public Move getBestMove(ChessInfo chessInfo) {
+        return getBestMoveWithScore(chessInfo).move;
+    }
+
+    /**
+     * 获取最佳走法和评分（核心搜索方法）
+     */
     public MoveWithScore getBestMoveWithScore(ChessInfo chessInfo) {
-        // 检查是否在模拟器中运行
-        if (isRunningInEmulator()) {
-            LogUtils.e("PikafishAI", "在模拟器中运行，尝试获取AI走法");
-            LogUtils.i("PikafishAI", "在模拟器中运行，尝试获取AI走法");
+        if (!initialized) {
+            LogUtils.e("PikafishAI", "AI 未初始化");
+            return new MoveWithScore(getDefaultMove(chessInfo), 0);
         }
-        
+
         try {
-            // 检查 reader 是否为 null
-            if (reader == null) {
-                LogUtils.e("PikafishAI", "reader 为 null，AI 未正确初始化");
-                return new MoveWithScore(getDefaultMove(chessInfo), 0);
-            }
-            
-            if (!initialized) {
-                LogUtils.e("PikafishAI", "AI未初始化，尝试重新初始化");
-                // 尝试重新初始化
-                initialize();
-                if (!initialized) {
-                    LogUtils.e("PikafishAI", "AI初始化失败，使用默认走法");
-                    return new MoveWithScore(getDefaultMove(chessInfo), 0);
-                }
-            }
-            
-            // 先确保停止之前的搜索
-            shouldStop.set(true);
-            if (isSearching.get()) {
-                sendCommand("stop");
-                // 短暂等待让stop命令生效
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            
-            // 重置标志位开始新搜索
+            // 停止之前的搜索
+            stopPreviousSearch();
+            // 同步最新设置
+            syncSettingsFromChessInfo(chessInfo);
+
             shouldStop.set(false);
             isSearching.set(true);
-            
-            // 重置当前深度
             currentDepth = 0;
-            
-            // 生成FEN字符串
+
+            // 生成 FEN 并设置局面
             String fen = boardToFEN(chessInfo);
-            LogUtils.i("PikafishAI", "生成的FEN: " + fen);
-            
-            // 发送位置信息
-            sendCommand("position fen " + fen);
-            
-            // 发送思考命令，严格使用设置的深度和时间
-            int depth = DEFAULT_DEPTH;
-            int time = DEFAULT_TIME_MS;
-            if (chessInfo != null && chessInfo.setting != null) {
-                depth = chessInfo.setting.depth;
-                // 直接使用用户设置的思考时间（现在mLevel保存的就是思考时间）
-                int thinkingTime = chessInfo.setting.mLevel;
-                time = thinkingTime * 1000; // 转换为毫秒
-            }
-            
-            // 确保时间和深度设置合理
-            time = Math.max(MIN_TIME_MS, time);
-            depth = Math.max(MIN_DEPTH, depth);
-            
-            LogUtils.i("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
-            LogUtils.e("PikafishAI", "当前 AI 查找深度: " + depth + ", 时间限制: " + time + "ms");
-            
-            // 检查是否处于强制变着模式
+            LogUtils.i("PikafishAI", "FEN: " + fen);
+            nativeSendCommand("position fen " + fen);
+
+            // 计算搜索参数（从缓存设置 + skillLevel 削弱）
+            // 双限制：时间为主，时间限制内到达层数就以层数为准（go depth X movetime Y，先到为准）
+            int time = getEffectiveTimeMs();
+            int effDepth = getEffectiveDepth();
+
+            // 强制变着模式
             boolean wasForceVariation = false;
             if (chessInfo != null && chessInfo.forceVariation) {
                 wasForceVariation = true;
-                // 强制变着模式：增加深度、时间、多样性，技能拉满
-                int randomness = chessInfo.variationRandomness;
-                if (randomness <= 0) randomness = 3;
-                
-                // 根据随机性等级增加深度和多样性，但不增加思考时间（避免 ANR）
-                depth = depth + randomness; // 只增加深度
-                // 保持思考时间不变，避免 ANR
-                
-                LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
-                
-                // 设置 Contempt 值为 0，让引擎更客观地评估局面
-                sendCommand("setoption name Contempt value 0");
-                
-                // 强制变着模式：增加 MultiPV 到 3，让引擎考虑更多可能的走法
-                // 注意：MultiPV 过高会显著降低最佳着法质量（Pikafish 官方建议设为1）
-                // 使用 3 而非 5，在提供多样性的同时保持合理的走棋质量
-                sendCommand("setoption name MultiPV value 3");
-                LogUtils.i("PikafishAI", "强制变着模式：设置MultiPV=3");
-                
-                // 强制变着模式：技能拉到最大（20）
-                sendCommand("setoption name Skill Level value 20");
-                LogUtils.i("PikafishAI", "强制变着模式：技能级别设为20");
+                nativeSendCommand("setoption name MultiPV value 3");
+                LogUtils.i("PikafishAI", "强制变着模式: depth=" + effDepth + " movetime=" + time + "ms");
             } else {
-                int multiPV = 1;
-                int contempt = 20;
-                if (chessInfo != null && chessInfo.setting != null) {
-                    multiPV = chessInfo.setting.multiPV;
-                    try {
-                        contempt = chessInfo.setting.contempt;
-                    } catch (Exception e) {
-                        LogUtils.i("PikafishAI", "没有找到Contempt设置，使用默认值: " + contempt);
-                    }
-                }
-                LogUtils.i("PikafishAI", "正常模式：使用参数 - MultiPV=" + multiPV + ", Contempt=" + contempt);
-                // 按照设置进行，不设置最小值限制
-                // 设置 MultiPV
-                sendCommand("setoption name MultiPV value " + multiPV);
-                LogUtils.i("PikafishAI", "正常模式：设置MultiPV=" + multiPV);
-                // 设置 Contempt 值
-                sendCommand("setoption name Contempt value " + contempt);
-                LogUtils.i("PikafishAI", "正常模式：设置Contempt=" + contempt);
+                nativeSendCommand("setoption name MultiPV value " + cachedMultiPV);
             }
-            
-            // 同时使用深度限制和时间限制，先达到哪个条件就停止
-            sendCommand("go depth " + depth + " movetime " + time);
-            
-            // 读取最佳走法和评分
-            final String[] bestMoveHolder = new String[1]; // 使用数组作为可变包装
-            final java.util.List<String> possibleMoves = new java.util.ArrayList<>(); // 保存所有可能的走法
+
+            // 启动搜索：双限制，谁先到就以谁为准
+            LogUtils.i("PikafishAI", "go depth " + effDepth + " movetime " + time
+                + " (skillLevel=" + cachedSkillLevel + " 原始depth=" + cachedDepth
+                + " 原始time=" + cachedTimeSeconds + "s)");
+            nativeSendCommand("go depth " + effDepth + " movetime " + time);
+
+            // 读取搜索结果
+            String bestMoveStr = null;
+            List<String> possibleMoves = new ArrayList<>();
             int score = 0;
-            int nodes = 0;
-            int nps = 0;
-            long searchTime = 0;
             long startTime = System.currentTimeMillis();
-            
-            // 计算最大搜索时间：设置的时间 + 缓冲时间
             long maxSearchTime = time + MAX_SEARCH_TIME_BUFFER_MS;
-            LogUtils.i("PikafishAI", "最大搜索时间: " + maxSearchTime + "ms (设置时间: " + time + "ms + 缓冲: " + MAX_SEARCH_TIME_BUFFER_MS + "ms)");
-            
-            // 超时检查线程
-            final Thread currentThread = Thread.currentThread();
-            Thread timeoutThread = new Thread(() -> {
-                try {
-                    Thread.sleep(maxSearchTime);
-                    // 超时后检查是否已经收到bestmove
-                    if (bestMoveHolder[0] == null) {
-                        LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + maxSearchTime + "ms)");
-                        sendCommand("stop");
-                        // 等待500ms后如果仍然没有响应，中断读取
-                        Thread.sleep(500);
-                        if (bestMoveHolder[0] == null) {
-                            LogUtils.e("PikafishAI", "超时后仍无响应，强制中断读取");
-                            // 中断主线程的读取循环
-                            currentThread.interrupt();
-                        }
-                    }
-                } catch (InterruptedException e) {
-                    // 线程被中断，正常退出
+
+            while (!Thread.currentThread().isInterrupted()) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (elapsed > maxSearchTime) {
+                    LogUtils.w("PikafishAI", "搜索超时, 强制停止");
+                    nativeSendCommand("stop");
+                    break;
                 }
-            });
-            
-            try {
-                // 启动超时检查线程
-                timeoutThread.start();
-                
-                // 使用非阻塞方式读取输入，设置最大循环次数
-                int maxLoopCount = (int) (maxSearchTime / 2) + 300; // 减少循环次数，避免过度消耗CPU
-                int loopCount = 0;
-                long lastActivityTime = System.currentTimeMillis();
-                
-                while (!Thread.currentThread().isInterrupted() && loopCount < maxLoopCount) {
-                    loopCount++;
-                    
-                    // 检查是否超时（使用设置的时间 + 缓冲时间）
-                    long elapsedTime = System.currentTimeMillis() - startTime;
-                    if (elapsedTime > maxSearchTime) {
-                        LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + elapsedTime + "ms, 限制: " + maxSearchTime + "ms)");
-                        sendCommand("stop");
-                        // 如果已经超时且还没有bestmove，使用当前最佳走法
-                        if (bestMoveHolder[0] == null) {
-                            // 尝试从info行中提取pv作为备选
-                            LogUtils.w("PikafishAI", "超时未收到bestmove，使用默认走法");
+
+                if (shouldStop.get() && bestMoveStr == null) {
+                    nativeSendCommand("stop");
+                }
+
+                String line = readLineWithTimeout(100);
+                if (line == null) {
+                    if (shouldStop.get()) break;
+                    continue;
+                }
+
+                if (line.startsWith("info")) {
+                    String[] parts = line.split(" ");
+                    int infoMultiPV = 1;
+                    int infoDepth = 0;
+                    for (int i = 0; i < parts.length; i++) {
+                        if (parts[i].equals("multipv") && i + 1 < parts.length) {
+                            try { infoMultiPV = Integer.parseInt(parts[i + 1]); } catch (NumberFormatException ignored) {}
+                            // Don't break - continue parsing other fields
                         }
-                        break;
                     }
-                    
-                    // 检查是否长时间无活动，强制退出
-                    long currentTime = System.currentTimeMillis();
-                    // 长时间无活动阈值：设置的思考时间 + 3000ms
-                    long inactivityThreshold = time + 3000;
-                    if (currentTime - lastActivityTime > inactivityThreshold) {
-                        LogUtils.w("PikafishAI", "长时间无活动，强制停止 (已耗时: " + (currentTime - startTime) + "ms, 阈值: " + inactivityThreshold + "ms)");
-                        sendCommand("stop");
-                        break;
-                    }
-                    
-                    try {
-                        // 使用 BufferedReader 的 ready() 方法检查是否有数据可读
-                        if (reader.ready()) {
-                            lastActivityTime = currentTime;
-                            String line = reader.readLine();
-                            if (line == null) {
-                                LogUtils.w("PikafishAI", "读取到null，结束读取");
-                                break;
-                            }
-                            
-                            // 减少详细日志输出，提高性能
-                            if (line.startsWith("info")) {
-                                // 只在深度变化时输出日志
-                                String[] parts = line.split(" ");
-                                int infoMultiPV = 1; // 默认 multipv 索引为 1
-                                // 先解析 multipv 索引
-                                for (int i = 0; i < parts.length; i++) {
-                                    if (parts[i].equals("multipv") && i + 1 < parts.length) {
-                                        try {
-                                            infoMultiPV = Integer.parseInt(parts[i + 1]);
-                                        } catch (NumberFormatException e) {
-                                            // 忽略解析错误
-                                        }
-                                        break;
-                                    }
+
+                    for (int i = 0; i < parts.length; i++) {
+                        if (parts[i].equals("depth") && i + 1 < parts.length) {
+                            try {
+                                int newDepth = Integer.parseInt(parts[i + 1]);
+                                infoDepth = newDepth;
+                                if (newDepth > currentDepth) {
+                                    currentDepth = newDepth;
                                 }
-                                // 只处理 multipv 1 的行（主变），避免 MultiPV>1 时 score 被错误覆盖
-                                for (int i = 0; i < parts.length; i++) {
-                                    if (parts[i].equals("depth") && i + 1 < parts.length) {
-                                        try {
-                                            int newDepth = Integer.parseInt(parts[i + 1]);
-                                            if (newDepth > currentDepth) {
-                                                currentDepth = newDepth;
-                                                LogUtils.i("PikafishAI", "当前搜索深度: " + currentDepth);
-                                            }
-                                        } catch (NumberFormatException e) {
-                                            // 忽略解析错误
-                                        }
-                                    } else if (infoMultiPV == 1 && parts[i].equals("score") && i + 2 < parts.length) {
-                                        if (parts[i + 1].equals("cp")) {
-                                            try {
-                                                score = Integer.parseInt(parts[i + 2]);
-                                            } catch (NumberFormatException e) {
-                                                // 忽略解析错误
-                                            }
-                                        } else if (parts[i + 1].equals("mate")) {
-                                            try {
-                                                int mateIn = Integer.parseInt(parts[i + 2]);
-                                                // 将mate分数转换为合适的数值
-                                                // 正数表示当前方有将死对方的机会
-                                                // 负数表示对方有将死当前方的机会
-                                                if (mateIn > 0) {
-                                                    score = 1000 - mateIn * 10;
-                                                } else {
-                                                    score = -1000 + mateIn * 10;
-                                                }
-                                            } catch (NumberFormatException e) {
-                                                // 忽略解析错误
-                                            }
-                                        }
-                                    } else if (infoMultiPV == 1 && parts[i].equals("pv") && i + 1 < parts.length) {
-                                        // 提取pv中的第一个走法（仅 multipv 1）
-                                        String move = parts[i + 1];
-                                        if (bestMoveHolder[0] == null) {
-                                            bestMoveHolder[0] = move;
-                                        }
-                                    } else if (parts[i].equals("pv") && i + 1 < parts.length) {
-                                        // 在强制变着模式下，保存所有可能的走法（包括所有 multipv）
-                                        String move = parts[i + 1];
-                                        if (chessInfo != null && chessInfo.forceVariation) {
-                                            if (!possibleMoves.contains(move)) {
-                                                possibleMoves.add(move);
-                                                LogUtils.i("PikafishAI", "强制变着模式：添加可能的走法: " + move);
-                                            }
-                                        }
-                                    }
-                                }
-                            } else if (line.startsWith("bestmove")) {
-                                String[] parts = line.split(" ");
-                                if (parts.length > 1) {
-                                    bestMoveHolder[0] = parts[1];
-                                }
-                                break;
+                            } catch (NumberFormatException ignored) {}
+                        } else if (infoMultiPV == 1 && parts[i].equals("score") && i + 2 < parts.length) {
+                            if (parts[i + 1].equals("cp")) {
+                                try { score = Integer.parseInt(parts[i + 2]); } catch (NumberFormatException ignored) {}
+                            } else if (parts[i + 1].equals("mate")) {
+                                try {
+                                    int mateIn = Integer.parseInt(parts[i + 2]);
+                                    score = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
+                                } catch (NumberFormatException ignored) {}
                             }
-                            
-                            // 如果需要停止，发送stop命令并继续等待bestmove
-                            if (shouldStop.get() && bestMoveHolder[0] == null) {
-                                LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
-                                sendCommand("stop");
+                        } else if (infoMultiPV == 1 && parts[i].equals("pv") && i + 1 < parts.length) {
+                            if (bestMoveStr == null) {
+                                bestMoveStr = parts[i + 1];
                             }
-                        } else {
-                            // 短暂休眠，避免CPU占用过高
-                            Thread.sleep(10);
-                        }
-                    } catch (IOException e) {
-                        LogUtils.e("PikafishAI", "读取输入流异常: " + e.getMessage());
-                        break;
-                    }
-                }
-                
-                if (loopCount >= maxLoopCount) {
-                    LogUtils.e("PikafishAI", "读取循环达到最大次数，强制退出");
-                    sendCommand("stop");
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "读取响应失败，可能进程已崩溃: " + e.getMessage());
-                // 尝试重新初始化
-                close();
-                initialize();
-                if (initialized) {
-                    LogUtils.i("PikafishAI", "重新初始化成功，再次尝试获取走法");
-                    return getBestMoveWithScore(chessInfo);
-                }
-            } finally {
-                isSearching.set(false);
-                // 保存最终的搜索深度
-                final int finalDepth = currentDepth;
-                // 更新RoundView中的搜索深度
-                try {
-                    PvMActivity activity = top.nones.chessgame.PvMActivity.getInstance();
-                    if (activity != null && activity.roundView != null && activity.chessInfo != null) {
-                        boolean isRed = activity.chessInfo.IsRedGo;
-                        try {
-                            activity.roundView.setSearchDepth(finalDepth, isRed);
-                        } catch (NoSuchMethodError e) {
-                            activity.roundView.setSearchDepth(finalDepth);
+                        } else if (parts[i].equals("pv") && i + 1 < parts.length) {
+                            if (chessInfo != null && chessInfo.forceVariation) {
+                                String move = parts[i + 1];
+                                if (!possibleMoves.contains(move)) {
+                                    possibleMoves.add(move);
+                                }
+                            }
+                        } else if (infoMultiPV == 1 && parts[i].equals("wdl") && i + 3 < parts.length) {
+                            // WDL: win draw loss per-mille (e.g. "wdl 451 320 229")
+                            try {
+                                int w = Integer.parseInt(parts[i + 1]);
+                                int d = Integer.parseInt(parts[i + 2]);
+                                int l = Integer.parseInt(parts[i + 3]);
+                                if (infoDepth > 0) {
+                                    LogUtils.v("PikafishAI", "depth=" + infoDepth + " WDL: " + w + "/" + d + "/" + l);
+                                }
+                            } catch (NumberFormatException ignored) {}
                         }
                     }
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "更新搜索深度失败: " + e.getMessage());
+                } else if (line.startsWith("bestmove")) {
+                    String[] parts = line.split(" ");
+                    if (parts.length > 1) {
+                        bestMoveStr = parts[1];
+                    }
+                    break;
                 }
-                // 不重置搜索深度，保持最后的值
-                // currentDepth = 0;
             }
-            
-            // 计算实际搜索时间
-            long actualSearchTime = System.currentTimeMillis() - startTime;
-            LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", 节点数: " + nodes + ", 节点/秒: " + nps + ", 搜索时间: " + actualSearchTime + "ms, 已停止: " + shouldStop.get());
-            
-            if (bestMoveHolder[0] != null) {
-                String selectedMove = bestMoveHolder[0];
-                
-                // 在强制变着模式下，随机选择一个非最佳走法
-                if (chessInfo != null && chessInfo.forceVariation && !possibleMoves.isEmpty()) {
-                    // 过滤掉与最佳走法相同的走法
-                    java.util.List<String> alternativeMoves = new java.util.ArrayList<>();
-                    for (String move : possibleMoves) {
-                        if (!move.equals(selectedMove)) {
-                            alternativeMoves.add(move);
-                        }
-                    }
-                    
-                    // 如果有其他走法，随机选择一个
-                    if (!alternativeMoves.isEmpty()) {
-                        java.util.Random random = new java.util.Random();
-                        selectedMove = alternativeMoves.get(random.nextInt(alternativeMoves.size()));
-                        LogUtils.i("PikafishAI", "强制变着模式：随机选择走法: " + selectedMove);
-                    }
+
+            // 强制变着：随机选非最佳走法
+            if (wasForceVariation && bestMoveStr != null && !possibleMoves.isEmpty()) {
+                List<String> alternatives = new ArrayList<>();
+                for (String m : possibleMoves) {
+                    if (!m.equals(bestMoveStr)) alternatives.add(m);
                 }
-                
-                Move move = uciToMove(selectedMove);
-                LogUtils.i("PikafishAI", "选择走法: " + move + ", 评分: " + score);
-                
-                // 强制变着模式在AI走棋后仍然保持，直到局面改变
-                // 不在这里重置强制变着模式标志位，让它在走棋后自然失效
-                
+                if (!alternatives.isEmpty()) {
+                    bestMoveStr = alternatives.get(new java.util.Random().nextInt(alternatives.size()));
+                    LogUtils.i("PikafishAI", "强制变着: 随机选择 " + bestMoveStr);
+                }
+            }
+
+            // 更新 UI 深度
+            updateUIAfterSearch(currentDepth);
+
+            if (bestMoveStr != null) {
+                Move move = uciToMove(bestMoveStr);
+                LogUtils.i("PikafishAI", "最佳走法: " + move + ", 评分: " + score);
                 return new MoveWithScore(move, score);
             }
-            
         } catch (Exception e) {
-            LogUtils.e("PikafishAI", "获取最佳走法失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "操作失败", e);
-            // 尝试重新初始化
-            try {
-                close();
-                initialize();
-                if (initialized) {
-                    LogUtils.i("PikafishAI", "重新初始化成功，再次尝试获取走法");
-                    return getBestMoveWithScore(chessInfo);
-                }
-            } catch (Exception ex) {
-                LogUtils.e("PikafishAI", "重新初始化失败: " + ex.getMessage());
-            }
+            LogUtils.e("PikafishAI", "搜索异常: " + e.getMessage(), e);
+        } finally {
+            isSearching.set(false);
         }
-        
-        // 如果获取AI走法失败，返回默认走法和0评分
-        LogUtils.e("PikafishAI", "获取AI走法失败，返回默认走法");
+
         return new MoveWithScore(getDefaultMove(chessInfo), 0);
     }
-    
+
     /**
-     * 快速评估当前局面分数（depth 1，极短时间）
-     * 用于人类落子后立即显示局面评分，不干扰后续AI正式搜索
+     * 快速评估（depth=1, movetime=300ms）
      */
     public int evaluatePositionQuickly(ChessInfo chessInfo) {
-        if (!initialized || reader == null) {
-            LogUtils.e("PikafishAI", "evaluatePositionQuickly: AI未初始化");
-            return 0;
-        }
+        if (!initialized) return 0;
+
         if (isSearching.get()) {
-            LogUtils.i("PikafishAI", "evaluatePositionQuickly: AI正在搜索，先停止当前搜索");
             shouldStop.set(true);
-            sendCommand("stop");
-            // 等待搜索停止
+            nativeSendCommand("stop");
             long waitStart = System.currentTimeMillis();
             while (isSearching.get() && System.currentTimeMillis() - waitStart < 500) {
                 try { Thread.sleep(20); } catch (InterruptedException ignored) {}
             }
-            if (isSearching.get()) {
-                LogUtils.i("PikafishAI", "evaluatePositionQuickly: 等待停止超时，继续执行");
-            }
         }
 
         try {
-            // 标记正在搜索，防止其他搜索干扰
             shouldStop.set(false);
             isSearching.set(true);
 
             String fen = boardToFEN(chessInfo);
-            sendCommand("position fen " + fen);
-            // 使用最低参数保证快速评估
-            sendCommand("setoption name MultiPV value 1");
-            sendCommand("setoption name Contempt value 0");
-            sendCommand("go depth 1 movetime 300");
+            nativeSendCommand("position fen " + fen);
+            nativeSendCommand("setoption name MultiPV value 1");
+            nativeSendCommand("go depth 1 movetime 300");
 
             int score = 0;
             long startTime = System.currentTimeMillis();
-            long maxWait = 2000; // 最多等2秒
+            long maxWait = 2000;
 
             while (!Thread.currentThread().isInterrupted()) {
                 if (System.currentTimeMillis() - startTime > maxWait) {
-                    sendCommand("stop");
+                    nativeSendCommand("stop");
                     break;
                 }
-                try {
-                    if (reader.ready()) {
-                        String line = reader.readLine();
-                        if (line == null) break;
-                        if (line.startsWith("info")) {
-                            String[] parts = line.split(" ");
-                            for (int i = 0; i < parts.length; i++) {
-                                if (parts[i].equals("score") && i + 2 < parts.length) {
-                                    if (parts[i + 1].equals("cp")) {
-                                        try {
-                                            score = Integer.parseInt(parts[i + 2]);
-                                        } catch (NumberFormatException ignored) {}
-                                    } else if (parts[i + 1].equals("mate")) {
-                                        try {
-                                            int mateIn = Integer.parseInt(parts[i + 2]);
-                                            score = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
-                                        } catch (NumberFormatException ignored) {}
-                                    }
-                                }
+                String line = readLineWithTimeout(100);
+                if (line == null) continue;
+                if (line.startsWith("info")) {
+                    String[] parts = line.split(" ");
+                    for (int i = 0; i < parts.length; i++) {
+                        if (parts[i].equals("score") && i + 2 < parts.length) {
+                            if (parts[i + 1].equals("cp")) {
+                                try { score = Integer.parseInt(parts[i + 2]); } catch (NumberFormatException ignored) {}
+                            } else if (parts[i + 1].equals("mate")) {
+                                try {
+                                    int mateIn = Integer.parseInt(parts[i + 2]);
+                                    score = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
+                                } catch (NumberFormatException ignored) {}
                             }
-                        } else if (line.startsWith("bestmove")) {
-                            break;
                         }
-                    } else {
-                        Thread.sleep(5);
                     }
-                } catch (IOException e) {
-                    LogUtils.e("PikafishAI", "evaluatePositionQuickly 读取异常: " + e.getMessage());
+                } else if (line.startsWith("bestmove")) {
                     break;
                 }
             }
 
-            LogUtils.i("PikafishAI", "快速评估完成，score=" + score + "，耗时=" + (System.currentTimeMillis() - startTime) + "ms");
+            LogUtils.i("PikafishAI", "快速评估: score=" + score);
             return score;
         } catch (Exception e) {
-            LogUtils.e("PikafishAI", "evaluatePositionQuickly 异常: " + e.getMessage());
+            LogUtils.e("PikafishAI", "快速评估异常: " + e.getMessage());
             return 0;
         } finally {
             isSearching.set(false);
@@ -1049,30 +608,243 @@ public class PikafishAI {
         }
     }
 
-    private Move getDefaultMove(ChessInfo chessInfo) {
-        // 在模拟器中返回一个简单的默认走法
-        // 这里实现一个简单的走法逻辑，选择第一个可移动棋子的第一个合法移动
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
-                int piece = chessInfo.piece[y][x];
-                // 检查是否是当前回合的棋子
-                if ((chessInfo.IsRedGo && piece >= 8) || (!chessInfo.IsRedGo && piece <= 7)) {
-                    // 获取该棋子的合法移动
-                    List<Pos> possibleMoves = Rule.PossibleMoves(chessInfo.piece, x, y, piece);
-                    if (!possibleMoves.isEmpty()) {
-                        // 返回第一个合法移动
-                        return new Move(new Pos(x, y), possibleMoves.get(0));
+    /**
+     * 获取完整 PV 序列
+     */
+    public PvSequenceWithScore getPvSequenceWithScore(ChessInfo chessInfo) {
+        if (!initialized) {
+            return new PvSequenceWithScore(new ArrayList<>(), 0);
+        }
+
+        try {
+            stopPreviousSearch();
+            // 同步最新设置
+            syncSettingsFromChessInfo(chessInfo);
+
+            // 【诊断】打印 sync 后的缓存值
+            int effSkillFactorPct = Math.round(getSkillFactor() * 100);
+            int time = getEffectiveTimeMs();
+            int effDepth = getEffectiveDepth();
+            LogUtils.i("PikafishAI", "搜索参数: cachedDepth=" + cachedDepth
+                + " cachedTime=" + cachedTimeSeconds + "s"
+                + " skillLevel=" + cachedSkillLevel + " (因子=" + effSkillFactorPct + "%)"
+                + " → effDepth=" + effDepth + " effTime=" + time + "ms");
+
+            shouldStop.set(false);
+            isSearching.set(true);
+            currentDepth = 0;
+
+            String fen = boardToFEN(chessInfo);
+            nativeSendCommand("position fen " + fen);
+
+            // 双限制：时间为主，时间限制内到层数就以层数为准
+            if (chessInfo != null && chessInfo.forceVariation) {
+                nativeSendCommand("setoption name MultiPV value 3");
+            } else {
+                nativeSendCommand("setoption name MultiPV value " + cachedMultiPV);
+            }
+
+            String goCmd = "go depth " + effDepth + " movetime " + time;
+            LogUtils.i("PikafishAI", "发送搜索命令: " + goCmd + " (skillLevel=" + cachedSkillLevel
+                + " 原始depth=" + cachedDepth + " 原始time=" + cachedTimeSeconds + "s)");
+            nativeSendCommand(goCmd);
+
+            String bestMoveStr = null;
+            List<String> pvMoveList = new ArrayList<>();
+            int score = 0;
+            long startTime = System.currentTimeMillis();
+            long maxSearchTime = time + MAX_SEARCH_TIME_BUFFER_MS;
+            int infoLineCount = 0;
+            int maxDepthSeen = 0;
+
+            while (!Thread.currentThread().isInterrupted()) {
+                long elapsed = System.currentTimeMillis() - startTime;
+                if (elapsed > maxSearchTime) {
+                    LogUtils.w("PikafishAI", "搜索超时(" + elapsed + "ms >= " + maxSearchTime + "ms)，强制停止");
+                    nativeSendCommand("stop");
+                    break;
+                }
+                if (shouldStop.get() && bestMoveStr == null) {
+                    nativeSendCommand("stop");
+                }
+
+                String line = readLineWithTimeout(100);
+                if (line == null) {
+                    if (shouldStop.get()) break;
+                    continue;
+                }
+
+                if (line.startsWith("info")) {
+                    infoLineCount++;
+                    String[] parts = line.split(" ");
+                    for (int i = 0; i < parts.length; i++) {
+                        if (parts[i].equals("depth") && i + 1 < parts.length) {
+                            try {
+                                int newDepth = Integer.parseInt(parts[i + 1]);
+                                if (newDepth > currentDepth) currentDepth = newDepth;
+                                if (newDepth > maxDepthSeen) maxDepthSeen = newDepth;
+                            } catch (NumberFormatException ignored) {}
+                        } else if (parts[i].equals("score") && i + 2 < parts.length) {
+                            if (parts[i + 1].equals("cp")) {
+                                try { score = Integer.parseInt(parts[i + 2]); } catch (NumberFormatException ignored) {}
+                            } else if (parts[i + 1].equals("mate")) {
+                                try {
+                                    int mateIn = Integer.parseInt(parts[i + 2]);
+                                    score = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
+                                } catch (NumberFormatException ignored) {}
+                            }
+                        } else if (parts[i].equals("pv") && i + 1 < parts.length) {
+                            pvMoveList.clear();
+                            for (int j = i + 1; j < parts.length; j++) {
+                                pvMoveList.add(parts[j]);
+                            }
+                            if (bestMoveStr == null) {
+                                bestMoveStr = parts[i + 1];
+                            }
+                        }
                     }
+                } else if (line.startsWith("bestmove")) {
+                    if (bestMoveStr == null) {
+                        String[] parts = line.split(" ");
+                        if (parts.length > 1) bestMoveStr = parts[1];
+                    }
+                    LogUtils.i("PikafishAI", "收到 bestmove: " + line);
+                    break;
+                } else if (!line.startsWith("info")) {
+                    // 非 info/bestmove 的行（如 uciok 等）
+                    LogUtils.d("PikafishAI", "引擎输出: " + line);
                 }
             }
+
+            long searchElapsed = System.currentTimeMillis() - startTime;
+            LogUtils.i("PikafishAI", "搜索结束: 耗时=" + searchElapsed + "ms"
+                + " info行数=" + infoLineCount + " 最大depth=" + maxDepthSeen
+                + " bestmove=" + bestMoveStr + " pv长度=" + pvMoveList.size()
+                + " score=" + score);
+
+            updateUIAfterSearch(currentDepth);
+
+            List<Move> moveSequence = new ArrayList<>();
+            for (String uciMove : pvMoveList) {
+                Move move = uciToMove(uciMove);
+                if (move != null) moveSequence.add(move);
+            }
+
+            return new PvSequenceWithScore(moveSequence, score);
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "获取 PV 序列异常: " + e.getMessage());
+            return new PvSequenceWithScore(new ArrayList<>(), 0);
+        } finally {
+            isSearching.set(false);
         }
-        return null;
     }
-    
+
+    // ========== 辅助方法 ==========
+
+    private void stopPreviousSearch() {
+        shouldStop.set(true);
+        if (isSearching.get()) {
+            nativeSendCommand("stop");
+            try { Thread.sleep(100); } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    public void interrupt() {
+        shouldStop.set(true);
+        if (isSearching.get()) {
+            nativeSendCommand("stop");
+        }
+    }
+
+    public void updateSettings(int skillLevel, int multiPV) {
+        updateSettings(skillLevel, multiPV, DEFAULT_DEPTH, DEFAULT_TIME_MS / 1000);
+    }
+
+    public void updateSettings(int skillLevel, int multiPV, int depth, int thinkingTimeSeconds) {
+        if (!initialized) return;
+
+        // 缓存所有设置
+        cachedSkillLevel = Math.max(1, Math.min(20, skillLevel));
+        cachedMultiPV = Math.max(1, multiPV);
+        cachedDepth = Math.max(MIN_DEPTH, depth);
+        cachedTimeSeconds = Math.max(1, Math.min(60, thinkingTimeSeconds));
+
+        // 读取线程/哈希设置（以用户设置为准）
+        readSettingsFromFile();
+
+        // 应用引擎选项
+        nativeSendCommand("setoption name MultiPV value " + cachedMultiPV);
+
+        int threadCount = cachedThreads > 0 ? cachedThreads : computeAutoThreads();
+        nativeSendCommand("setoption name Threads value " + threadCount);
+        int hashSize = cachedHashMB > 0 ? cachedHashMB : getOptimalHashSize();
+        nativeSendCommand("setoption name Hash value " + hashSize);
+
+        int effDepth = getEffectiveDepth();
+        int effTimeMs = getEffectiveTimeMs();
+        LogUtils.i("PikafishAI", "更新设置: SkillLevel=" + cachedSkillLevel +
+            " MultiPV=" + cachedMultiPV + " Depth=" + cachedDepth +
+            " Time=" + cachedTimeSeconds + "s" +
+            " → 有效Depth=" + effDepth + " 有效Time=" + effTimeMs + "ms" +
+            " (因子=" + String.format(Locale.US, "%.2f", getSkillFactor()) + ")");
+
+        nativeSendCommand("isready");
+        try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+    }
+
+    public void close() {
+        shouldStop.set(true);
+        isSearching.set(false);
+
+        // 停止输出读取线程
+        readerRunning = false;
+
+        // 调用 JNI cleanup
+        try {
+            nativeSendCommand("quit");
+            try { Thread.sleep(50); } catch (InterruptedException ignored) {}
+            nativeCleanup();
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "关闭引擎异常: " + e.getMessage());
+        }
+
+        // 等待读取线程结束
+        if (outputReaderThread != null && outputReaderThread.isAlive()) {
+            try {
+                outputReaderThread.join(2000);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        initialized = false;
+        currentDepth = 0;
+        outputQueue.clear();
+        LogUtils.i("PikafishAI", "引擎已关闭");
+    }
+
+    private void updateUIAfterSearch(int finalDepth) {
+        try {
+            PvMActivity activity = PvMActivity.getInstance();
+            if (activity != null && activity.roundView != null && activity.chessInfo != null) {
+                boolean isRed = activity.chessInfo.IsRedGo;
+                try {
+                    activity.roundView.setSearchDepth(finalDepth, isRed);
+                } catch (NoSuchMethodError e) {
+                    activity.roundView.setSearchDepth(finalDepth);
+                }
+            }
+        } catch (Exception e) {
+            LogUtils.e("PikafishAI", "更新搜索深度失败: " + e.getMessage());
+        }
+    }
+
+    // ========== FEN / UCI 转换（与原来一致）==========
+
     private String boardToFEN(ChessInfo chessInfo) {
         StringBuilder fen = new StringBuilder();
-        
-        // 生成棋盘部分，从红方底线开始（y=0）到黑方底线结束（y=9）
         for (int y = 0; y < 10; y++) {
             int emptyCount = 0;
             for (int x = 0; x < 9; x++) {
@@ -1087,577 +859,55 @@ public class PikafishAI {
                     fen.append(pieceToFEN(piece));
                 }
             }
-            if (emptyCount > 0) {
-                fen.append(emptyCount);
-            }
-            if (y < 9) {
-                fen.append('/');
-            }
+            if (emptyCount > 0) fen.append(emptyCount);
+            if (y < 9) fen.append('/');
         }
-        
-        // 生成回合部分，由于棋子颜色映射反转，回合信息也需要反转
         fen.append(' ');
         fen.append(chessInfo.IsRedGo ? 'b' : 'w');
-        
-        // 生成 castle 部分（中国象棋不需要）
         fen.append(" - - 0 1");
-        
         return fen.toString();
     }
-    
+
     private char pieceToFEN(int piece) {
         switch (piece) {
-            case 1: return 'K'; // 黑将
-            case 2: return 'A'; // 黑士
-            case 3: return 'B'; // 黑象
-            case 4: return 'N'; // 黑马
-            case 5: return 'R'; // 黑车
-            case 6: return 'C'; // 黑炮
-            case 7: return 'P'; // 黑卒
-            case 8: return 'k'; // 红帅
-            case 9: return 'a'; // 红士
-            case 10: return 'b'; // 红相
-            case 11: return 'n'; // 红马
-            case 12: return 'r'; // 红车
-            case 13: return 'c'; // 红炮
-            case 14: return 'p'; // 红兵
+            case 1: return 'K'; case 2: return 'A'; case 3: return 'B';
+            case 4: return 'N'; case 5: return 'R'; case 6: return 'C';
+            case 7: return 'P'; case 8: return 'k'; case 9: return 'a';
+            case 10: return 'b'; case 11: return 'n'; case 12: return 'r';
+            case 13: return 'c'; case 14: return 'p';
             default: return ' ';
         }
     }
-    
+
     private Move uciToMove(String uci) {
-        if (uci == null) {
-            LogUtils.e("PikafishAI", "UCI坐标为null");
-            return null;
-        }
-        
-        if (uci.length() != 4) {
-            LogUtils.e("PikafishAI", "无效的UCI坐标长度: " + uci.length() + "，坐标: " + uci);
-            return null;
-        }
-        
+        if (uci == null || uci.length() != 4) return null;
         try {
-            char fromFile = uci.charAt(0);
-            char fromRank = uci.charAt(1);
-            char toFile = uci.charAt(2);
-            char toRank = uci.charAt(3);
-            
-            int fromX = fromFile - 'a';
-            int fromY = 9 - (fromRank - '0');
-            int toX = toFile - 'a';
-            int toY = 9 - (toRank - '0');
-            
-            // 验证坐标范围
+            int fromX = uci.charAt(0) - 'a';
+            int fromY = 9 - (uci.charAt(1) - '0');
+            int toX = uci.charAt(2) - 'a';
+            int toY = 9 - (uci.charAt(3) - '0');
             if (fromX < 0 || fromX >= 9 || fromY < 0 || fromY >= 10 ||
                 toX < 0 || toX >= 9 || toY < 0 || toY >= 10) {
-                LogUtils.e("PikafishAI", "无效的UCI坐标: " + uci + "，转换后坐标: (" + fromX + "," + fromY + ") -> (" + toX + "," + toY + ")");
                 return null;
             }
-            
             return new Move(new Pos(fromX, fromY), new Pos(toX, toY));
-            
         } catch (Exception e) {
-            LogUtils.e("PikafishAI", "解析UCI走法失败: " + e.getMessage() + "，坐标: " + uci);
             return null;
         }
     }
-    
-    public boolean isInitialized() {
-        return initialized;
-    }
-    
-    // 中断AI搜索
-    public void interrupt() {
-        shouldStop.set(true);
-        if (isSearching.get()) {
-            sendCommand("stop");
-        }
-    }
-    
-    // 更新设置
-    public void updateSettings(int skillLevel, int multiPV) {
-        if (initialized) {
-            sendCommand("setoption name MultiPV value " + multiPV);
-            LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
-            
-            sendCommand("setoption name Skill Level value " + skillLevel);
-            LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
-            
-            int contempt = 20;
-            try {
-                Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
-                if (setting != null) {
-                    contempt = setting.contempt;
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "获取Contempt设置失败: " + e.getMessage());
-            }
-            
-            sendCommand("setoption name Contempt value " + contempt);
-            LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
-            
-            sendCommand("isready");
-            waitForReadyOk();
-        }
-    }
-    
-    // 辅助方法：等待 readyok 响应
-    private void waitForReadyOk() {
-        if (reader == null) return;
-        
-        long startTime = System.currentTimeMillis();
-        boolean readyOkReceived = false;
-        String line;
-        
-        while (!readyOkReceived && System.currentTimeMillis() - startTime <= INIT_TIMEOUT_MS) {
-            try {
-                if (reader.ready()) {
-                    line = reader.readLine();
-                    if (line != null) {
-                        LogUtils.d("PikafishAI", "就绪响应: " + line);
-                        if (line.equals("readyok")) {
-                            readyOkReceived = true;
-                            LogUtils.i("PikafishAI", "就绪成功");
-                        }
+
+    private Move getDefaultMove(ChessInfo chessInfo) {
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                int piece = chessInfo.piece[y][x];
+                if ((chessInfo.IsRedGo && piece >= 8) || (!chessInfo.IsRedGo && piece <= 7)) {
+                    List<Pos> possibleMoves = Rule.PossibleMoves(chessInfo.piece, x, y, piece);
+                    if (!possibleMoves.isEmpty()) {
+                        return new Move(new Pos(x, y), possibleMoves.get(0));
                     }
                 }
-                if (!readyOkReceived) {
-                    Thread.sleep(50);
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "等待就绪失败: " + e.getMessage());
-                break;
             }
         }
-        
-        if (!readyOkReceived) {
-            LogUtils.e("PikafishAI", "就绪超时");
-        }
-    }
-    
-    // 更新设置（包含所有参数）
-    public void updateSettings(int skillLevel, int multiPV, int depth, int thinkingTime) {
-        if (initialized) {
-            sendCommand("setoption name MultiPV value " + multiPV);
-            LogUtils.i("PikafishAI", "更新MultiPV: " + multiPV);
-            
-            sendCommand("setoption name Skill Level value " + skillLevel);
-            LogUtils.i("PikafishAI", "更新技能级别: " + skillLevel);
-            
-            int contempt = 20;
-            try {
-                Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
-                if (setting != null) {
-                    contempt = setting.contempt;
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "获取Contempt设置失败: " + e.getMessage());
-            }
-            
-            sendCommand("setoption name Contempt value " + contempt);
-            LogUtils.i("PikafishAI", "设置Contempt值: " + contempt);
-            
-            sendCommand("isready");
-            waitForReadyOk();
-        }
-    }
-    
-    // 获取完整的 pv 走法序列（一次计算获得连续多步）
-    public PvSequenceWithScore getPvSequenceWithScore(ChessInfo chessInfo) {
-        // 检查是否在模拟器中运行
-        if (isRunningInEmulator()) {
-            LogUtils.e("PikafishAI", "在模拟器中运行，尝试获取AI走法序列");
-            LogUtils.i("PikafishAI", "在模拟器中运行，尝试获取AI走法序列");
-        }
-        
-        try {
-            // 检查 reader 是否为 null
-            if (reader == null) {
-                LogUtils.e("PikafishAI", "reader 为 null，AI 未正确初始化");
-                return new PvSequenceWithScore(new java.util.ArrayList<>(), 0);
-            }
-            
-            if (!initialized) {
-                LogUtils.e("PikafishAI", "AI未初始化，尝试重新初始化");
-                // 尝试重新初始化
-                initialize();
-                if (!initialized) {
-                    LogUtils.e("PikafishAI", "AI初始化失败");
-                    return new PvSequenceWithScore(new java.util.ArrayList<>(), 0);
-                }
-            }
-            
-            // 先确保停止之前的搜索
-            shouldStop.set(true);
-            if (isSearching.get()) {
-                sendCommand("stop");
-                // 短暂等待让stop命令生效
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-            
-            // 重置标志位开始新搜索
-            shouldStop.set(false);
-            isSearching.set(true);
-            
-            // 重置当前深度
-            currentDepth = 0;
-            
-            // 生成FEN字符串
-            String fen = boardToFEN(chessInfo);
-            LogUtils.i("PikafishAI", "生成的FEN: " + fen);
-            
-            // 发送位置信息
-            sendCommand("position fen " + fen);
-            
-            // 发送思考命令，严格使用设置的深度和时间
-            int depth = DEFAULT_DEPTH;
-            int time = DEFAULT_TIME_MS;
-            if (chessInfo != null && chessInfo.setting != null) {
-                depth = chessInfo.setting.depth;
-                int thinkingTime = chessInfo.setting.mLevel;
-                time = thinkingTime * 1000;
-            }
-            
-            // 确保时间和深度设置合理
-            time = Math.max(MIN_TIME_MS, time);
-            depth = Math.max(MIN_DEPTH, depth);
-            
-            LogUtils.i("PikafishAI", "获取 pv 序列 - 深度: " + depth + ", 时间限制: " + time + "ms");
-            LogUtils.e("PikafishAI", "获取 pv 序列 - 深度: " + depth + ", 时间限制: " + time + "ms");
-            
-            // 检查是否处于强制变着模式
-            boolean wasForceVariation = false;
-            if (chessInfo != null && chessInfo.forceVariation) {
-                wasForceVariation = true;
-                int randomness = chessInfo.variationRandomness;
-                if (randomness <= 0) randomness = 3;
-                
-                depth = depth + randomness;
-                
-                LogUtils.i("PikafishAI", "强制变着模式：深度=" + depth + ", 时间=" + time + "ms, 随机性=" + randomness);
-                
-                sendCommand("setoption name Contempt value 0");
-                // 强制变着模式：MultiPV=3（从5降低到3，减少算力分散）
-                sendCommand("setoption name MultiPV value 3");
-                sendCommand("setoption name Skill Level value 20");
-            } else {
-                int multiPV = 1;
-                int contempt = 20;
-                try {
-                    Class<?> pvmaClass = Class.forName("top.nones.chessgame.PvMActivity");
-                    Object settingObj = pvmaClass.getField("setting").get(null);
-                    if (settingObj != null) {
-                        multiPV = (int) settingObj.getClass().getField("multiPV").get(settingObj);
-                    }
-                } catch (Exception e) {
-                }
-                sendCommand("setoption name MultiPV value " + multiPV);
-                sendCommand("setoption name Contempt value " + contempt);
-            }
-            
-            // 同时使用深度限制和时间限制，先达到哪个条件就停止
-            sendCommand("go depth " + depth + " movetime " + time);
-            
-            // 读取最佳走法和完整 pv 序列
-            final String[] bestMoveHolder = new String[1];
-            final java.util.List<String> pvMoveList = new java.util.ArrayList<>();
-            int score = 0;
-            long startTime = System.currentTimeMillis();
-            
-            // 计算最大搜索时间：设置的时间 + 缓冲时间
-            long maxSearchTime = time + MAX_SEARCH_TIME_BUFFER_MS;
-            
-            // 超时检查线程
-            final Thread currentThread = Thread.currentThread();
-            Thread timeoutThread = new Thread(() -> {
-                try {
-                    Thread.sleep(maxSearchTime);
-                    if (bestMoveHolder[0] == null) {
-                        LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + maxSearchTime + "ms)");
-                        sendCommand("stop");
-                        try {
-                            Thread.sleep(500);
-                            if (bestMoveHolder[0] == null) {
-                                LogUtils.e("PikafishAI", "超时后仍无响应，强制中断读取");
-                                currentThread.interrupt();
-                            }
-                        } catch (InterruptedException e) {
-                        }
-                    }
-                } catch (InterruptedException e) {
-                }
-            });
-            
-            try {
-                timeoutThread.start();
-                
-                int maxLoopCount = (int) (maxSearchTime / 2) + 300;
-                int loopCount = 0;
-                long lastActivityTime = System.currentTimeMillis();
-                
-                while (!Thread.currentThread().isInterrupted() && loopCount < maxLoopCount) {
-                    loopCount++;
-                    
-                    long elapsedTime = System.currentTimeMillis() - startTime;
-                    if (elapsedTime > maxSearchTime) {
-                        LogUtils.w("PikafishAI", "搜索超时，强制停止 (已耗时: " + elapsedTime + "ms, 限制: " + maxSearchTime + "ms)");
-                        sendCommand("stop");
-                        break;
-                    }
-                    
-                    long currentTime = System.currentTimeMillis();
-                    long inactivityThreshold = time + 3000;
-                    if (currentTime - lastActivityTime > inactivityThreshold) {
-                        LogUtils.w("PikafishAI", "长时间无活动，强制停止 (已耗时: " + (currentTime - startTime) + "ms, 阈值: " + inactivityThreshold + "ms)");
-                        sendCommand("stop");
-                        break;
-                    }
-                    
-                    try {
-                        if (reader.ready()) {
-                            lastActivityTime = currentTime;
-                            String line = reader.readLine();
-                            if (line == null) {
-                                LogUtils.w("PikafishAI", "读取到null，结束读取");
-                                break;
-                            }
-                            
-                            if (line.startsWith("info")) {
-                                String[] parts = line.split(" ");
-                                for (int i = 0; i < parts.length; i++) {
-                                    if (parts[i].equals("depth") && i + 1 < parts.length) {
-                                        try {
-                                            int newDepth = Integer.parseInt(parts[i + 1]);
-                                            if (newDepth > currentDepth) {
-                                                currentDepth = newDepth;
-                                                LogUtils.i("PikafishAI", "当前搜索深度: " + currentDepth);
-                                            }
-                                        } catch (NumberFormatException e) {
-                                        }
-                                    } else if (parts[i].equals("score") && i + 2 < parts.length) {
-                                        if (parts[i + 1].equals("cp")) {
-                                            try {
-                                                score = Integer.parseInt(parts[i + 2]);
-                                            } catch (NumberFormatException e) {
-                                            }
-                                        } else if (parts[i + 1].equals("mate")) {
-                                            try {
-                                                int mateIn = Integer.parseInt(parts[i + 2]);
-                                                if (mateIn > 0) {
-                                                    score = 1000 - mateIn * 10;
-                                                } else {
-                                                    score = -1000 + mateIn * 10;
-                                                }
-                                            } catch (NumberFormatException e) {
-                                            }
-                                        }
-                                    } else if (parts[i].equals("pv") && i + 1 < parts.length) {
-                                        // 提取完整的 pv 走法序列
-                                        pvMoveList.clear();
-                                        for (int j = i + 1; j < parts.length; j++) {
-                                            pvMoveList.add(parts[j]);
-                                        }
-                                        if (bestMoveHolder[0] == null) {
-                                            bestMoveHolder[0] = parts[i + 1];
-                                        }
-                                    }
-                                }
-                            } else if (line.startsWith("bestmove")) {
-                                String[] parts = line.split(" ");
-                                if (parts.length > 1) {
-                                    bestMoveHolder[0] = parts[1];
-                                }
-                                break;
-                            }
-                            
-                            if (shouldStop.get() && bestMoveHolder[0] == null) {
-                                LogUtils.i("PikafishAI", "收到停止信号，发送stop命令");
-                                sendCommand("stop");
-                            }
-                        } else {
-                            Thread.sleep(10);
-                        }
-                    } catch (IOException e) {
-                        LogUtils.e("PikafishAI", "读取输入流异常: " + e.getMessage());
-                        break;
-                    }
-                }
-                
-                if (loopCount >= maxLoopCount) {
-                    LogUtils.e("PikafishAI", "读取循环达到最大次数，强制退出");
-                    sendCommand("stop");
-                }
-            } catch (Exception e) {
-                LogUtils.e("PikafishAI", "读取响应失败，可能进程已崩溃: " + e.getMessage());
-                close();
-                initialize();
-                if (initialized) {
-                    LogUtils.i("PikafishAI", "重新初始化成功，再次尝试获取走法序列");
-                    return getPvSequenceWithScore(chessInfo);
-                }
-            } finally {
-                isSearching.set(false);
-                final int finalDepth = currentDepth;
-                try {
-                    PvMActivity activity = top.nones.chessgame.PvMActivity.getInstance();
-                    if (activity != null && activity.roundView != null && activity.chessInfo != null) {
-                        boolean isRed = activity.chessInfo.IsRedGo;
-                        try {
-                            activity.roundView.setSearchDepth(finalDepth, isRed);
-                        } catch (NoSuchMethodError e) {
-                            activity.roundView.setSearchDepth(finalDepth);
-                        }
-                    }
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "更新搜索深度失败: " + e.getMessage());
-                }
-            }
-            
-            // 计算实际搜索时间
-            long actualSearchTime = System.currentTimeMillis() - startTime;
-            LogUtils.i("PikafishAI", "搜索完成 - 深度: " + currentDepth + ", 评分: " + score + ", pv 走法数: " + pvMoveList.size() + ", 搜索时间: " + actualSearchTime + "ms");
-            
-            // 将 UCI 走法列表转换为 Move 对象列表
-            java.util.List<Move> moveSequence = new java.util.ArrayList<>();
-            for (String uciMove : pvMoveList) {
-                Move move = uciToMove(uciMove);
-                if (move != null) {
-                    moveSequence.add(move);
-                }
-            }
-            
-            LogUtils.i("PikafishAI", "转换后的 Move 序列数: " + moveSequence.size());
-            
-            return new PvSequenceWithScore(moveSequence, score);
-            
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "获取 pv 序列失败: " + e.getMessage());
-            LogUtils.e("PikafishAI", "操作失败", e);
-            try {
-                close();
-                initialize();
-                if (initialized) {
-                    LogUtils.i("PikafishAI", "重新初始化成功，再次尝试获取走法序列");
-                    return getPvSequenceWithScore(chessInfo);
-                }
-            } catch (Exception ex) {
-                LogUtils.e("PikafishAI", "重新初始化失败: " + ex.getMessage());
-            }
-        }
-        
-        LogUtils.e("PikafishAI", "获取 pv 序列失败，返回空列表");
-        return new PvSequenceWithScore(new java.util.ArrayList<>(), 0);
-    }
-    
-    
-    public void close() {
-        try {
-            // 先中断搜索
-            shouldStop.set(true);
-            isSearching.set(false);
-            
-            // 关闭 writer
-            if (writer != null) {
-                try {
-                    // 发送 quit 命令
-                    sendCommand("quit");
-                    // 给进程一些时间处理 quit 命令
-                    Thread.sleep(100);
-                    writer.close();
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "关闭writer失败: " + e.getMessage());
-                } finally {
-                    writer = null;
-                }
-            }
-            
-            // 关闭 reader
-            if (reader != null) {
-                try {
-                    reader.close();
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "关闭reader失败: " + e.getMessage());
-                } finally {
-                    reader = null;
-                }
-            }
-            
-            // 销毁进程
-            if (process != null) {
-                try {
-                    // 先尝试正常销毁
-                    process.destroy();
-                    // 等待进程终止，最多等待2秒
-                    long startTime = System.currentTimeMillis();
-                    while (System.currentTimeMillis() - startTime < 2000) {
-                        try {
-                            process.exitValue();
-                            // 进程已终止
-                            break;
-                        } catch (IllegalThreadStateException e) {
-                            // 进程仍在运行，继续等待
-                            Thread.sleep(100);
-                        }
-                    }
-                    // 检查进程是否仍在运行
-                    try {
-                        process.exitValue();
-                    } catch (IllegalThreadStateException e) {
-                        // 进程仍在运行，再次尝试销毁
-                        process.destroy();
-                        // 等待销毁完成，最多等待1秒
-                        startTime = System.currentTimeMillis();
-                        while (System.currentTimeMillis() - startTime < 1000) {
-                            try {
-                                process.exitValue();
-                                // 进程已终止
-                                break;
-                            } catch (IllegalThreadStateException ex) {
-                                // 进程仍在运行，继续等待
-                                Thread.sleep(100);
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    LogUtils.e("PikafishAI", "销毁进程失败: " + e.getMessage());
-                } finally {
-                    process = null;
-                }
-            }
-            
-            // 重置初始化状态
-            initialized = false;
-            currentDepth = 0;
-            
-            // 验证资源是否已正确释放
-            verifyResourceRelease();
-            
-            LogUtils.i("PikafishAI", "资源已成功释放");
-        } catch (Exception e) {
-            LogUtils.e("PikafishAI", "关闭失败: " + e.getMessage(), e);
-        }
-    }
-    
-    private void verifyResourceRelease() {
-        boolean allReleased = true;
-        if (writer != null) {
-            LogUtils.w("PikafishAI", "writer 未正确释放");
-            allReleased = false;
-        }
-        if (reader != null) {
-            LogUtils.w("PikafishAI", "reader 未正确释放");
-            allReleased = false;
-        }
-        if (process != null) {
-            LogUtils.w("PikafishAI", "process 未正确释放");
-            allReleased = false;
-        }
-        if (allReleased) {
-            LogUtils.d("PikafishAI", "所有资源验证通过");
-        }
+        return null;
     }
 }
