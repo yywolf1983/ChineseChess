@@ -68,10 +68,10 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         } else {
             isMusicPlay = true;
             isEffectPlay = true;
-            thinkingTime = 5;
-            searchDepth = 10;
-            skillLevel = 20;
-            multiPV = 0;
+            thinkingTime = 3;    // 与 Info.Setting 默认值一致
+            searchDepth = 10;    // 与 Info.Setting 默认值一致
+            skillLevel = 20;     // 与 Info.Setting 默认值一致
+            multiPV = 0;         // 与 Info.Setting 默认值一致
             forceVariation = true;
         }
         
@@ -338,17 +338,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                     if (activity.chessInfo != null) {
                         activity.chessInfo.setting = activity.setting;
                     }
-                    
-                    if (activity.pikafishAI != null) {
-                        new Thread(
-                            () -> {
-                                long startMs = System.currentTimeMillis();
-                                activity.pikafishAI.updateSettings(skillLevel, multiPV, searchDepth, thinkingTime);
-                                LogUtils.i("Perf", "dialog.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
-                            },
-                            "dialog-update-settings"
-                        ).start();
-                    }
+                    // updateSettings 已移到 AIThreadRunnable 后台执行，无需在此同步调用（避免主线程 ANR）
+                    // 新设置已持久化，下次 AI 走棋时会自动读取
                 } catch (Exception e) {
                     LogUtils.e("SettingDialog_PvM", "更新设置失败: " + e.getMessage());
                 }

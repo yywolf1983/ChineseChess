@@ -261,21 +261,7 @@ public class PvMActivityControls {
                     if (activity.setting != null && activity.chessInfo != null) {
                         activity.chessInfo.setting = activity.setting;
                     }
-                    // 更新PikafishAI的设置
-                    if (activity.pikafishAI != null) {
-                        int skillLevel = activity.setting != null ? activity.setting.skillLevel : 20;
-                        int multiPV = activity.setting != null ? activity.setting.multiPV : 1;
-                        int depth = activity.setting != null ? activity.setting.depth : 10;
-                        int thinkingTime = activity.setting != null ? activity.setting.mLevel : 5;
-                        new Thread(
-                            () -> {
-                                long startMs = System.currentTimeMillis();
-                                activity.pikafishAI.updateSettings(skillLevel, multiPV, depth, thinkingTime);
-                                LogUtils.i("Perf", "modeButton.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms");
-                            },
-                            "mode-update-settings"
-                        ).start();
-                    }
+                    // updateSettings 已移到 AIThreadRunnable 后台执行，无需在此处同步调用（避免主线程 ANR）
                     // 不重置游戏，从当前棋局开始
                     // 检查是否需要AI移动
                     activity.gameManager.checkAIMove();
@@ -756,7 +742,7 @@ public class PvMActivityControls {
             }
         }
         
-            // 检查和棋条件，无论是否在摆棋模式下
+        // 检查和棋条件，无论是否在摆棋模式下
         if (activity.chessInfo.status == 1) {
             // 检查冷却回合数
             if (forceVariationCooldown > 0) {
@@ -891,80 +877,17 @@ public class PvMActivityControls {
             // 启用强制变着模式
             activity.chessInfo.forceVariation = true;
             activity.chessInfo.variationRandomness = 3; // 设置中等随机性
+            // 标记刚刚执行了强制变着，跳过下次和棋检查
+            justExecutedForceVariation = true;
             // 不立即检查AI移动，让AI在自己的回合正常行棋
             // activity.gameManager.checkAIMove();
         } else {
             // 当前回合方不需要变着，关闭强制变着模式
             activity.chessInfo.forceVariation = false;
         }
-        
-        // 标记刚刚执行了强制变着，跳过下次和棋检查
-        justExecutedForceVariation = true;
     }
     
 
-    
-    // 显示输棋确认对话框
-    private void showLoseConfirmationDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-        builder.setTitle("认输确认");
-        builder.setMessage("强制变着后您将立即输棋，是否认输？");
-        builder.setPositiveButton("认输", (dialog, which) -> {
-            activity.chessInfo.status = 2;
-            Toast toast = Toast.makeText(activity, activity.chessInfo.IsRedGo ? "黑方获得胜利" : "红方获得胜利", Toast.LENGTH_SHORT);
-            toast.setGravity(android.view.Gravity.CENTER, 0, 0);
-            toast.show();
-            // 游戏结束时重新绘制界面
-            if (activity.chessView != null) {
-                activity.chessView.requestDraw();
-            }
-            if (activity.roundView != null) {
-                activity.roundView.requestDraw();
-            }
-        });
-        builder.setNegativeButton("继续变着", (dialog, which) -> {
-            // 继续强制变着
-            // 重置重复局面计数
-            String currentHash = activity.chessInfo.generatePositionHash();
-            if (activity.chessInfo.positionHistory.containsKey(currentHash)) {
-                activity.chessInfo.positionHistory.put(currentHash, 1);
-            }
-            // 重置长将计数
-            activity.chessInfo.consecutiveCheckRed = 0;
-            activity.chessInfo.consecutiveCheckBlack = 0;
-            // 重置继续对局后的回合计数器
-            activity.continueGameRoundCount = 0;
-            // 设置强制变着冷却回合数为3，三回合内不再检查
-            forceVariationCooldown = 3;
-            LogUtils.i("PvMActivityControls", "设置强制变着冷却，3回合内不再检查");
-            
-            // 显示强制变着提示
-            if (activity.chessInfo.totalMoves - forceVariationHintRound >= 10) {
-                showForceVariationHint();
-                forceVariationHintRound = activity.chessInfo.totalMoves;
-            }
-            
-            // 重新绘制界面
-            if (activity.chessView != null) {
-                activity.chessView.requestDraw();
-            }
-            if (activity.roundView != null) {
-                activity.roundView.requestDraw();
-            }
-            
-            // 只有在非用户模式（人机对战或双机对战）下才启用强制变着模式
-            if (activity.gameMode != 0) {
-                // 启用强制变着模式
-                activity.chessInfo.forceVariation = true;
-                activity.chessInfo.variationRandomness = 3; // 设置中等随机性
-            }
-            
-            // 标记刚刚执行了强制变着，跳过下次和棋检查
-            justExecutedForceVariation = true;
-        });
-        builder.setCancelable(false);
-        builder.show();
-    }
     
     private void showCheckHint() {
         long currentTime = System.currentTimeMillis();
