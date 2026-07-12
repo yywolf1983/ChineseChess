@@ -324,8 +324,8 @@ public class PikafishAI {
         validateAndClampAllParams();
         // 3. 下发给引擎
         applyAllEngineOptions();
-        // 4. 新游戏时清空哈希
-        sendCommand("setoption name Clear Hash");
+        // 注意：初始化阶段不发送 Clear Hash，刚启动的引擎哈希表本身为空，
+        // Clear Hash 在某些引擎版本中可能导致 hang。新游戏时通过 clearHash() 调用。
     }
 
     /**
