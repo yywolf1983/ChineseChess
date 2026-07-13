@@ -93,6 +93,9 @@ public class PikafishAI {
     private volatile int cachedThreads = 0;       // 线程数 (0=自动)
     private volatile int cachedHashMB = 0;        // 哈希表 MB (0=自动)
     private volatile int cachedContempt = 20;     // 蔑视值 (centipawns)
+    // 记录上次实际下发的值，避免重复发送不变的参数
+    private int lastAppliedThreadCount = -1;
+    private int lastAppliedHashSize = -1;
     private volatile String cachedNumaPolicy = "auto"; // NUMA 策略
 
     // 输出读取线程
@@ -376,23 +379,23 @@ public class PikafishAI {
     private void applyAllEngineOptions() {
         // EvalFile 已在 nativeInit 中通过绝对路径设置，这里不重复发送
 
-        // Threads
+        // Threads（值未变则跳过，避免不必要的引擎操作）
         boolean threadsAuto = cachedThreads <= 0;
         int threadCount = threadsAuto ? computeAutoThreads() : cachedThreads;
-        // 注意：不修改 cachedThreads，保持用户设置（0=自动），下次调用时重新计算
-        sendCommand("setoption name Threads value " + threadCount);
+        if (threadCount != lastAppliedThreadCount) {
+            sendCommand("setoption name Threads value " + threadCount);
+            lastAppliedThreadCount = threadCount;
+        }
 
-        // Hash
+        // Hash（值未变则跳过，Hash 重分配代价高）
         boolean hashAuto = cachedHashMB <= 0;
         int hashSize = hashAuto ? getOptimalHashSize() : cachedHashMB;
-        // 注意：不修改 cachedHashMB，保持用户设置（0=自动），下次调用时重新计算
-        sendCommand("setoption name Hash value " + hashSize);
+        if (hashSize != lastAppliedHashSize) {
+            sendCommand("setoption name Hash value " + hashSize);
+            lastAppliedHashSize = hashSize;
+        }
 
-        // Skill Level
-        sendCommand("setoption name Skill Level value " + cachedSkillLevel);
-
-        // Contempt
-        sendCommand("setoption name Contempt value " + cachedContempt);
+        // Skill Level / Contempt：引擎原生不支持（UNSUPPORTED_OPTIONS），不发送
 
         // NumaPolicy
         sendCommand("setoption name NumaPolicy value " + cachedNumaPolicy);
@@ -402,8 +405,15 @@ public class PikafishAI {
 
         LogUtils.i("PikafishAI",
             "引擎参数已应用: Threads=" + threadCount + (threadsAuto ? "(auto)" : "") + " Hash=" + hashSize
-            + "MB" + (hashAuto ? "(auto)" : "") + " MultiPV=" + cachedMultiPV + " SkillLevel=" + cachedSkillLevel
-            + " Contempt=" + cachedContempt + " NumaPolicy=" + cachedNumaPolicy);
+            + "MB" + (hashAuto ? "(auto)" : "") + " MultiPV=" + cachedMultiPV + " NumaPolicy=" + cachedNumaPolicy);
+    }
+
+    /**
+     * 单独设置 MultiPV（线程安全）。用于强制变着/恢复正常模式时仅覆盖此参数，
+     * 避免重复下发 Threads/Hash/NumaPolicy 等不变项。
+     */
+    private void applyMultiPV(int multiPV) {
+        sendCommand("setoption name MultiPV value " + multiPV);
     }
 
     private void setupEngineOptions() {
@@ -779,24 +789,19 @@ public class PikafishAI {
             int depth = cachedDepth;
             int timeMs = cachedTimeSeconds * 1000;
 
-            // 下发引擎参数：正常模式应用用户设置，强制变着模式覆盖多样性参数
+            // 下发引擎参数：强制变着模式仅覆盖 MultiPV
             boolean wasForceVariation = false;
             if (chessInfo != null && chessInfo.forceVariation) {
                 wasForceVariation = true;
                 int randomness = Math.max(1, chessInfo.variationRandomness);
                 depth = depth + randomness;
-                // 强制变着使用用户设置的 SkillLevel/Contempt，MultiPV 至少为 2 以确保有变着可选
                 int varMultiPV = Math.max(2, cachedMultiPV);
-                applyAllEngineOptions();
-                sendCommand("setoption name MultiPV value " + varMultiPV);
-                LogUtils.i("PikafishAI", "强制变着模式: SkillLevel=" + cachedSkillLevel
-                    + " Contempt=" + cachedContempt + " MultiPV=" + varMultiPV
+                applyMultiPV(varMultiPV);
+                LogUtils.i("PikafishAI", "强制变着模式: MultiPV=" + varMultiPV
                     + " depth=" + depth + " movetime=" + timeMs + "ms randomness=" + randomness);
             } else {
-                // 正常模式：确保引擎参数与用户设置一致（尤其强制变着后需恢复）
-                applyAllEngineOptions();
-                LogUtils.i("PikafishAI", "正常模式: SkillLevel=" + cachedSkillLevel
-                    + " Contempt=" + cachedContempt + " MultiPV=" + cachedMultiPV);
+                // 正常模式恢复用户设置的 MultiPV（单个命令廉价，幂等）
+                applyMultiPV(cachedMultiPV);
             }
 
             // 生成 FEN 并设置局面
@@ -1071,14 +1076,13 @@ public class PikafishAI {
             isSearching.set(true);
             currentDepth.set(0);
 
-            // 下发引擎参数：正常模式应用用户设置，强制变着模式覆盖 MultiPV
+            // 下发引擎参数：强制变着模式仅覆盖 MultiPV
             if (chessInfo != null && chessInfo.forceVariation) {
                 depth = depth + Math.max(1, chessInfo.variationRandomness);
-                applyAllEngineOptions();
                 int varMultiPV = Math.max(2, cachedMultiPV);
-                sendCommand("setoption name MultiPV value " + varMultiPV);
+                applyMultiPV(varMultiPV);
             } else {
-                applyAllEngineOptions();
+                applyMultiPV(cachedMultiPV);
             }
 
             String fen = boardToFEN(chessInfo);
