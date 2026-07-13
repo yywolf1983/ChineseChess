@@ -25,10 +25,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class PikafishAI {
     private static final long INIT_TIMEOUT_MS = 5000;
-    // 超时缓冲：取 timeMs 的 50% 但不超过 2000ms，最短 800ms
-    // 短时限（1s→800ms缓冲→总计1.8s）、长时限（60s→2000ms缓冲→总计62s）
+    // 超时缓冲：取 timeMs 的 1/3，最短 300ms 最长 2000ms
+    // 1s→300ms缓冲 → 总计1.3s  5s→1666ms → 总计6.7s  60s→2000ms → 总计62s
     private long getSearchTimeBuffer(long timeMs) {
-        return Math.max(800, Math.min(2000, timeMs / 2));
+        return Math.max(300, Math.min(2000, timeMs / 3));
     }
     private static final int MAX_INIT_RETRIES = 3;
     private static final long INIT_RETRY_DELAY_MS = 1000;
@@ -842,9 +842,9 @@ public class PikafishAI {
                         stopSent = true;
                         stopSentTime = elapsed;
                     }
-                } else if (elapsed - stopSentTime > 1000) {
-                    // stop 发送后 1 秒还未收到 bestmove，放弃等待
-                    LogUtils.e("PikafishAI", "停止后等待 bestmove 超时（1s）");
+                } else if (elapsed - stopSentTime > 300) {
+                    // stop 发送后 300ms 还未收到 bestmove，放弃等待
+                    LogUtils.e("PikafishAI", "停止后等待 bestmove 超时（300ms）");
                     break;
                 }
 
@@ -1115,8 +1115,8 @@ public class PikafishAI {
                         stopSent = true;
                         stopSentTime = elapsed;
                     }
-                } else if (elapsed - stopSentTime > 1000) {
-                    LogUtils.e("PikafishAI", "停止后等待 bestmove 超时（1s）");
+                } else if (elapsed - stopSentTime > 500) {
+                    LogUtils.e("PikafishAI", "停止后等待 bestmove 超时（500ms）");
                     break;
                 }
 
