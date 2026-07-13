@@ -292,7 +292,7 @@ public class Rule {
             int x = kingX + dir[0];
             int y = kingY + dir[1];
             int obstacleCount = 0;
-            
+
             while (x >= 0 && x < 9 && y >= 0 && y < 10) {
                 int pieceId = piece[y][x];
                 if (pieceId != 0) {
@@ -303,19 +303,20 @@ public class Rule {
                                 Log.e("Rule", "将军检测: 车在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
+                            // 车需要 0 个障碍物直接攻击；否则车作为新的障碍物继续向后搜索
                         } else if (pieceId == 6 || pieceId == 13) {
                             if (obstacleCount == 1) {
                                 Log.e("Rule", "将军检测: 炮在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
+                            // 炮需要 1 个障碍物隔山打虎；否则炮作为新的障碍物继续向后搜索
+                        } else {
+                            // 对方非车/炮（如卒、马、士、象、对方将帅）也作为障碍物，
+                            // 这样后面的炮能正确通过"障碍物==1"判断实现隔山打虎
                         }
-                        if (pieceId != 6 && pieceId != 13 && pieceId != 5 && pieceId != 12) {
-                            break;
-                        }
-                        obstacleCount++;
-                    } else {
-                        obstacleCount++;
                     }
+                    // 任何非空格棋子（己方棋子、对方车/炮、对方非车/炮）都算作障碍物
+                    obstacleCount++;
                 }
                 x += dir[0];
                 y += dir[1];
