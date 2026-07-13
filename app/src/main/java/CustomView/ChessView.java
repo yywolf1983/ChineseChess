@@ -43,10 +43,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
 
 
-    public String[] thinkMood = new String[]{"😀", "🙂", "😶", "😣", "😵", "😭"};
-    public int thinkIndex = 0;
-    public int thinkFlag = 0;
-    public String thinkContent = "😀·····";
 
     public ChessView(Context context, ChessInfo chessInfo) {
         super(context);
@@ -381,26 +377,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             }
         }
 
-        if (chessInfo.status == 1) {
-            if (chessInfo.isMachine) {
-                if (thinkFlag == 0) {
-                    thinkContent = "";
-                    for (int i = 0; i < thinkIndex; i++) {
-                        thinkContent += '·';
-                    }
-                    thinkContent += thinkMood[thinkIndex];
-                    for (int i = thinkIndex + 1; i < 6; i++) {
-                        thinkContent += '·';
-                    }
-                    thinkIndex = (thinkIndex + 1) % 6;
-                }
-                thinkFlag = (thinkFlag + 1) % 5;
-                canvas.drawText(thinkContent, Board_width / 2, Board_height / 2 + Scale(57) * 7 / 20, paint);
-            } else {
-                thinkIndex = 0;
-                thinkContent = "😀·····";
-            }
-        }
         canvas.restore();
     }
 

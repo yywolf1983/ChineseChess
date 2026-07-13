@@ -818,14 +818,10 @@ public class PvMActivityAI {
 
         if (aiShouldMove) {
             // 立即在主线程启动 AI 思考动画，不等后台线程调度
-            this.activity.chessInfo.isMachine = true;
             if (this.activity.roundView != null) {
                 this.activity.roundView.setSearchDepth(1, this.activity.chessInfo.IsRedGo);
             }
             this.startAIThread();
-        } else {
-            // 人类回合，清除机器思考标志
-            this.activity.chessInfo.isMachine = false;
         }
         LogUtils.i("Perf", "checkAIMove total cost=" + (System.currentTimeMillis() - checkStartMs) + "ms");
     }
