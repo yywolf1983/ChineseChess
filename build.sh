@@ -8,6 +8,10 @@ YELLOW="\033[1;33m"
 RED="\033[0;31m"
 NC="\033[0m" # No Color
 
+# 项目路径
+PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ANDDEX_DIR="$(cd "$PROJECT_DIR/../anddex" && pwd)"
+
 # 显示帮助信息
 show_help() {
     echo "${GREEN}Android象棋项目构建脚本${NC}"
@@ -27,6 +31,48 @@ show_help() {
     echo ""
 }
 
+# 从anddex项目构建最新的registration-lib AAR并复制到app/libs/
+# $1 = build type (debug|release)
+prepare_registration_lib() {
+    local build_type="${1:-debug}"
+    echo "${YELLOW}从anddex项目构建registration-lib AAR ($build_type)...${NC}"
+
+    if [ ! -d "$ANDDEX_DIR" ]; then
+        echo "${RED}错误: anddex项目目录不存在: $ANDDEX_DIR${NC}"
+        exit 1
+    fi
+
+    # 使用anddex自身的构建脚本构建AAR
+    cd "$ANDDEX_DIR"
+    if [ "$build_type" = "release" ]; then
+        ./build.sh lib release
+    else
+        ./build.sh lib
+    fi
+
+    if [ $? -ne 0 ]; then
+        echo "${RED}registration-lib AAR构建失败${NC}"
+        exit 1
+    fi
+
+    # 复制AAR到app/libs/ (文件名不带debug/release)
+    local aar_src="$ANDDEX_DIR/registration-lib/build/outputs/aar/registration-lib-${build_type}.aar"
+    local aar_dst="$PROJECT_DIR/app/libs/registration-lib.aar"
+
+    if [ ! -f "$aar_src" ]; then
+        echo "${RED}错误: AAR文件不存在: $aar_src${NC}"
+        exit 1
+    fi
+
+    mkdir -p "$PROJECT_DIR/app/libs"
+    cp "$aar_src" "$aar_dst"
+    echo "${GREEN}AAR已复制: $aar_dst${NC}"
+    echo ""
+
+    # 回到项目目录
+    cd "$PROJECT_DIR"
+}
+
 # 显示项目信息
 show_info() {
     echo "${GREEN}项目信息${NC}"
@@ -42,6 +88,7 @@ show_info() {
 
 # 构建Debug版本
 build_debug() {
+    prepare_registration_lib "debug"
     echo "${YELLOW}开始构建Debug版本...${NC}"
     ./gradlew assembleDebug
     if [ $? -eq 0 ]; then
@@ -54,6 +101,7 @@ build_debug() {
 
 # 构建Release版本
 build_release() {
+    prepare_registration_lib "release"
     echo "${YELLOW}开始构建Release版本...${NC}"
     ./gradlew assembleRelease
     if [ $? -eq 0 ]; then
@@ -66,6 +114,7 @@ build_release() {
 
 # 安装Debug版本
 install_debug() {
+    prepare_registration_lib "debug"
     echo "${YELLOW}开始构建并安装Debug版本...${NC}"
     ./gradlew installDebug
     if [ $? -eq 0 ]; then
@@ -78,6 +127,7 @@ install_debug() {
 
 # 安装Release版本
 install_release() {
+    prepare_registration_lib "release"
     echo "${YELLOW}开始构建并安装Release版本...${NC}"
     ./gradlew installRelease
     if [ $? -eq 0 ]; then
@@ -114,6 +164,7 @@ run_tests() {
 
 # 生成APK文件
 build_apk() {
+    prepare_registration_lib "debug"
     echo "${YELLOW}生成Debug APK文件...${NC}"
     ./gradlew assembleDebug
     if [ $? -eq 0 ]; then
@@ -127,6 +178,7 @@ build_apk() {
 
 # 生成AAB文件
 build_bundle() {
+    prepare_registration_lib "debug"
     echo "${YELLOW}生成Android App Bundle...${NC}"
     ./gradlew bundleDebug
     if [ $? -eq 0 ]; then

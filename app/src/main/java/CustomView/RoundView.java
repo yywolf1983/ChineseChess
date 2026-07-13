@@ -4,6 +4,7 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.Path;
 import android.view.View;
 
 import java.util.List;
@@ -71,6 +72,11 @@ public class RoundView extends View {
     private Paint infoTextPaint; // 模式和评分画笔
     private Paint borderPaint; // 边框画笔
     private Paint modeTextPaint; // 模式文本画笔
+    private Paint winBgPaint; // 胜利背景画笔（缓存，避免onDraw中频繁创建）
+    private Path scoreBarPath; // 评分条裁剪路径（缓存，避免onDraw中频繁创建）
+    private Paint redBarPaint; // 红方进度条画笔（缓存，避免onDraw中频繁创建）
+    private Paint blackBarPaint; // 黑方进度条画笔（缓存，避免onDraw中频繁创建）
+    private HideLoadingCompleteRunnable hideLoadingCompleteRunnable; // 隐藏加载完成回调（缓存引用，便于移除）
     private int viewWidth = 0;
     private int viewHeight = 0;
 
@@ -90,13 +96,13 @@ public class RoundView extends View {
     // 设置对战模式
     public void setGameMode(int mode) {
         this.gameMode = mode;
-        invalidate();
+        postInvalidate();
     }
     
     // 设置走法评分（平滑过渡）
     public void setMoveScore(int score) {
         this.targetMoveScore = score;
-        invalidate();
+        postInvalidate();
     }
     
     // 立即更新走法评分（跳过平滑过渡）
@@ -110,7 +116,7 @@ public class RoundView extends View {
     public void setTime(long redTime, long blackTime) {
         this.redTime = redTime;
         this.blackTime = blackTime;
-        invalidate();
+        postInvalidate();
     }
     
     // 设置搜索深度
@@ -137,7 +143,7 @@ public class RoundView extends View {
             this.aiThinkingProgress = 0;
         }
         syncDotAnimation();
-        invalidate();
+        postInvalidate();
     }
     
     // 重载方法，保持向后兼容
@@ -159,7 +165,7 @@ public class RoundView extends View {
             this.aiThinkingProgress = 0;
         }
         syncDotAnimation();
-        invalidate();
+        postInvalidate();
     }
     
     // 设置 AI 加载状态
@@ -169,8 +175,12 @@ public class RoundView extends View {
             this.isShowLoadingComplete = true;
             this.showLoadingCompleteTime = System.currentTimeMillis();
             invalidate();
-            // 延迟2秒后隐藏加载完成提示
-            postDelayed(new HideLoadingCompleteRunnable(this), 2000);
+            // 延迟2秒后隐藏加载完成提示（复用缓存的Runnable实例，便于在onDetachedFromWindow中移除）
+            if (hideLoadingCompleteRunnable == null) {
+                hideLoadingCompleteRunnable = new HideLoadingCompleteRunnable(this);
+            }
+            removeCallbacks(hideLoadingCompleteRunnable);
+            postDelayed(hideLoadingCompleteRunnable, 2000);
         }
         this.isAILoading = loading;
         aiLoadingProgress = 0;
@@ -208,7 +218,7 @@ public class RoundView extends View {
             this.aiThinkingProgress = 0;
         }
         syncDotAnimation();
-        invalidate();
+        postInvalidate();
     }
     
     // 设置支招走法文本
@@ -284,10 +294,24 @@ public class RoundView extends View {
         infoTextPaint.setAntiAlias(true);
         infoTextPaint.setColor(Color.rgb(245, 240, 230));
         infoTextPaint.setFakeBoldText(true);
-        infoTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 
-            convertDpToPixel(0.3f, getContext()), 
-            convertDpToPixel(0.3f, getContext()), 
+        infoTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()),
+            convertDpToPixel(0.3f, getContext()),
+            convertDpToPixel(0.3f, getContext()),
             Color.argb(60, 0, 0, 0));
+
+        winBgPaint = new Paint();
+        winBgPaint.setStyle(Paint.Style.FILL);
+        winBgPaint.setColor(Color.argb(200, 255, 255, 255));
+
+        scoreBarPath = new Path();
+
+        redBarPaint = new Paint();
+        redBarPaint.setStyle(Paint.Style.FILL);
+        redBarPaint.setColor(Color.rgb(180, 30, 30));
+
+        blackBarPaint = new Paint();
+        blackBarPaint.setStyle(Paint.Style.FILL);
+        blackBarPaint.setColor(Color.rgb(40, 40, 40));
     }
     
     // 将dp转换为像素
@@ -341,6 +365,10 @@ public class RoundView extends View {
     @Override
     protected void onDetachedFromWindow() {
         stopDotAnimation();
+        // 移除隐藏加载完成提示的回调，防止内存泄漏
+        if (hideLoadingCompleteRunnable != null) {
+            removeCallbacks(hideLoadingCompleteRunnable);
+        }
         super.onDetachedFromWindow();
     }
 
@@ -784,7 +812,6 @@ public class RoundView extends View {
                 winColor = chessInfo.IsRedGo ? Color.rgb(0, 0, 0) : Color.rgb(255, 0, 0);
             }
             
-            Paint winBgPaint = new Paint();
             winBgPaint.setStyle(Paint.Style.FILL);
             winBgPaint.setColor(Color.argb(200, 255, 255, 255));
             canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, winBgPaint);
@@ -803,10 +830,10 @@ public class RoundView extends View {
             return;
         }
         
-        android.graphics.Path clipPath = new android.graphics.Path();
-        clipPath.addRoundRect(barRect, cornerRadius, cornerRadius, android.graphics.Path.Direction.CW);
+        scoreBarPath.reset();
+        scoreBarPath.addRoundRect(barRect, cornerRadius, cornerRadius, android.graphics.Path.Direction.CW);
         canvas.save();
-        canvas.clipPath(clipPath);
+        canvas.clipPath(scoreBarPath);
         
         float maxScore = 1000f;
         float scoreRatio = Math.abs(score) / maxScore;
@@ -815,14 +842,8 @@ public class RoundView extends View {
         float centerX = width / 2;
         float totalRange = barWidth / 2;
         
-        Paint redBarPaint = new Paint();
-        redBarPaint.setStyle(Paint.Style.FILL);
-        redBarPaint.setColor(Color.rgb(180, 30, 30));
-        
-        Paint blackBarPaint = new Paint();
-        blackBarPaint.setStyle(Paint.Style.FILL);
-        blackBarPaint.setColor(Color.rgb(40, 40, 40));
-        
+        // redBarPaint 和 blackBarPaint 已在 initPaints() 中初始化缓存
+
         float redStartX, redEndX, blackStartX, blackEndX;
         
         if (score > 0) {

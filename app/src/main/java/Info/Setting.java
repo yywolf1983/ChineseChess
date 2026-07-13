@@ -27,10 +27,10 @@ public class Setting implements Serializable {
         depth = Math.max(5, Math.min(120, sharedPreferences.getInt("depth", 10)));
         skillLevel = Math.max(1, Math.min(20, sharedPreferences.getInt("skillLevel", 20)));
         multiPV = Math.max(1, Math.min(5, sharedPreferences.getInt("multiPV", 1)));
-        contempt = sharedPreferences.getInt("contempt", 20);
+        this.contempt = Math.max(-200, Math.min(200, sharedPreferences.getInt("contempt", 20)));
         forceVariation = sharedPreferences.getBoolean("forceVariation", true);
-        threads = sharedPreferences.getInt("threads", 0);
-        hashMB = sharedPreferences.getInt("hashMB", 0);
+        this.threads = Math.max(0, sharedPreferences.getInt("threads", 0));
+        this.hashMB = Math.max(0, sharedPreferences.getInt("hashMB", 0));
         evalFile = sharedPreferences.getString("evalFile", "pikafish.nnue");
         numaPolicy = sharedPreferences.getString("numaPolicy", "auto");
     }

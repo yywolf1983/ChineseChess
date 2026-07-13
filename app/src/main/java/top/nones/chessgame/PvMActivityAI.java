@@ -25,8 +25,8 @@ public class PvMActivityAI {
     private int aiRetryCount = 0;
     private final AtomicBoolean aiAnalyzingState = new AtomicBoolean(false);
     public volatile boolean isAIAnalyzing = false;
-    // 追踪当前持有分析状态的线程 ID，用于 tryFinishAnalyzing 避免误清新 AI 状态
-    private volatile long currentAIThreadId = -1;
+    // AI 代际：每次 tryStartAnalyzing 递增，用于 tryFinishAnalyzing 判断是否仍持有状态
+    private final java.util.concurrent.atomic.AtomicInteger aiGeneration = new java.util.concurrent.atomic.AtomicInteger(0);
     // 标记 AI 是否被外部中断（stopAIAnalysis），用于让旧 AI 线程尽快退出
     private final AtomicBoolean aiInterrupted = new AtomicBoolean(false);
     // 使用有界队列和自定义拒绝策略，避免线程堆积
@@ -36,7 +36,6 @@ public class PvMActivityAI {
     
     public PvMActivityAI(PvMActivity activity) {
         this.activity = activity;
-        this.aiMoveHistory = new java.util.ArrayList<>();
         initExecutorService();
     }
     
@@ -56,19 +55,19 @@ public class PvMActivityAI {
             corePoolSize, maximumPoolSize, keepAliveTime, TimeUnit.SECONDS,
             new java.util.concurrent.ArrayBlockingQueue<>(20),
             java.util.concurrent.Executors.defaultThreadFactory(),
-            new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy()  // 线程池饱和时在调用者线程执行，避免任务丢失
+            new java.util.concurrent.ThreadPoolExecutor.DiscardOldestPolicy()
         );
         executorService.allowCoreThreadTimeOut(true);
     }
     
     // 记录AI着法历史
-    private java.util.List<String> aiMoveHistory;
+    private final java.util.List<String> aiMoveHistory = java.util.Collections.synchronizedList(new java.util.ArrayList<>());
     
     public Move calculateAIMove() {
         return calculateAIMoveWithDepthUpdate();
     }
     
-    private int currentAIScore = 0;
+    public volatile int currentAIScore;
 
     public Move calculateAIMoveWithDepthUpdate() {
         boolean isRed = this.activity != null && this.activity.chessInfo != null && this.activity.chessInfo.IsRedGo;
@@ -657,12 +656,9 @@ public class PvMActivityAI {
                 return;
             }
 
-            // 更新 currentAIThreadId 为当前后台线程 ID，
-            // 确保 tryFinishAnalyzing 能正确匹配（tryStartAnalyzing 在主线程调用）
-            if (aiInstance.aiAnalyzingState.get()) {
-                aiInstance.currentAIThreadId = Thread.currentThread().getId();
-            } else {
-                // 分析状态已被清除（中断），直接返回
+            // 记录当前 AI 代际，用于 tryFinishAnalyzing 判断是否仍持有状态
+            final int myGeneration = aiInstance.aiGeneration.get();
+            if (!aiInstance.aiAnalyzingState.get()) {
                 return;
             }
 
@@ -683,7 +679,7 @@ public class PvMActivityAI {
             // updateSettings 期间可能被中断，检查后跳过搜索
             if (aiInstance.aiInterrupted.get()) {
                 LogUtils.i("PvMActivityAI", "updateSettings 后发现已被中断，跳过搜索");
-                aiInstance.tryFinishAnalyzing();
+                aiInstance.tryFinishAnalyzing(myGeneration);
                 return;
             }
 
@@ -698,7 +694,7 @@ public class PvMActivityAI {
                 aiInstance.stopAISearch();
                 // 只有当前线程仍持有分析状态时才释放
                 // （stopAIAnalysis 可已释放并启动了新 AI，不能误清新状态）
-                aiInstance.tryFinishAnalyzing();
+                aiInstance.tryFinishAnalyzing(myGeneration);
             }
             
             currentActivity = aiInstance.activity;
@@ -851,6 +847,9 @@ public class PvMActivityAI {
                 return;
             }
 
+            // 记录当前 AI 代际，用于 tryFinishAnalyzing 判断是否仍持有状态
+            final int myGeneration = aiInstance.aiGeneration.get();
+
             // 启动深度更新任务
             aiInstance.startAISearch(isRed);
 
@@ -877,7 +876,7 @@ public class PvMActivityAI {
             // updateSettings 期间可能被中断，检查后跳过搜索
             if (aiInstance.aiInterrupted.get()) {
                 LogUtils.i("PvMActivityAI", "支招 updateSettings 后发现已被中断，跳过搜索");
-                aiInstance.tryFinishAnalyzing();
+                aiInstance.tryFinishAnalyzing(myGeneration);
                 return;
             }
 
@@ -934,7 +933,7 @@ public class PvMActivityAI {
                     });
                 }
 
-                aiInstance.tryFinishAnalyzing();
+                aiInstance.tryFinishAnalyzing(myGeneration);
 
                 // 被外部中断时不显示支招结果，避免中断后旧结果仍然弹出
                 if (aiInstance.aiInterrupted.get()) {
@@ -1413,8 +1412,8 @@ public class PvMActivityAI {
         boolean started = aiAnalyzingState.compareAndSet(false, true);
         if (started) {
             isAIAnalyzing = true;
-            currentAIThreadId = Thread.currentThread().getId();
-            aiInterrupted.set(false);  // 清除中断标志，开始新的分析
+            aiGeneration.incrementAndGet();  // 递增代际
+            aiInterrupted.set(false);  // 重置中断标志
             // 支招按钮变为"中断"状态（UI 线程更新）
             notifySuggestButton(true);
         }
@@ -1422,23 +1421,21 @@ public class PvMActivityAI {
     }
 
     private void finishAnalyzing() {
-        aiAnalyzingState.set(false);
-        isAIAnalyzing = false;
-        currentAIThreadId = -1;
-        aiInterrupted.set(true);  // 标记被外部中断，旧线程应尽快退出
-        // 恢复支招按钮为"支招"状态
-        notifySuggestButton(false);
+        if (aiAnalyzingState.compareAndSet(true, false)) {
+            isAIAnalyzing = false;
+            aiInterrupted.set(true);
+            // 恢复支招按钮为"支招"状态
+            notifySuggestButton(false);
+        }
     }
 
     /**
      * 只有当前线程仍持有分析状态时才释放。
      * 避免误清 stopAIAnalysis 后新启动的 AI 状态。
      */
-    private void tryFinishAnalyzing() {
-        long myThreadId = Thread.currentThread().getId();
-        if (currentAIThreadId == myThreadId && aiAnalyzingState.compareAndSet(true, false)) {
+    private void tryFinishAnalyzing(int myGeneration) {
+        if (myGeneration == aiGeneration.get() && aiAnalyzingState.compareAndSet(true, false)) {
             isAIAnalyzing = false;
-            currentAIThreadId = -1;
             // 恢复支招按钮为"支招"状态
             notifySuggestButton(false);
         }

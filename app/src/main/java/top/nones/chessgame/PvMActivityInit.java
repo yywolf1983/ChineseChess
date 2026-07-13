@@ -888,6 +888,9 @@ public class PvMActivityInit {
         
         @Override
         public void onInitializationStarted() {
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
             if (activity != null && activity.roundView != null) {
                 activity.runOnUiThread(new AILoadingStartRunnable(activity));
             }
@@ -895,6 +898,9 @@ public class PvMActivityInit {
         
         @Override
         public void onInitializationCompleted() {
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
             if (activity != null && activity.roundView != null) {
                 activity.runOnUiThread(new AILoadingCompleteRunnable(activity));
             }
@@ -907,6 +913,9 @@ public class PvMActivityInit {
 
         @Override
         public void onInitializationFailed() {
+            if (activity == null || activity.isFinishing() || activity.isDestroyed()) {
+                return;
+            }
             if (activity != null && activity.roundView != null) {
                 activity.runOnUiThread(new AILoadingFailureRunnable(activity));
             }

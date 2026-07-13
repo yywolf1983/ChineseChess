@@ -954,6 +954,9 @@ public class PikafishAI {
     public int evaluatePositionQuickly(ChessInfo chessInfo) {
         if (!initialized && !waitForInit(5000)) return 0;
 
+        // 记录本次搜索的代际，用于检测中断
+        final int myGeneration = searchGeneration.get();
+
         // 尝试获取搜索锁，如果被占用就停止当前搜索后重试
         if (!searchLock.tryLock()) {
             shouldStop.set(true);
@@ -987,7 +990,7 @@ public class PikafishAI {
             long startTime = System.currentTimeMillis();
             long maxWait = 2000;
 
-            while (!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted() && searchGeneration.get() == myGeneration) {
                 if (System.currentTimeMillis() - startTime > maxWait) {
                     sendCommand("stop");
                     break;
@@ -1217,12 +1220,19 @@ public class PikafishAI {
     }
 
     public void interrupt() {
-        searchGeneration.incrementAndGet();  // 递增代际，使旧搜索失效
+        searchGeneration.incrementAndGet();
         shouldStop.set(true);
-        if (isSearching.get()) {
-            sendCommand("stop");
-            // 不等待 bestmove，由搜索线程自己处理
+        // 尝试获取锁确保 stop 在 go 之后发送
+        if (searchLock.tryLock()) {
+            try {
+                if (isSearching.get()) {
+                    sendCommand("stop");
+                }
+            } finally {
+                searchLock.unlock();
+            }
         }
+        // 如果获取不到锁，搜索线程会在循环中检测到代际变化并自行发送 stop
     }
 
     public void updateSettings(int skillLevel, int multiPV) {
@@ -1275,6 +1285,18 @@ public class PikafishAI {
         // 持有全局锁，防止与新 PikafishAI 的 initialize() 并发
         synchronized (GLOBAL_INIT_LOCK) {
             shouldStop.set(true);
+            // 先中断当前搜索，等待搜索线程退出
+            searchGeneration.incrementAndGet();
+            shouldStop.set(true);
+            if (searchLock.tryLock()) {
+                try {
+                    if (isSearching.get()) {
+                        sendCommand("stop");
+                    }
+                } finally {
+                    searchLock.unlock();
+                }
+            }
             isSearching.set(false);
 
             boolean engineQuitCleanly = false;

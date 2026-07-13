@@ -6,9 +6,22 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import Info.ChessPiece;
 import Info.Pos;
 
 public class Rule {
+
+    private static final String TAG = "Rule";
+    private static final int BOARD_COLS = 9;
+    private static final int BOARD_ROWS = 10;
+
+    public static int[][] copyBoard(int[][] piece) {
+        int[][] copy = new int[BOARD_ROWS][BOARD_COLS];
+        for (int i = 0; i < BOARD_ROWS; i++) {
+            System.arraycopy(piece[i], 0, copy[i], 0, BOARD_COLS);
+        }
+        return copy;
+    }
     public static int[][] area = {
             {3, 3, 3, 4, 4, 4, 3, 3, 3},
             {3, 3, 3, 4, 4, 4, 3, 3, 3},
@@ -236,56 +249,38 @@ public class Rule {
     }
 
     public static boolean isKingDanger(int[][] piece, boolean isRedKing) {
-        // 参数验证
-        if (piece == null || piece.length != 10) {
+        if (piece == null || piece.length != BOARD_ROWS) {
             return false;
         }
-        for (int i = 0; i < 10; i++) {
-            if (piece[i] == null || piece[i].length != 9) {
+        for (int i = 0; i < BOARD_ROWS; i++) {
+            if (piece[i] == null || piece[i].length != BOARD_COLS) {
                 return false;
             }
         }
-        
+
         int kingX = -1, kingY = -1;
         boolean foundKing = false;
-        
-        // 在整个棋盘上搜索王的位置
-        if (isRedKing) {
-            // 搜索红帅
-            for (int y = 0; y < 10; y++) {
-                for (int x = 0; x < 9; x++) {
-                    if (piece[y][x] == 8) { // 红帅
-                        kingX = x;
-                        kingY = y;
-                        foundKing = true;
-                        break;
-                    }
+        int kingId = isRedKing ? ChessPiece.RED_KING : ChessPiece.BLACK_KING;
+        // 只在九宫格范围内搜索王（红方0-2行，黑方7-9行，列3-5）
+        int startY = isRedKing ? 0 : 7;
+        int endY = isRedKing ? 3 : 10;
+        for (int y = startY; y < endY; y++) {
+            for (int x = 3; x <= 5; x++) {
+                if (piece[y][x] == kingId) {
+                    kingX = x;
+                    kingY = y;
+                    foundKing = true;
+                    break;
                 }
-                if (foundKing) break;
             }
-        } else {
-            // 搜索黑将
-            for (int y = 0; y < 10; y++) {
-                for (int x = 0; x < 9; x++) {
-                    if (piece[y][x] == 1) { // 黑将
-                        kingX = x;
-                        kingY = y;
-                        foundKing = true;
-                        break;
-                    }
-                }
-                if (foundKing) break;
-            }
+            if (foundKing) break;
         }
         
         if (!foundKing) {
-            return true; // 王不存在，视为被将军
+            return true;
         }
         
-        // 优化：只检查可能攻击到王的对方棋子
-        // 定义攻击方向
-        int[][] attackDirections = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}}; // 车、炮的直线方向
-        int[][] knightMoves = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2}, {2, 1}, {2, -1}, {-2, 1}, {-2, -1}}; // 马的走法
+        int[][] attackDirections = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
         
         // 1. 检查车和炮的直线攻击
         for (int[] dir : attackDirections) {
@@ -293,29 +288,23 @@ public class Rule {
             int y = kingY + dir[1];
             int obstacleCount = 0;
 
-            while (x >= 0 && x < 9 && y >= 0 && y < 10) {
+            while (x >= 0 && x < BOARD_COLS && y >= 0 && y < BOARD_ROWS) {
                 int pieceId = piece[y][x];
-                if (pieceId != 0) {
-                    boolean isEnemy = isRedKing ? (pieceId >= 1 && pieceId <= 7) : (pieceId >= 8 && pieceId <= 14);
+                if (pieceId != ChessPiece.EMPTY) {
+                    boolean isEnemy = isRedKing ? ChessPiece.isBlack(pieceId) : ChessPiece.isRed(pieceId);
                     if (isEnemy) {
-                        if (pieceId == 5 || pieceId == 12) {
+                        if (pieceId == ChessPiece.BLACK_ROOK || pieceId == ChessPiece.RED_ROOK) {
                             if (obstacleCount == 0) {
-                                Log.e("Rule", "将军检测: 车在 (" + x + ", " + y + ") 将军!");
+                                Log.d(TAG, "将军检测: 车在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
-                            // 车需要 0 个障碍物直接攻击；否则车作为新的障碍物继续向后搜索
-                        } else if (pieceId == 6 || pieceId == 13) {
+                        } else if (pieceId == ChessPiece.BLACK_CANNON || pieceId == ChessPiece.RED_CANNON) {
                             if (obstacleCount == 1) {
-                                Log.e("Rule", "将军检测: 炮在 (" + x + ", " + y + ") 将军!");
+                                Log.d(TAG, "将军检测: 炮在 (" + x + ", " + y + ") 将军!");
                                 return true;
                             }
-                            // 炮需要 1 个障碍物隔山打虎；否则炮作为新的障碍物继续向后搜索
-                        } else {
-                            // 对方非车/炮（如卒、马、士、象、对方将帅）也作为障碍物，
-                            // 这样后面的炮能正确通过"障碍物==1"判断实现隔山打虎
                         }
                     }
-                    // 任何非空格棋子（己方棋子、对方车/炮、对方非车/炮）都算作障碍物
                     obstacleCount++;
                 }
                 x += dir[0];
@@ -323,26 +312,20 @@ public class Rule {
             }
         }
         
-        // 2. 检查马的攻击
-        // 遍历整个棋盘，寻找对方的马
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
-                int pieceId = piece[y][x];
-                boolean isEnemy = isRedKing ? (pieceId == 4) : (pieceId == 11);
-                if (isEnemy) {
-                    // 检查马是否能攻击到王
-                    int dx = kingX - x;
-                    int dy = kingY - y;
-                    // 马的攻击模式是日字，即 (±2, ±1) 或 (±1, ±2)
-                    if ((Math.abs(dx) == 2 && Math.abs(dy) == 1) || (Math.abs(dx) == 1 && Math.abs(dy) == 2)) {
-                        // 检查马腿
-                        int legX = x + dx / 2;
-                        int legY = y + dy / 2;
-                        if (legX >= 0 && legX < 9 && legY >= 0 && legY < 10 && piece[legY][legX] == 0) {
-                            Log.e("Rule", "将军检测: 马在 (" + x + ", " + y + ") 将军!");
-                            return true;
-                        }
-                    }
+        // 2. 检查马的攻击（从王出发检查 8 个日字点，避免遍历整个棋盘）
+        int[][] knightOffsets = {{1, 2}, {1, -2}, {-1, 2}, {-1, -2},
+                                 {2, 1}, {2, -1}, {-2, 1}, {-2, -1}};
+        int enemyHorse = isRedKing ? ChessPiece.BLACK_HORSE : ChessPiece.RED_HORSE;
+        for (int[] offset : knightOffsets) {
+            int hx = kingX + offset[0];
+            int hy = kingY + offset[1];
+            if (hx >= 0 && hx < BOARD_COLS && hy >= 0 && hy < BOARD_ROWS
+                    && piece[hy][hx] == enemyHorse) {
+                int legX = kingX + (offset[0] == 0 ? 0 : offset[0] / 2);
+                int legY = kingY + (offset[1] == 0 ? 0 : offset[1] / 2);
+                if (piece[legY][legX] == ChessPiece.EMPTY) {
+                    Log.d(TAG, "将军检测: 马在 (" + hx + ", " + hy + ") 将军!");
+                    return true;
                 }
             }
         }
@@ -350,81 +333,71 @@ public class Rule {
         // 3. 检查兵/卒的攻击
         int[][] pawnMoves;
         if (isRedKing) {
-            pawnMoves = new int[][]{{0, 1}, {1, 0}, {-1, 0}}; // 黑卒的可能攻击方向
+            pawnMoves = new int[][]{{0, 1}, {1, 0}, {-1, 0}};
         } else {
-            pawnMoves = new int[][]{{0, -1}, {1, 0}, {-1, 0}}; // 红兵的可能攻击方向
+            pawnMoves = new int[][]{{0, -1}, {1, 0}, {-1, 0}};
         }
         
         for (int[] move : pawnMoves) {
             int x = kingX + move[0];
             int y = kingY + move[1];
             
-            if (x >= 0 && x < 9 && y >= 0 && y < 10) {
+            if (x >= 0 && x < BOARD_COLS && y >= 0 && y < BOARD_ROWS) {
                 int pieceId = piece[y][x];
-                boolean isEnemy = isRedKing ? (pieceId == 7) : (pieceId == 14);
+                boolean isEnemy = isRedKing ? (pieceId == ChessPiece.BLACK_PAWN) : (pieceId == ChessPiece.RED_PAWN);
                 if (isEnemy) {
-                    Log.e("Rule", "将军检测: 卒在 (" + x + ", " + y + ") 将军!");
+                    Log.d(TAG, "将军检测: 卒在 (" + x + ", " + y + ") 将军!");
                     return true;
                 }
             }
         }
         
-        // 4. 检查将/帅的对面攻击（跑将）
-        if (kingX >= 0 && kingX < 9) {
-            // 搜索对方的王
-            int enemyKingId = isRedKing ? 1 : 8;
-            int enemyKingX = -1;
-            int enemyKingY = -1;
+        // 4. 检查将/帅的对面攻击（飞将）— 只在对方九宫格的同一列查找
+        if (kingX >= 3 && kingX <= 5) {
+            int enemyKingId = isRedKing ? ChessPiece.BLACK_KING : ChessPiece.RED_KING;
+            int enemyStartY = isRedKing ? 7 : 0;
+            int enemyEndY = isRedKing ? 10 : 3;
             boolean foundEnemyKing = false;
-            
-            for (int y = 0; y < 10; y++) {
-                for (int x = 0; x < 9; x++) {
-                    if (piece[y][x] == enemyKingId) {
-                        enemyKingX = x;
-                        enemyKingY = y;
-                        foundEnemyKing = true;
-                        break;
-                    }
+            int enemyKingY = -1;
+            for (int y = enemyStartY; y < enemyEndY; y++) {
+                if (piece[y][kingX] == enemyKingId) {
+                    foundEnemyKing = true;
+                    enemyKingY = y;
+                    break;
                 }
-                if (foundEnemyKing) break;
             }
-            
-            // 如果找到对方的王，检查是否在同一条直线上且中间没有其他棋子
-            if (foundEnemyKing && enemyKingX == kingX) {
+            if (foundEnemyKing) {
                 boolean pathClear = true;
-                int startY = Math.min(kingY, enemyKingY) + 1;
-                int endY = Math.max(kingY, enemyKingY);
-                
-                for (int y = startY; y < endY; y++) {
-                    if (piece[y][kingX] != 0) {
+                int flyStartY = Math.min(kingY, enemyKingY) + 1;
+                int flyEndY = Math.max(kingY, enemyKingY);
+                for (int y = flyStartY; y < flyEndY; y++) {
+                    if (piece[y][kingX] != ChessPiece.EMPTY) {
                         pathClear = false;
                         break;
                     }
                 }
-                
                 if (pathClear) {
-                    Log.e("Rule", "将军检测: 将在 (" + enemyKingX + ", " + enemyKingY + ") 将军!");
+                    Log.d(TAG, "将军检测: 将在 (" + kingX + ", " + enemyKingY + ") 将军!");
                     return true;
                 }
             }
         }
         
-        // 5. 检查士的攻击（士只能在九宫格内斜着走）
+        // 5. 检查士的攻击
         int[][] advisorMoves = {{1, 1}, {1, -1}, {-1, 1}, {-1, -1}};
         for (int[] move : advisorMoves) {
             int x = kingX + move[0];
             int y = kingY + move[1];
             
-            // 检查是否在九宫格内
-            boolean inPalace = isRedKing ? 
-                (x >= 3 && x <= 5 && y >= 0 && y <= 2) : 
+            boolean inPalace = isRedKing ?
+                (x >= 3 && x <= 5 && y >= 0 && y <= 2) :
                 (x >= 3 && x <= 5 && y >= 7 && y <= 9);
             
             if (inPalace) {
                 int pieceId = piece[y][x];
-                boolean isEnemy = isRedKing ? (pieceId == 2) : (pieceId == 9);
+                boolean isEnemy = isRedKing ? (pieceId == ChessPiece.BLACK_ADVISOR) : (pieceId == ChessPiece.RED_ADVISOR);
                 if (isEnemy) {
-                    Log.e("Rule", "将军检测: 士在 (" + x + ", " + y + ") 将军!");
+                    Log.d(TAG, "将军检测: 士在 (" + x + ", " + y + ") 将军!");
                     return true;
                 }
             }
@@ -605,124 +578,67 @@ public class Rule {
     
     // 检查一个棋子是否能够解将
     public static boolean CanDefendCheck(int[][] piece, int fromX, int fromY, int pieceID) {
-        // 获取当前玩家颜色
-        boolean isRed = pieceID >= 8 && pieceID <= 14;
-        
-        // 获取所有可能的移动位置
+        boolean isRed = ChessPiece.isRed(pieceID);
         List<Pos> possibleMoves = PossibleMoves(piece, fromX, fromY, pieceID);
-        
-        // 检查是否有任何移动可以解将
+
         for (Pos move : possibleMoves) {
-            // 创建棋盘的临时副本
-            int[][] tempPiece = new int[10][9];
-            for (int i = 0; i < 10; i++) {
-                for (int j = 0; j < 9; j++) {
-                    tempPiece[i][j] = piece[i][j];
-                }
-            }
-            
-            // 检查是否吃掉了对方的老将
             int capturedPiece = piece[move.y][move.x];
-            boolean isCaptureKing = capturedPiece == 1 || capturedPiece == 8;
-            
-            // 执行移动
-            tempPiece[move.y][move.x] = pieceID;
-            tempPiece[fromY][fromX] = 0;
-            
-            // 如果吃掉了对方老将，这个移动可以解将（游戏结束）
+            boolean isCaptureKing = capturedPiece == ChessPiece.BLACK_KING
+                    || capturedPiece == ChessPiece.RED_KING;
             if (isCaptureKing) {
                 return true;
             }
-            
-            // 检查移动后是否还被将军
+
+            int[][] tempPiece = copyBoard(piece);
+            tempPiece[move.y][move.x] = pieceID;
+            tempPiece[fromY][fromX] = ChessPiece.EMPTY;
+
             if (!isKingDanger(tempPiece, isRed)) {
                 return true;
             }
         }
-        
+
         return false;
     }
 
-    // 检查是否将死
     public static boolean isCheckmate(int[][] piece, boolean isRed) {
-        // 首先检查是否被将军
         if (!isKingDanger(piece, isRed)) {
-            return false; // 没有被将军，不是将死
+            return false;
         }
-        
-        // 检查是否有任何棋子可以解将
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
+        for (int y = 0; y < BOARD_ROWS; y++) {
+            for (int x = 0; x < BOARD_COLS; x++) {
                 int pieceID = piece[y][x];
-                if (pieceID == 0) {
-                    continue;
-                }
-                
-                // 检查是否是当前玩家的棋子
-                boolean pieceIsRed = pieceID >= 8 && pieceID <= 14;
-                if (pieceIsRed != isRed) {
-                    continue;
-                }
-                
-                // 检查这个棋子是否能够解将
+                if (pieceID == ChessPiece.EMPTY) continue;
+                if (ChessPiece.isRed(pieceID) != isRed) continue;
                 if (CanDefendCheck(piece, x, y, pieceID)) {
-                    return false; // 有棋子可以解将，不是将死
+                    return false;
                 }
             }
         }
-        
-        return true; // 被将军且无法解将，是将死
+        return true;
     }
-    
-    // 检查是否被困毙
+
     public static boolean isStalemate(int[][] piece, boolean isRed) {
-        // 首先检查是否被将军，如果被将军则不是被困毙
         if (isKingDanger(piece, isRed)) {
             return false;
         }
-        
-        // 检查是否有任何棋子可以移动
-        for (int y = 0; y < 10; y++) {
-            for (int x = 0; x < 9; x++) {
+        for (int y = 0; y < BOARD_ROWS; y++) {
+            for (int x = 0; x < BOARD_COLS; x++) {
                 int pieceID = piece[y][x];
-                if (pieceID == 0) {
-                    continue;
-                }
-                
-                // 检查是否是当前玩家的棋子
-                boolean pieceIsRed = pieceID >= 8 && pieceID <= 14;
-                if (pieceIsRed != isRed) {
-                    continue;
-                }
-                
-                // 获取该棋子的所有可能移动位置
+                if (pieceID == ChessPiece.EMPTY) continue;
+                if (ChessPiece.isRed(pieceID) != isRed) continue;
                 List<Pos> possibleMoves = PossibleMoves(piece, x, y, pieceID);
-                if (!possibleMoves.isEmpty()) {
-                    // 检查是否有合法的移动
-                    for (Pos move : possibleMoves) {
-                        // 创建棋盘的临时副本
-                        int[][] tempPiece = new int[10][9];
-                        for (int i = 0; i < 10; i++) {
-                            for (int j = 0; j < 9; j++) {
-                                tempPiece[i][j] = piece[i][j];
-                            }
-                        }
-                        
-                        // 执行移动
-                        int capturedPiece = piece[move.y][move.x];
-                        tempPiece[move.y][move.x] = pieceID;
-                        tempPiece[y][x] = 0;
-                        
-                        // 检查移动后是否会导致自己被将军
-                        if (!isKingDanger(tempPiece, isRed)) {
-                            return false; // 有合法移动，不是被困毙
-                        }
+                for (Pos move : possibleMoves) {
+                    int[][] tempPiece = copyBoard(piece);
+                    tempPiece[move.y][move.x] = pieceID;
+                    tempPiece[y][x] = ChessPiece.EMPTY;
+                    if (!isKingDanger(tempPiece, isRed)) {
+                        return false;
                     }
                 }
             }
         }
-        
-        return true; // 没有合法移动，是被困毙
+        return true;
     }
 
     public static boolean isKingFaceToFace(int[][] piece) {

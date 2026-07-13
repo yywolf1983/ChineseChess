@@ -18,9 +18,13 @@ public class ChessInfo implements Cloneable, Serializable {
     private static final long serialVersionUID = -8764412462496314495L;
     private static final int MAX_POSITION_HISTORY_SIZE = 100; // 最大局面历史记录数量
 
-    // 线程安全锁对象
-    private final transient Object lock = new Object();
+    // 线程安全锁对象（非 final，反序列化后需重新初始化）
+    private transient Object lock = new Object();
 
+    // ============ 线程安全说明 ============
+    // 以下字段为 public 以便外部访问，但并发访问时必须通过 synchronized(lock) 保护。
+    // 跨线程读写（如 AI 后台线程读取 piece 数组）时，调用方需确保同步。
+    // 未来重构建议：将字段改为 private，提供带同步的 getter/setter。
     public int[][] piece;
     public boolean IsRedGo;
     public Pos prePos;
@@ -502,8 +506,8 @@ public class ChessInfo implements Cloneable, Serializable {
         synchronized (lock) {
             String currentHash = generatePositionHashInternal();
             Integer count = positionHistory.get(currentHash);
-            int totalCount = (count != null ? count : 0) + 1;
-            return totalCount >= 3;
+            // positionHistory 已通过 recordCurrentPositionInternal() 记录当前局面，无需 +1
+            return count != null && count >= 3;
         }
     }
     
@@ -699,7 +703,12 @@ public class ChessInfo implements Cloneable, Serializable {
      */
     private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
         in.defaultReadObject();
-        
+
+        // 反序列化后 lock 为 null（transient 字段不参与序列化），需重新初始化
+        if (lock == null) {
+            lock = new Object();
+        }
+
         synchronized (lock) {
             // 确保 positionHistory 被初始化为线程安全版本
             if (positionHistory == null) {

@@ -41,6 +41,7 @@ local.properties
 # Build outputs
 build/
 */build/
+app/libs/
 
 # Generated files
 bin/

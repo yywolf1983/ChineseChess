@@ -69,8 +69,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 从HomeActivity移动过来的静态变量和方法
     public static final int MIN_CLICK_DELAY_TIME = 100;
-    public static long curClickTime = 0L;
-    public static long lastClickTime = 0L;
+    // 防抖时间戳（实例变量，避免 Activity 重建后状态不一致）
+    public long curClickTime = 0L;
     
     // 实例变量，不再使用静态变量避免内存泄漏
     public Setting setting;
@@ -96,7 +96,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 继续对局后的回合计数器，用于控制和棋提示的频率
     public int continueGameRoundCount = 0;
     // AI相关变量
-    public PikafishAI pikafishAI;
+    public volatile PikafishAI pikafishAI;
     
     // 行棋时间记录
     public long redTime = 0; // 红方行棋时间（毫秒）
@@ -105,6 +105,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 时间更新线程
     private ScheduledExecutorService timeUpdateExecutor;
+
+    // 局面评估线程池（单线程，新任务取消旧任务）
+    private ScheduledExecutorService evaluationExecutor;
     
     // 模块管理器
     public PvMActivityNotation notationManager;
@@ -166,6 +169,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 初始化时间更新线程
     private void initTimeUpdateExecutor() {
         timeUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
+        evaluationExecutor = Executors.newSingleThreadScheduledExecutor();
         // 每100毫秒更新一次时间显示
         timeUpdateExecutor.scheduleAtFixedRate(() -> {
             if (currentTurnStartTime > 0 && chessInfo != null && roundView != null) {
@@ -282,7 +286,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             snapshotInfo.IsRedGo = chessInfo.IsRedGo;
             snapshotInfo.setting = chessInfo.setting;
             final boolean isRedTurnNow = chessInfo.IsRedGo;
-            new Thread(() -> {
+            evaluationExecutor.submit(() -> {
                 int score = pikafishAI.evaluatePositionQuickly(snapshotInfo);
                 score = normalizeScore(score, isRedTurnNow);
                 final int finalScore = score;
@@ -291,7 +295,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                         roundView.setMoveScore(finalScore);
                     }
                 });
-            }).start();
+            });
         }
     }
     
@@ -768,7 +772,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         super.onActivityResult(requestCode, resultCode, data);
         LogUtils.d("PvMActivity", "onActivityResult: requestCode=" + requestCode + ", resultCode=" + resultCode);
         
-        if (requestCode == 1001 && resultCode == RESULT_OK) {
+        if (requestCode == 1001 && resultCode == RESULT_OK && data != null) {
             // 从NotationActivity返回，加载选中的棋谱
                 String fen = data.getStringExtra("fen");
                 if (fen != null) {
@@ -779,13 +783,13 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     notationManager.setCurrentMoveIndex(0);
                     notationManager.generateBoardStateFromNotation();
                 }
-        } else if (requestCode == 1002 && resultCode == RESULT_OK) {
+        } else if (requestCode == 1002 && resultCode == RESULT_OK && data != null) {
             // 从文件选择器返回，加载选中的棋谱文件
             Uri uri = data.getData();
             if (uri != null) {
                 notationManager.loadChessNotationFromUri(uri);
             }
-        } else if (requestCode == 1003 && resultCode == RESULT_OK) {
+        } else if (requestCode == 1003 && resultCode == RESULT_OK && data != null) {
             // 从文件保存对话框返回，保存棋谱
             Uri uri = data.getData();
             if (uri != null) {
@@ -875,6 +879,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (timeUpdateExecutor != null) {
             timeUpdateExecutor.shutdownNow();
         }
+        if (evaluationExecutor != null) {
+            evaluationExecutor.shutdownNow();
+        }
+
+        // 释放 MediaPlayer 资源
+        releaseMediaPlayers();
 
         // 将可能阻塞的关闭逻辑放到后台，避免destroy阶段卡顿
         new Thread(() -> {
@@ -893,5 +903,27 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             weakInstance.clear();
             weakInstance = null;
         }
+    }
+
+    private void releaseMediaPlayers() {
+        MediaPlayer[] players = {backMusic, selectMusic, clickMusic, captureMusic, checkMusic, winMusic};
+        for (MediaPlayer mp : players) {
+            if (mp != null) {
+                try {
+                    if (mp.isPlaying()) {
+                        mp.stop();
+                    }
+                    mp.release();
+                } catch (Exception e) {
+                    LogUtils.e("PvMActivity", "Error releasing MediaPlayer", e);
+                }
+            }
+        }
+        backMusic = null;
+        selectMusic = null;
+        clickMusic = null;
+        captureMusic = null;
+        checkMusic = null;
+        winMusic = null;
     }
 }
