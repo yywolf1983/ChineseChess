@@ -803,16 +803,29 @@ public class PvMActivityAI {
             this.activity.chessInfo.setting = this.activity.setting;
         }
         
+        boolean aiShouldMove = false;
         if (this.activity.gameMode == 1) {
             if (!this.activity.chessInfo.IsRedGo) {
-                this.startAIThread();
+                aiShouldMove = true;
             }
         } else if (this.activity.gameMode == 2) {
             if (this.activity.chessInfo.IsRedGo) {
-                this.startAIThread();
+                aiShouldMove = true;
             }
         } else if (this.activity.gameMode == 3) {
+            aiShouldMove = true;
+        }
+
+        if (aiShouldMove) {
+            // 立即在主线程启动 AI 思考动画，不等后台线程调度
+            this.activity.chessInfo.isMachine = true;
+            if (this.activity.roundView != null) {
+                this.activity.roundView.setSearchDepth(1, this.activity.chessInfo.IsRedGo);
+            }
             this.startAIThread();
+        } else {
+            // 人类回合，清除机器思考标志
+            this.activity.chessInfo.isMachine = false;
         }
         LogUtils.i("Perf", "checkAIMove total cost=" + (System.currentTimeMillis() - checkStartMs) + "ms");
     }
@@ -1294,6 +1307,10 @@ public class PvMActivityAI {
                 int currentDepth = 0;
                 if (aiInstance.activity.pikafishAI != null) {
                     currentDepth = aiInstance.activity.pikafishAI.getCurrentDepth();
+                }
+                // 深度为 0 时可能引擎刚启动还未返回深度，保持动画不消失
+                if (currentDepth == 0) {
+                    currentDepth = 1;
                 }
                 
                 aiInstance.activity.roundView.setSearchDepth(currentDepth, isRed);
