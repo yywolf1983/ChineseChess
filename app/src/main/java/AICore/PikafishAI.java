@@ -397,13 +397,12 @@ public class PikafishAI {
         // NumaPolicy
         sendCommand("setoption name NumaPolicy value " + cachedNumaPolicy);
 
-        // MultiPV（引擎要求 MultiPV >= 1）
-        int engineMultiPV = Math.max(1, cachedMultiPV);
-        sendCommand("setoption name MultiPV value " + engineMultiPV);
+        // MultiPV（validateAndClampAllParams 已确保 >=1，直接使用缓存值）
+        sendCommand("setoption name MultiPV value " + cachedMultiPV);
 
         LogUtils.i("PikafishAI",
             "引擎参数已应用: Threads=" + threadCount + (threadsAuto ? "(auto)" : "") + " Hash=" + hashSize
-            + "MB" + (hashAuto ? "(auto)" : "") + " MultiPV=" + engineMultiPV + " SkillLevel=" + cachedSkillLevel
+            + "MB" + (hashAuto ? "(auto)" : "") + " MultiPV=" + cachedMultiPV + " SkillLevel=" + cachedSkillLevel
             + " Contempt=" + cachedContempt + " NumaPolicy=" + cachedNumaPolicy);
     }
 
@@ -427,15 +426,15 @@ public class PikafishAI {
         try {
             Info.Setting setting = Utils.GameResourceManager.getInstance().getSetting();
             if (setting != null) {
+                cachedSkillLevel = setting.skillLevel;
+                cachedDepth = setting.depth;
+                cachedMultiPV = setting.multiPV;
+                cachedTimeSeconds = setting.mLevel;
                 cachedThreads = setting.threads;
                 cachedHashMB = setting.hashMB;
                 cachedContempt = setting.contempt;
                 cachedNumaPolicy = (setting.numaPolicy != null && !setting.numaPolicy.isEmpty())
                     ? setting.numaPolicy : "auto";
-                // 关键：depth 和 mLevel(思考时间) 也必须从持久化设置读取，
-                // 否则 updateSettings(int, int) 会使用过期的缓存值
-                cachedDepth = setting.depth;
-                cachedTimeSeconds = setting.mLevel;
             }
         } catch (Exception e) {
             LogUtils.e("PikafishAI", "读取设置失败: " + e.getMessage());
@@ -786,15 +785,18 @@ public class PikafishAI {
                 wasForceVariation = true;
                 int randomness = Math.max(1, chessInfo.variationRandomness);
                 depth = depth + randomness;
-                sendCommand("setoption name Skill Level value 20");
-                sendCommand("setoption name Contempt value 0");
-                sendCommand("setoption name MultiPV value 3");
-                LogUtils.i("PikafishAI", "强制变着模式: SkillLevel=20 Contempt=0 MultiPV=3 depth=" + depth + " movetime=" + timeMs + "ms randomness=" + randomness);
+                // 强制变着使用用户设置的 SkillLevel/Contempt，MultiPV 至少为 2 以确保有变着可选
+                int varMultiPV = Math.max(2, cachedMultiPV);
+                applyAllEngineOptions();
+                sendCommand("setoption name MultiPV value " + varMultiPV);
+                LogUtils.i("PikafishAI", "强制变着模式: SkillLevel=" + cachedSkillLevel
+                    + " Contempt=" + cachedContempt + " MultiPV=" + varMultiPV
+                    + " depth=" + depth + " movetime=" + timeMs + "ms randomness=" + randomness);
             } else {
                 // 正常模式：确保引擎参数与用户设置一致（尤其强制变着后需恢复）
                 applyAllEngineOptions();
                 LogUtils.i("PikafishAI", "正常模式: SkillLevel=" + cachedSkillLevel
-                    + " Contempt=" + cachedContempt + " MultiPV=" + Math.max(1, cachedMultiPV));
+                    + " Contempt=" + cachedContempt + " MultiPV=" + cachedMultiPV);
             }
 
             // 生成 FEN 并设置局面
@@ -1069,12 +1071,12 @@ public class PikafishAI {
             isSearching.set(true);
             currentDepth.set(0);
 
-            // 下发引擎参数：正常模式应用用户设置，强制变着模式覆盖多样性参数
+            // 下发引擎参数：正常模式应用用户设置，强制变着模式覆盖 MultiPV
             if (chessInfo != null && chessInfo.forceVariation) {
                 depth = depth + Math.max(1, chessInfo.variationRandomness);
-                sendCommand("setoption name Skill Level value 20");
-                sendCommand("setoption name Contempt value 0");
-                sendCommand("setoption name MultiPV value 3");
+                applyAllEngineOptions();
+                int varMultiPV = Math.max(2, cachedMultiPV);
+                sendCommand("setoption name MultiPV value " + varMultiPV);
             } else {
                 applyAllEngineOptions();
             }
