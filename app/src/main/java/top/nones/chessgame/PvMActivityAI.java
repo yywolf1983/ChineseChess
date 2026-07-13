@@ -25,6 +25,10 @@ public class PvMActivityAI {
     private int aiRetryCount = 0;
     private final AtomicBoolean aiAnalyzingState = new AtomicBoolean(false);
     public volatile boolean isAIAnalyzing = false;
+    // 追踪当前持有分析状态的线程 ID，用于 tryFinishAnalyzing 避免误清新 AI 状态
+    private volatile long currentAIThreadId = -1;
+    // 标记 AI 是否被外部中断（stopAIAnalysis），用于让旧 AI 线程尽快退出
+    private final AtomicBoolean aiInterrupted = new AtomicBoolean(false);
     // 使用有界队列和自定义拒绝策略，避免线程堆积
     private java.util.concurrent.ThreadPoolExecutor executorService;
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
@@ -184,6 +188,11 @@ public class PvMActivityAI {
         
         // 始终使用 AI 计算，不随机选择着法
         while (retryCount < maxRetryCount) {
+            // 被外部中断时立即退出，避免中断后继续搜索
+            if (aiInterrupted.get()) {
+                LogUtils.i("PvMActivityAI", "AI 被中断，退出搜索循环");
+                break;
+            }
             // 空值检查
             if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || !this.activity.pikafishAI.isInitialized() || this.executorService == null) {
                 LogUtils.e("PvMActivityAI", "空值检查失败，activity或chessInfo或pikafishAI或executorService为null");
@@ -642,9 +651,18 @@ public class PvMActivityAI {
             if (aiInstance == null) {
                 return;
             }
-            
+
             PvMActivity currentActivity = aiInstance.activity;
             if (currentActivity == null) {
+                return;
+            }
+
+            // 更新 currentAIThreadId 为当前后台线程 ID，
+            // 确保 tryFinishAnalyzing 能正确匹配（tryStartAnalyzing 在主线程调用）
+            if (aiInstance.aiAnalyzingState.get()) {
+                aiInstance.currentAIThreadId = Thread.currentThread().getId();
+            } else {
+                // 分析状态已被清除（中断），直接返回
                 return;
             }
 
@@ -661,7 +679,14 @@ public class PvMActivityAI {
                 LogUtils.i("Perf", "AIThreadRunnable.updateSettings cost=" + (System.currentTimeMillis() - startMs) + "ms"
                     + " depth=" + currentActivity.setting.depth + " time=" + currentActivity.setting.mLevel + "s skillLevel=" + currentActivity.setting.skillLevel);
             }
-            
+
+            // updateSettings 期间可能被中断，检查后跳过搜索
+            if (aiInstance.aiInterrupted.get()) {
+                LogUtils.i("PvMActivityAI", "updateSettings 后发现已被中断，跳过搜索");
+                aiInstance.tryFinishAnalyzing();
+                return;
+            }
+
             Move move = null;
             try {
                 move = aiInstance.calculateAIMove();
@@ -671,14 +696,22 @@ public class PvMActivityAI {
             } finally {
                 // 确保无论是否发生异常，锁都会被释放
                 aiInstance.stopAISearch();
-                aiInstance.finishAnalyzing();
+                // 只有当前线程仍持有分析状态时才释放
+                // （stopAIAnalysis 可已释放并启动了新 AI，不能误清新状态）
+                aiInstance.tryFinishAnalyzing();
             }
             
             currentActivity = aiInstance.activity;
             if (currentActivity == null) {
                 return;
             }
-            
+
+            // 被外部中断时不执行 AI 走法，避免中断后 AI 仍然落子
+            if (aiInstance.aiInterrupted.get()) {
+                LogUtils.i("PvMActivityAI", "AI 被中断，丢弃走法，不执行 AIUIRunnable");
+                return;
+            }
+
             final Move finalMove = move;
             try {
                 currentActivity.runOnUiThread(new AIUIRunnable(aiInstance, currentActivity, finalMove));
@@ -705,7 +738,13 @@ public class PvMActivityAI {
             if (aiInstance == null || activity == null) {
                 return;
             }
-            
+
+            // 如果新的 AI 分析已启动（说明悔棋/切换模式后触发了新 AI），丢弃旧的走法
+            if (aiInstance.aiAnalyzingState.get()) {
+                LogUtils.i("PvMActivityAI", "丢弃过时的 AI 走法（新的 AI 分析已启动）");
+                return;
+            }
+
             try {
                 if (move != null) {
                     aiInstance.executeAIMove(move);
@@ -826,6 +865,13 @@ public class PvMActivityAI {
                 }
             }
 
+            // updateSettings 期间可能被中断，检查后跳过搜索
+            if (aiInstance.aiInterrupted.get()) {
+                LogUtils.i("PvMActivityAI", "支招 updateSettings 后发现已被中断，跳过搜索");
+                aiInstance.tryFinishAnalyzing();
+                return;
+            }
+
             // 引擎内部已有 maxSearchTime 兜底超时，当前已在后台线程中，
             // 直接调用避免嵌套 submit 到同一 executor 导致死锁
             try {
@@ -879,7 +925,13 @@ public class PvMActivityAI {
                     });
                 }
 
-                aiInstance.finishAnalyzing();
+                aiInstance.tryFinishAnalyzing();
+
+                // 被外部中断时不显示支招结果，避免中断后旧结果仍然弹出
+                if (aiInstance.aiInterrupted.get()) {
+                    LogUtils.i("PvMActivityAI", "AI 被中断，不显示支招结果");
+                    return;
+                }
 
                 final Move finalMove = move;
                 PvMActivity currentActivity = aiInstance.activity;
@@ -1234,6 +1286,11 @@ public class PvMActivityAI {
         @Override
         public void run() {
             if (aiInstance != null && aiInstance.activity != null && aiInstance.activity.roundView != null) {
+                // AI 不在分析中时，确保深度为 0，避免残留动画
+                if (!aiInstance.isAIAnalyzing) {
+                    aiInstance.activity.roundView.setSearchDepth(0, isRed);
+                    return;
+                }
                 int currentDepth = 0;
                 if (aiInstance.activity.pikafishAI != null) {
                     currentDepth = aiInstance.activity.pikafishAI.getCurrentDepth();
@@ -1246,6 +1303,10 @@ public class PvMActivityAI {
     
     private void startAISearch(boolean isRed) {
         if (this.activity != null) {
+            // AI 不在分析中时，不启动深度更新任务，避免残留动画
+            if (!isAIAnalyzing) {
+                return;
+            }
             if (this.depthUpdateFuture != null) {
                 this.depthUpdateFuture.cancel(true);
             }
@@ -1318,14 +1379,31 @@ public class PvMActivityAI {
     // 停止AI分析
     public void stopAIAnalysis() {
         finishAnalyzing();
+        // 中断引擎搜索，释放 searchLock，避免后续 AI 计算被阻塞
+        if (activity != null && activity.pikafishAI != null) {
+            activity.pikafishAI.interrupt();
+        }
         // 取消深度更新任务
         stopAISearch();
+        // 立即清除 AI 思考动画和支招模式，确保中断后动画不残留
+        if (activity != null && activity.roundView != null) {
+            activity.runOnUiThread(() -> {
+                if (activity.roundView != null) {
+                    activity.roundView.setSearchDepth(0, false);
+                    activity.roundView.setSuggestMode(false);
+                }
+            });
+        }
     }
 
     private boolean tryStartAnalyzing() {
         boolean started = aiAnalyzingState.compareAndSet(false, true);
         if (started) {
             isAIAnalyzing = true;
+            currentAIThreadId = Thread.currentThread().getId();
+            aiInterrupted.set(false);  // 清除中断标志，开始新的分析
+            // 支招按钮变为"中断"状态（UI 线程更新）
+            notifySuggestButton(true);
         }
         return started;
     }
@@ -1333,6 +1411,32 @@ public class PvMActivityAI {
     private void finishAnalyzing() {
         aiAnalyzingState.set(false);
         isAIAnalyzing = false;
+        currentAIThreadId = -1;
+        aiInterrupted.set(true);  // 标记被外部中断，旧线程应尽快退出
+        // 恢复支招按钮为"支招"状态
+        notifySuggestButton(false);
+    }
+
+    /**
+     * 只有当前线程仍持有分析状态时才释放。
+     * 避免误清 stopAIAnalysis 后新启动的 AI 状态。
+     */
+    private void tryFinishAnalyzing() {
+        long myThreadId = Thread.currentThread().getId();
+        if (currentAIThreadId == myThreadId && aiAnalyzingState.compareAndSet(true, false)) {
+            isAIAnalyzing = false;
+            currentAIThreadId = -1;
+            // 恢复支招按钮为"支招"状态
+            notifySuggestButton(false);
+        }
+    }
+
+    // 通知 UI 线程更新支招按钮显示
+    private void notifySuggestButton(boolean analyzing) {
+        if (activity == null) return;
+        final PvMActivityControls controls = activity.controlsManager;
+        if (controls == null) return;
+        activity.runOnUiThread(() -> controls.updateSuggestButton(analyzing));
     }
 
     public void shutdown() {

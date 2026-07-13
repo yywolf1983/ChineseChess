@@ -68,6 +68,8 @@ public class PikafishAI {
     private final java.util.concurrent.atomic.AtomicBoolean isSearching = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final java.util.concurrent.atomic.AtomicBoolean shouldStop = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final AtomicInteger currentDepth = new AtomicInteger(0);
+    // 搜索代际：每次 interrupt() 递增，旧搜索检测到代际变化即退出
+    private final AtomicInteger searchGeneration = new AtomicInteger(0);
 
     // ========== 线程安全锁 ==========
     /**
@@ -768,6 +770,8 @@ public class PikafishAI {
                 LogUtils.i("PikafishAI", "已应用延迟的引擎参数");
             }
 
+            // 记录本次搜索的代际，用于检测中断
+            final int myGeneration = searchGeneration.get();
             shouldStop.set(false);
             isSearching.set(true);
             currentDepth.set(0);
@@ -813,9 +817,16 @@ public class PikafishAI {
             boolean stopSent = false;
             long stopSentTime = 0;
             while (!Thread.currentThread().isInterrupted()) {
+                // 代际变化表示被中断，退出搜索
+                if (searchGeneration.get() != myGeneration) {
+                    if (!stopSent) {
+                        sendCommand("stop");
+                    }
+                    break;
+                }
                 long elapsed = System.currentTimeMillis() - startTime;
 
-                // 超时或收到停止信号时发送 stop（只发一次），继续等待 bestmove
+                // 超时时发送 stop（只发一次），继续等待 bestmove
                 // 确保拿到引擎确认的最优招法，而非搜索中间状态的候选
                 if (!stopSent) {
                     if (elapsed > maxSearchTime) {
@@ -913,9 +924,6 @@ public class PikafishAI {
                     LogUtils.i("PikafishAI", "强制变着: 随机选择 " + bestMoveStr);
                 }
             }
-
-            // 更新 UI 深度
-            updateUIAfterSearch(currentDepth.get());
 
             if (bestMoveStr != null) {
                 Move move = uciToMove(bestMoveStr);
@@ -1055,6 +1063,8 @@ public class PikafishAI {
                 + " time=" + cachedTimeSeconds + "s"
                 + " skillLevel=" + cachedSkillLevel);
 
+            // 记录本次搜索的代际，用于检测中断
+            final int myGeneration = searchGeneration.get();
             shouldStop.set(false);
             isSearching.set(true);
             currentDepth.set(0);
@@ -1086,7 +1096,7 @@ public class PikafishAI {
 
             boolean stopSent = false;
             long stopSentTime = 0;
-            while (!Thread.currentThread().isInterrupted()) {
+            while (!Thread.currentThread().isInterrupted() && searchGeneration.get() == myGeneration) {
                 long elapsed = System.currentTimeMillis() - startTime;
 
                 // 超时或收到停止信号时发送 stop（只发一次），继续等待 bestmove
@@ -1144,9 +1154,10 @@ public class PikafishAI {
                         }
                     }
                 } else if (line.startsWith("bestmove")) {
-                    if (bestMoveStr == null) {
-                        String[] parts = line.split(" ");
-                        if (parts.length > 1) bestMoveStr = parts[1];
+                    // bestmove 行是引擎最终确认的最优步，必须覆盖 info 行的中间结果
+                    String[] parts = line.split(" ");
+                    if (parts.length > 1) {
+                        bestMoveStr = parts[1];
                     }
                     LogUtils.i("PikafishAI", "收到 bestmove: " + line);
                     break;
@@ -1161,8 +1172,6 @@ public class PikafishAI {
                 + " info行数=" + infoLineCount + " 最大depth=" + maxDepthSeen
                 + " bestmove=" + bestMoveStr + " pv长度=" + pvMoveList.size()
                 + " score=" + score);
-
-            updateUIAfterSearch(currentDepth.get());
 
             List<Move> moveSequence = new ArrayList<>();
             for (String uciMove : pvMoveList) {
@@ -1202,6 +1211,7 @@ public class PikafishAI {
     }
 
     public void interrupt() {
+        searchGeneration.incrementAndGet();  // 递增代际，使旧搜索失效
         shouldStop.set(true);
         if (isSearching.get()) {
             sendCommand("stop");

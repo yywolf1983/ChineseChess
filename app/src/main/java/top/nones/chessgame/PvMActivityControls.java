@@ -116,6 +116,14 @@ public class PvMActivityControls {
                     if (setupBtn instanceof android.widget.Button) {
                         ((android.widget.Button) setupBtn).setText("摆棋");
                     }
+                    // 停止之前的 AI 分析，避免状态残留
+                    if (activity.aiManager != null) {
+                        activity.aiManager.stopAIAnalysis();
+                    }
+                    // 新局后检查是否需要 AI 先手
+                    if (activity.gameManager != null) {
+                        activity.gameManager.checkAIMove();
+                    }
                     LogUtils.d("PvMActivityControls", "handleRetryButton completed");
                 } catch (Exception e) {
                     LogUtils.e("PvMActivityControls", "Error in positive button click", e);
@@ -132,6 +140,10 @@ public class PvMActivityControls {
     public void handleRecallButton() {
         try {
             LogUtils.d("PvMActivityControls", "handleRecallButton called");
+            // 先停止当前 AI 分析，避免 aiAnalyzingState 残留导致后续 AI 无法启动
+            if (activity.aiManager != null) {
+                activity.aiManager.stopAIAnalysis();
+            }
             if (activity.infoSet != null && activity.infoSet.preInfo != null && activity.chessInfo != null && activity.infoSet.curInfo != null) {
                 // 确保保留至少一个初始状态，只允许悔到初始状态，但不会把初始状态也悔掉
                 if (activity.infoSet.preInfo.size() > 1) {
@@ -195,6 +207,10 @@ public class PvMActivityControls {
                         LogUtils.e("PvMActivityControls", "Error in recall initial state", e);
                     }
                 }
+            }
+            // 悔棋后检查是否需要 AI 行棋
+            if (activity.gameManager != null) {
+                activity.gameManager.checkAIMove();
             }
             LogUtils.d("PvMActivityControls", "handleRecallButton completed");
         } catch (Exception e) {
@@ -280,6 +296,18 @@ public class PvMActivityControls {
     public void handleStatisticsButton() {
         try {
             LogUtils.d("PvMActivityControls", "handleStatisticsButton called");
+
+            // 如果 AI 正在分析，立即中断（不受点击间隔限制）
+            if (activity.aiManager != null && activity.aiManager.isAIAnalyzing) {
+                LogUtils.d("PvMActivityControls", "AI is analyzing, interrupting it");
+                activity.aiManager.stopAIAnalysis();
+                if (activity.pikafishAI != null) {
+                    activity.pikafishAI.interrupt();
+                }
+                updateSuggestButton(false);
+                return;
+            }
+
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastSuggestClickTime < SUGGEST_BUTTON_INTERVAL) {
                 // 点击间隔小于限制，不处理点击
@@ -287,8 +315,8 @@ public class PvMActivityControls {
                 return;
             }
             lastSuggestClickTime = currentTime;
-            
-            if (activity.chessInfo != null && !activity.chessInfo.IsSetupMode && !isAIAnalyzing) {
+
+            if (activity.chessInfo != null && !activity.chessInfo.IsSetupMode) {
                 // 自动为当前行棋方支招
                 boolean currentPlayerIsRed = activity.chessInfo.IsRedGo;
                 activity.aiManager.showAIMove(currentPlayerIsRed);
@@ -296,6 +324,24 @@ public class PvMActivityControls {
             LogUtils.d("PvMActivityControls", "handleStatisticsButton completed");
         } catch (Exception e) {
             LogUtils.e("PvMActivityControls", "Error in handleStatisticsButton", e);
+        }
+    }
+
+    // 更新支招按钮的 UI 状态：analyzing=true 显示"中断"+红色，false 显示"支招"+青色
+    public void updateSuggestButton(boolean analyzing) {
+        try {
+            android.view.View btnView = activity.findViewById(R.id.btn_statistics);
+            if (!(btnView instanceof Button)) return;
+            Button btn = (Button) btnView;
+            if (analyzing) {
+                btn.setText("中断");
+                btn.setBackgroundResource(R.drawable.bg_board_btn_stop_red);
+            } else {
+                btn.setText("支招");
+                btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_teal);
+            }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error updating suggest button", e);
         }
     }
     
