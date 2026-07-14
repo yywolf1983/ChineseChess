@@ -834,9 +834,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     protected void onPause() {
         super.onPause();
-        // 暂停音乐
-        if (backMusic != null && backMusic.isPlaying()) {
-            backMusic.pause();
+        // 暂停音乐（添加 try-catch 防止资源已释放时的 IllegalStateException）
+        if (backMusic != null) {
+            try {
+                if (backMusic.isPlaying()) {
+                    backMusic.pause();
+                }
+            } catch (IllegalStateException e) {
+                LogUtils.w("PvMActivity", "backMusic 状态异常，资源可能已释放: " + e.getMessage());
+                backMusic = null;
+            }
         }
         // 暂停时间更新线程
         if (timeUpdateExecutor != null) {
@@ -856,9 +863,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     @Override
     protected void onResume() {
         super.onResume();
-        // 恢复音乐
-        if (backMusic != null && setting != null && setting.isMusicPlay && !backMusic.isPlaying()) {
-            backMusic.start();
+        // 恢复音乐（添加 try-catch 防止资源已释放时的 IllegalStateException）
+        if (backMusic != null && setting != null && setting.isMusicPlay) {
+            try {
+                if (!backMusic.isPlaying()) {
+                    backMusic.start();
+                }
+            } catch (IllegalStateException e) {
+                LogUtils.w("PvMActivity", "backMusic 状态异常，资源可能已释放: " + e.getMessage());
+                backMusic = null;
+            }
         }
         // 重新初始化时间更新线程
         initTimeUpdateExecutor();
