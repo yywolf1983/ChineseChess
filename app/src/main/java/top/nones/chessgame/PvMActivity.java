@@ -920,16 +920,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     }
 
     private void releaseMediaPlayers() {
-        if (backMusic != null) {
-            try {
-                if (backMusic.isPlaying()) {
-                    backMusic.stop();
-                }
-                backMusic.release();
-            } catch (Exception e) {
-                LogUtils.e("PvMActivity", "Error releasing backMusic", e);
-            }
-            backMusic = null;
-        }
+        GameResourceManager.getInstance().resetBackMusic();
+        backMusic = null;
     }
 }

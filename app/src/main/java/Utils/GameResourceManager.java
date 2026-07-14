@@ -77,6 +77,15 @@ public class GameResourceManager {
             }
         }
     }
+    
+    public void resetBackMusic() {
+        if (backMusic != null) {
+            try {
+                backMusic.release();
+            } catch (Exception ignored) {}
+            backMusic = null;
+        }
+    }
 
     public Setting getSetting() {
         return setting;
