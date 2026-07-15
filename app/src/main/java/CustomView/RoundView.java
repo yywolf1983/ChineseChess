@@ -592,32 +592,28 @@ public class RoundView extends View {
             formStr = "形势均势";
             formColor = Color.rgb(255, 245, 220);
         }
-        // 深度：一直显示最近一次有效深度「深度 N」，不随行棋方切换而消失
-        String depthStr = "";
-        if (lastSearchDepth > 0) {
-            depthStr = "  深度 " + lastSearchDepth;
-        }
         // 回合/深度用固定暖白色，只有分数（形势）颜色随优劣变化，避免文字颜色频繁跳变
         int neutralColor = Color.rgb(252, 246, 235);
+        // 第1行改为固定槽位：左=回合、中=形势、右=深度，三者互不依赖，
+        // 深度出现/消失或形势字数变化时各行不再整体左右晃动
         String roundStr = "第" + roundCount + "回合";
-        String sep = "   ";
+        float padX = convertDpToPixel(12, getContext());
         infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         infoTextPaint.setFakeBoldText(true);
+        // 左：回合（固定左对齐）
+        infoTextPaint.setColor(neutralColor);
         infoTextPaint.setTextAlign(Paint.Align.LEFT);
-        float wRound = infoTextPaint.measureText(roundStr);
-        float wSep = infoTextPaint.measureText(sep);
-        float wForm = infoTextPaint.measureText(formStr);
-        float wDepth = infoTextPaint.measureText(depthStr);
-        float totalW = wRound + wSep + wForm + wDepth;
-        float fx = (width - totalW) / 2;
-        infoTextPaint.setColor(neutralColor);
-        canvas.drawText(roundStr, fx, formY, infoTextPaint);
-        fx += wRound + wSep;
+        canvas.drawText(roundStr, padX, formY, infoTextPaint);
+        // 中：形势（始终居中，不随两侧内容移动）
         infoTextPaint.setColor(formColor);
-        canvas.drawText(formStr, fx, formY, infoTextPaint);
-        fx += wForm;
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        canvas.drawText(formStr, width / 2, formY, infoTextPaint);
+        // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段）
         infoTextPaint.setColor(neutralColor);
-        canvas.drawText(depthStr, fx, formY, infoTextPaint);
+        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
+        if (lastSearchDepth > 0) {
+            canvas.drawText("深度 " + lastSearchDepth, width - padX, formY, infoTextPaint);
+        }
         infoTextPaint.setTextAlign(Paint.Align.LEFT);
         
         // ========== 第3行（可选）：AI加载信息 / 支招信息 ==========

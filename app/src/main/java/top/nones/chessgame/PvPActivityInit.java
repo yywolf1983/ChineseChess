@@ -134,7 +134,7 @@ public class PvPActivityInit {
         paramsV.addRule(RelativeLayout.CENTER_HORIZONTAL);
         paramsV.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         paramsV.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
-        paramsV.setMargins(30, 120, 30, 10);
+        paramsV.setMargins(30, 20, 30, 20); // 与 PvM 模式一致，避免棋盘下方过大留白
         buttonGroup.setLayoutParams(paramsV);
         
         // 设置按钮监听器

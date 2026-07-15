@@ -395,11 +395,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             } else if (viewId == R.id.btn_setup) {
                 // 切换摆棋模式
                 setupManager.toggleSetupMode();
-            } else if (viewId == R.id.btn_camera_recognize) {
-                // 拍照识别 - 直接打开相机
-                if (photoCaptureManager != null) {
-                    photoCaptureManager.handleCameraClick();
-                }
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "Error in button click handler", e);

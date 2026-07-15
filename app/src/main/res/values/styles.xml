@@ -17,4 +17,12 @@
         <item name="android:windowExitAnimation">@anim/slide_out_down</item>
     </style>
 
+    <!-- 应用主主题：无 ActionBar，状态栏配色与木色棋盘协调 -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/boardBrown</item>
+        <item name="colorPrimaryDark">@color/boardBrownDark</item>
+        <item name="colorAccent">@color/boardAccent</item>
+        <item name="android:statusBarColor">@color/boardBrownDark</item>
+    </style>
+
 </resources>
