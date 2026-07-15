@@ -5,7 +5,13 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
+import android.graphics.drawable.Drawable;
 import android.view.View;
+
+import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
+
+import top.nones.chessgame.R;
 
 import java.util.List;
 
@@ -30,6 +36,8 @@ public class RoundView extends View {
     private long blackTime = 0; // 黑方行棋时间（毫秒）
     private int redSearchDepth = 0; // 红方AI搜索深度
     private int blackSearchDepth = 0; // 黑方AI搜索深度
+    private int lastSearchDepth = 0; // 最近一次有效深度（用于持续显示，不随行棋方切换消失）
+    private int pendingFinalDepth = 0; // 思考过程中的最大深度，仅在思考结束时固定显示
     private boolean isAIThinking = false; // AI是否正在思考
     private boolean isRedTurn = false; // 当前是否是红方回合
     private int aiThinkingProgress = 0; // AI思考动画进度
@@ -72,6 +80,8 @@ public class RoundView extends View {
     private Paint infoTextPaint; // 模式和评分画笔
     private Paint borderPaint; // 边框画笔
     private Paint modeTextPaint; // 模式文本画笔
+    private Paint aiTextPaint; // 电脑方（AI）文本画笔
+    private Paint iconPaint; // 阵营图标（人/电脑）画笔
     private Paint winBgPaint; // 胜利背景画笔（缓存，避免onDraw中频繁创建）
     private Path scoreBarPath; // 评分条裁剪路径（缓存，避免onDraw中频繁创建）
     private Paint redBarPaint; // 红方进度条画笔（缓存，避免onDraw中频繁创建）
@@ -121,13 +131,23 @@ public class RoundView extends View {
     
     // 设置搜索深度
     public void setSearchDepth(int depth, boolean isRed) {
-        // 只有当深度大于0时才更新深度值，这样当AI思考完成（depth=0）时，之前的深度信息会被保留
+        // 思考过程中只记录最大深度，不实时更新显示；思考结束（depth=0）时才固定显示最终值
         if (depth > 0) {
             if (isRed) {
                 this.redSearchDepth = depth;
             } else {
                 this.blackSearchDepth = depth;
             }
+            if (depth > this.pendingFinalDepth) {
+                this.pendingFinalDepth = depth;
+            }
+        } else {
+            // 只有真正从"思考中"结束（之前在思考）才把最终深度固定显示，
+            // 避免连续多次 depth=0 把已显示的最终值清空
+            if (this.isAIThinking) {
+                this.lastSearchDepth = this.pendingFinalDepth;
+            }
+            this.pendingFinalDepth = 0;
         }
         // 当深度为0时，表示AI思考完成，隐藏"AI正在思考"提示
         // 当深度大于0时，表示AI正在思考，显示"AI正在思考"提示
@@ -146,12 +166,32 @@ public class RoundView extends View {
         postInvalidate();
     }
     
+    // 清除搜索深度与思考状态（用于棋谱导航/加载，避免残留深度与思考动画）
+    public void clearSearchState() {
+        this.redSearchDepth = 0;
+        this.blackSearchDepth = 0;
+        this.lastSearchDepth = 0;
+        this.pendingFinalDepth = 0;
+        this.isAIThinking = false;
+        this.aiThinkingProgress = 0;
+        syncDotAnimation();
+        postInvalidate();
+    }
+
     // 重载方法，保持向后兼容
     public void setSearchDepth(int depth) {
-        // 只有当深度大于0时才更新深度值，这样当AI思考完成（depth=0）时，之前的深度信息会被保留
+        // 思考过程中只记录最大深度，不实时更新显示；思考结束（depth=0）时才固定显示最终值
         if (depth > 0) {
             // 默认为黑方深度
             this.blackSearchDepth = depth;
+            if (depth > this.pendingFinalDepth) {
+                this.pendingFinalDepth = depth;
+            }
+        } else {
+            if (this.isAIThinking) {
+                this.lastSearchDepth = this.pendingFinalDepth;
+            }
+            this.pendingFinalDepth = 0;
         }
         boolean wasThinking = this.isAIThinking;
         this.isAIThinking = depth > 0;
@@ -288,6 +328,21 @@ public class RoundView extends View {
         modeTextPaint.clearShadowLayer();
         modeTextPaint.setStrokeWidth(2f);
 
+        aiTextPaint = new Paint();
+        aiTextPaint.setTextSize(convertDpToPixel(13, getContext()));
+        aiTextPaint.setStrokeWidth(convertDpToPixel(0.5f, getContext()));
+        aiTextPaint.setAntiAlias(true);
+        aiTextPaint.setColor(Color.rgb(110, 175, 240));
+        aiTextPaint.setFakeBoldText(true);
+
+        iconPaint = new Paint();
+        iconPaint.setAntiAlias(true);
+        iconPaint.setStyle(Paint.Style.STROKE);
+        iconPaint.setStrokeWidth(convertDpToPixel(1.5f, getContext()));
+        iconPaint.setStrokeJoin(Paint.Join.ROUND);
+        iconPaint.setStrokeCap(Paint.Cap.ROUND);
+        iconPaint.setColor(Color.rgb(200, 40, 40));
+
         infoTextPaint = new Paint();
         infoTextPaint.setTextSize(textSize);
         infoTextPaint.setStrokeWidth(convertDpToPixel(0.3f, getContext()));
@@ -397,121 +452,22 @@ public class RoundView extends View {
         borderPaint.setColor(chessInfo.IsRedGo ? Color.rgb(180, 40, 40) : Color.rgb(35, 35, 35));
         canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint);
         
-        // 计算垂直间距
-        float paddingTop = convertDpToPixel(6, getContext());
-        float lineHeight = convertDpToPixel(24, getContext());
-        
-        // ========== 第1行：游戏模式（左） | 当前行棋方（居中突出） | 回合数（右） ==========
-        float row1Y = paddingTop + lineHeight * 0.8f;
-        
-        // 游戏模式（左侧）+ 深度
-        float modeTextSize = convertDpToPixel(15, getContext());
-        modeTextPaint.setTextSize(modeTextSize);
-        modeTextPaint.setTextAlign(Paint.Align.LEFT);
-        modeTextPaint.setFakeBoldText(true);
-        modeTextPaint.clearShadowLayer();
-        
-        float modeStartX = convertDpToPixel(10, getContext());
-        float currentX = modeStartX;
-        
-        switch (gameMode) {
-            case 0:
-                modeTextPaint.setColor(Color.rgb(230, 195, 80));
-                canvas.drawText("双人", currentX, row1Y, modeTextPaint);
-                currentX += modeTextPaint.measureText("双人");
-                modeTextPaint.setColor(Color.rgb(220, 160, 50));
-                canvas.drawText("对战", currentX, row1Y, modeTextPaint);
-                break;
-            case 1:
-                modeTextPaint.setColor(Color.rgb(230, 200, 130));
-                canvas.drawText("玩家", currentX, row1Y, modeTextPaint);
-                currentX += modeTextPaint.measureText("玩家");
-                modeTextPaint.setColor(Color.rgb(200, 40, 40));
-                canvas.drawText("红棋", currentX, row1Y, modeTextPaint);
-                break;
-            case 2:
-                modeTextPaint.setColor(Color.rgb(230, 200, 130));
-                canvas.drawText("玩家", currentX, row1Y, modeTextPaint);
-                currentX += modeTextPaint.measureText("玩家");
-                modeTextPaint.setColor(Color.rgb(35, 35, 35));
-                canvas.drawText("黑棋", currentX, row1Y, modeTextPaint);
-                break;
-            case 3:
-                modeTextPaint.setColor(Color.rgb(230, 195, 80));
-                canvas.drawText("双机", currentX, row1Y, modeTextPaint);
-                currentX += modeTextPaint.measureText("双机");
-                modeTextPaint.setColor(Color.rgb(100, 60, 130));
-                canvas.drawText("对战", currentX, row1Y, modeTextPaint);
-                break;
-            default:
-                modeTextPaint.setColor(Color.rgb(255, 225, 150));
-                canvas.drawText(getGameModeName(gameMode), currentX, row1Y, modeTextPaint);
-                break;
-        }
-        
-        
-        
-        // 当前行棋方（居中，突出显示）
-        String turnText = chessInfo.IsRedGo ? "红方" : "黑方";
-        Paint turnPaint = chessInfo.IsRedGo ? redTextPaint : blackTextPaint;
-        float turnTextSize = convertDpToPixel(18, getContext());
-        turnPaint.setTextSize(turnTextSize);
-        turnPaint.setTextAlign(Paint.Align.CENTER);
-        turnPaint.setFakeBoldText(true);
-        canvas.drawText(turnText, width / 2, row1Y + convertDpToPixel(4, getContext()), turnPaint);
-        
-        // 搜索深度（当前行棋方文字右下方）
-        int currentDepthForTurn = chessInfo.IsRedGo ? redSearchDepth : blackSearchDepth;
-        if (currentDepthForTurn > 0) {
-            String depthText = "深度" + currentDepthForTurn;
-            infoTextPaint.setTextSize(convertDpToPixel(13, getContext()));
-            infoTextPaint.setTextAlign(Paint.Align.LEFT);
-            infoTextPaint.setColor(Color.argb(150, 0, 0, 0));
-            float turnTextWidth = turnPaint.measureText(turnText);
-            float depthX = width / 2 + turnTextWidth / 2 + convertDpToPixel(4, getContext());
-            float depthY = row1Y + convertDpToPixel(8, getContext());
-            canvas.drawText(depthText, depthX, depthY, infoTextPaint);
-        }
-        
-        // 分数（当前行棋方文字左下方，比深度大些）
-        int score = moveScore;
-        String scoreDisplayText;
-        int textColor;
-        if (score > 0) {
-            scoreDisplayText = String.valueOf(score);
-            textColor = Color.rgb(200, 40, 40);
-        } else if (score < 0) {
-            scoreDisplayText = String.valueOf(Math.abs(score));
-            textColor = Color.rgb(35, 35, 35);
-        } else {
-            scoreDisplayText = "均势";
-            textColor = Color.rgb(100, 90, 80);
-        }
-        float turnTextWidth = turnPaint.measureText(turnText);
-        infoTextPaint.setTextSize(convertDpToPixel(15, getContext()));
-        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
-        infoTextPaint.setFakeBoldText(true);
-        infoTextPaint.setColor(textColor);
-        infoTextPaint.setShadowLayer(convertDpToPixel(1f, getContext()), 0, 0, Color.argb(80, 255, 255, 255));
-        float scoreX = width / 2 - turnTextWidth / 2 - convertDpToPixel(4, getContext());
-        float scoreY = row1Y + convertDpToPixel(8, getContext());
-        canvas.drawText(scoreDisplayText, scoreX, scoreY, infoTextPaint);
-        infoTextPaint.clearShadowLayer();
-        
-        // 回合数（右侧）
-        int totalMoves = chessInfo.totalMoves;
-        int roundCount = (totalMoves + 1) / 2;
-        String stepText = "第" + roundCount + "回合";
-        float stepTextSize = convertDpToPixel(16, getContext());
-        infoTextPaint.setTextSize(stepTextSize);
-        infoTextPaint.setTextAlign(Paint.Align.RIGHT);
-        infoTextPaint.setFakeBoldText(true);
-        infoTextPaint.setColor(Color.rgb(245, 240, 230));
-        canvas.drawText(stepText, width - convertDpToPixel(10, getContext()), row1Y, infoTextPaint);
-        
-        // ========== 第2行：红方时间（左） | 评分（居中） | 黑方时间（右） ==========
-        float row2Y = row1Y + lineHeight + convertDpToPixel(2, getContext());
-        
+        // 计算垂直间距与行坐标
+        float paddingTop = convertDpToPixel(8, getContext());
+        float lineHeight = convertDpToPixel(22, getContext());
+
+        // 双方阵营（人/电脑）判定：红方为电脑当且仅当 gameMode 为 2 或 3；黑方为电脑当且仅当 gameMode 为 1 或 3
+        boolean isRedAI = (gameMode == 2 || gameMode == 3);
+        boolean isBlackAI = (gameMode == 1 || gameMode == 3);
+        int redSideColor = isRedAI ? Color.rgb(90, 150, 235) : Color.rgb(200, 40, 40);
+        int blackSideColor = isBlackAI ? Color.rgb(90, 150, 235) : Color.rgb(40, 40, 40);
+
+        // ========== 行坐标（紧凑三行：形势/回合/深度 → 时间+图标+评分条 → AI提示） ==========
+        float formY = paddingTop + convertDpToPixel(16, getContext());   // 第1行：回合 / 形势 / 深度
+        float row2Y = paddingTop + convertDpToPixel(44, getContext());   // 第2行：时间 + 阵营图标 + 评分条
+        float row3Y = paddingTop + convertDpToPixel(66, getContext());   // 第3行：AI思考 / 支招 / 步数
+
+
         // 评分计算
         String scoreText;
         
@@ -575,25 +531,96 @@ public class RoundView extends View {
             }
         }
         
-        // 红方时间（左侧）
-        redTextPaint.setTextSize(convertDpToPixel(15, getContext()));
+        // 红方阵营图标（时间旁）+ 红方时间（左侧）
+        // 轮到红方走棋时，图标加大并加金色高亮环，提示当前行棋方
+        boolean isRedTurnNow = chessInfo.IsRedGo;
+        float sideIconSize2 = convertDpToPixel(isRedTurnNow ? 22 : 16, getContext());
+        float redIconCx = convertDpToPixel(12, getContext()) + sideIconSize2 / 2;
+        float redIconCy = row2Y - convertDpToPixel(4, getContext());
+        if (isRedTurnNow) {
+            drawActiveRing(canvas, redIconCx, redIconCy, sideIconSize2);
+        }
+        drawSideIcon(canvas, redIconCx, redIconCy, sideIconSize2, isRedAI, redSideColor);
+        float redTimeX = convertDpToPixel(12, getContext()) + sideIconSize2 + convertDpToPixel(4, getContext());
+        redTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         redTextPaint.setTextAlign(Paint.Align.LEFT);
         redTextPaint.setFakeBoldText(true);
         String redText = formatTime(redTime);
-        canvas.drawText(redText, convertDpToPixel(10, getContext()), row2Y, redTextPaint);
-        
+        canvas.drawText(redText, redTimeX, row2Y, redTextPaint);
+
         // 评分（居中）- 双向进度条
         drawScoreBar(canvas, width, row2Y, moveScore);
-        
+
         // 黑方时间（右侧）
-        blackTextPaint.setTextSize(convertDpToPixel(15, getContext()));
+        blackTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         blackTextPaint.setTextAlign(Paint.Align.RIGHT);
         blackTextPaint.setFakeBoldText(true);
         String blackText = formatTime(blackTime);
-        canvas.drawText(blackText, width - convertDpToPixel(10, getContext()), row2Y, blackTextPaint);
+        canvas.drawText(blackText, width - convertDpToPixel(12, getContext()), row2Y, blackTextPaint);
+
+        // 黑方阵营图标（时间左侧）
+        // 轮到黑方走棋时，图标加大并加金色高亮环，提示当前行棋方
+        boolean isBlackTurnNow = !chessInfo.IsRedGo;
+        float blackIconSize = convertDpToPixel(isBlackTurnNow ? 22 : 16, getContext());
+        float blackTimeW = blackTextPaint.measureText(blackText);
+        float blackIconCx = width - convertDpToPixel(12, getContext()) - blackTimeW
+                - convertDpToPixel(4, getContext()) - blackIconSize / 2;
+        float blackIconCy = row2Y - convertDpToPixel(4, getContext());
+        if (isBlackTurnNow) {
+            drawActiveRing(canvas, blackIconCx, blackIconCy, blackIconSize);
+        }
+        drawSideIcon(canvas, blackIconCx, blackIconCy, blackIconSize, isBlackAI, blackSideColor);
+
+        // 评分条上方：回合数 + 形势（带文字提示）
+        int score = moveScore;
+        int totalMoves = chessInfo.totalMoves;
+        int roundCount = (totalMoves + 1) / 2;
+        boolean isResult = scoreText != null
+                && (scoreText.contains("胜利") || scoreText.contains("和棋"));
+        String formStr;
+        int formColor;
+        if (isResult) {
+            formStr = scoreText;
+            formColor = scoreText.contains("红方") ? Color.rgb(215, 60, 60) : Color.rgb(30, 30, 30);
+        } else if (score > 0) {
+            formStr = "红方 +" + score;
+            formColor = Color.rgb(215, 60, 60);
+        } else if (score < 0) {
+            formStr = "黑方 +" + Math.abs(score);
+            formColor = Color.rgb(30, 30, 30);
+        } else {
+            formStr = "形势均势";
+            formColor = Color.rgb(255, 245, 220);
+        }
+        // 深度：一直显示最近一次有效深度「深度 N」，不随行棋方切换而消失
+        String depthStr = "";
+        if (lastSearchDepth > 0) {
+            depthStr = "  深度 " + lastSearchDepth;
+        }
+        // 回合/深度用固定暖白色，只有分数（形势）颜色随优劣变化，避免文字颜色频繁跳变
+        int neutralColor = Color.rgb(252, 246, 235);
+        String roundStr = "第" + roundCount + "回合";
+        String sep = "   ";
+        infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
+        infoTextPaint.setFakeBoldText(true);
+        infoTextPaint.setTextAlign(Paint.Align.LEFT);
+        float wRound = infoTextPaint.measureText(roundStr);
+        float wSep = infoTextPaint.measureText(sep);
+        float wForm = infoTextPaint.measureText(formStr);
+        float wDepth = infoTextPaint.measureText(depthStr);
+        float totalW = wRound + wSep + wForm + wDepth;
+        float fx = (width - totalW) / 2;
+        infoTextPaint.setColor(neutralColor);
+        canvas.drawText(roundStr, fx, formY, infoTextPaint);
+        fx += wRound + wSep;
+        infoTextPaint.setColor(formColor);
+        canvas.drawText(formStr, fx, formY, infoTextPaint);
+        fx += wForm;
+        infoTextPaint.setColor(neutralColor);
+        canvas.drawText(depthStr, fx, formY, infoTextPaint);
+        infoTextPaint.setTextAlign(Paint.Align.LEFT);
         
         // ========== 第3行（可选）：AI加载信息 / 支招信息 ==========
-        float row3Y = row2Y + lineHeight;
         float currentY = row3Y;
         
         boolean hasSuggest = (suggestMoveText != null && !suggestMoveText.isEmpty())
@@ -601,9 +628,10 @@ public class RoundView extends View {
         boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking || isSuggestMode;
         
         // 绘制AI加载中、加载完成、支招思考或AI走棋思考动画
-        float aiTextSize = convertDpToPixel(13, getContext());
+        float aiTextSize = convertDpToPixel(14, getContext());
+        infoTextPaint.setColor(Color.rgb(130, 195, 255)); // AI/支招提示统一醒目蓝
         if (isSuggestMode) {
-            drawThinkingText(canvas, width, currentY, aiTextSize, "AI正在思考", aiThinkingProgress);
+            drawThinkingText(canvas, width, currentY, aiTextSize, "AI思考中", aiThinkingProgress);
             currentY += lineHeight;
         } else if (!hasSuggest) {
             if (isAILoading) {
@@ -671,10 +699,11 @@ public class RoundView extends View {
             infoTextPaint.setColor(Color.WHITE);
         }
         
-        // 只在没有AI信息和支招信息时显示步数信息
+        // 只在没有AI信息和支招信息时显示步数信息（用中性暖白色）
         if (!hasAIOrSuggestInfo && moveInfoText != null && !moveInfoText.isEmpty()) {
             infoTextPaint.setTextSize(aiTextSize);
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            infoTextPaint.setColor(neutralColor);
             canvas.drawText(moveInfoText, width / 2, currentY, infoTextPaint);
         }
         
@@ -692,20 +721,38 @@ public class RoundView extends View {
         return String.format("%02d:%02d", minutes, seconds);
     }
     
-    // 获取对战模式名称
-    private String getGameModeName(int mode) {
-        switch (mode) {
-            case 0:
-                return "双人对战";
-            case 1:
-                return "玩家红棋";
-            case 2:
-                return "玩家黑棋";
-            case 3:
-                return "双机对战";
-            default:
-                return "未知模式";
+    // 在 (cx, cy) 处绘制一个阵营图标：isAI 为 true 表示电脑（机器人），否则为玩家（棋子）
+    private void drawSideIcon(Canvas canvas, float cx, float cy, float size, boolean isAI, int color) {
+        // 机器人（AI）使用固定科技蓝色，与红/黑阵营区分；玩家按阵营色
+        int iconColor = isAI ? Color.parseColor("#3D7BFF") : color;
+        // 圆形底色衬底，让图标更醒目
+        Paint bgPaint = new Paint();
+        bgPaint.setAntiAlias(true);
+        bgPaint.setStyle(Paint.Style.FILL);
+        bgPaint.setColor(Color.argb(45, Color.red(iconColor), Color.green(iconColor), Color.blue(iconColor)));
+        canvas.drawCircle(cx, cy, size * 0.56f, bgPaint);
+
+        // 使用开源图标（Lucide）：玩家=人(ic_player)、电脑=机器人(ic_ai)
+        int resId = isAI ? R.drawable.ic_ai : R.drawable.ic_player;
+        Drawable d = ContextCompat.getDrawable(getContext(), resId);
+        if (d != null) {
+            d = DrawableCompat.wrap(d.mutate());
+            DrawableCompat.setTint(d, iconColor);
+            int s = (int) (size * 0.94f);
+            d.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f),
+                    Math.round(cx + s / 2f), Math.round(cy + s / 2f));
+            d.draw(canvas);
         }
+    }
+
+    // 行棋方高亮环：围绕时间旁的阵营图标，金色环提示当前该方走棋
+    private void drawActiveRing(Canvas canvas, float cx, float cy, float size) {
+        Paint ring = new Paint();
+        ring.setAntiAlias(true);
+        ring.setStyle(Paint.Style.STROKE);
+        ring.setStrokeWidth(convertDpToPixel(2f, getContext()));
+        ring.setColor(Color.rgb(245, 210, 120));
+        canvas.drawCircle(cx, cy, size * 0.6f, ring);
     }
 
     @Override
@@ -715,13 +762,13 @@ public class RoundView extends View {
         // 获取宽度
         int width = MeasureSpec.getSize(widthMeasureSpec);
         
-        // 计算高度 - 增大高度以容纳更大的字体
+        // 计算高度 - 紧凑三行布局，避免占用过多屏幕空间
         int height;
         if (MeasureSpec.getMode(heightMeasureSpec) == MeasureSpec.EXACTLY) {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(100, getContext()); // 适配当前字体大小
+            height = (int) convertDpToPixel(88, getContext()); // 紧凑三行：形势/时间评分条/AI提示
         }
         
         viewWidth = width;
@@ -773,7 +820,7 @@ public class RoundView extends View {
     }
     
     private void drawScoreBar(Canvas canvas, int width, float centerY, int score) {
-        float barWidth = width * 0.7f;
+        float barWidth = width * 0.56f;
         float barHeight = convertDpToPixel(14, getContext());
         float barX = (width - barWidth) / 2;
         float barY = centerY - barHeight / 2 - convertDpToPixel(3, getContext());

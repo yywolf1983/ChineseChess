@@ -17,7 +17,18 @@ public class BoardStateGenerator {
             Utils.LogUtils.d("BoardStateGenerator", "生成棋盘状态失败，activity 为 null");
             return;
         }
-        
+
+        // 棋谱导航/加载时清除 AI 支招提示（含棋盘提示线与 RoundView 支招文本），
+        // 避免上一步/下一步的步数信息被 AI 步子提示遮挡
+        if (activity.gameManager != null) {
+            activity.gameManager.clearSuggest();
+        }
+        // 重置搜索深度与思考动画，让导航信息可正常显示
+        if (activity.roundView != null) {
+            activity.roundView.clearSearchState();
+            activity.roundView.setSuggestMode(false);
+        }
+
         Utils.LogUtils.d("BoardStateGenerator", "开始生成棋盘状态，当前步数: " + moveIndex);
         if (notation != null) {
             // 初始化棋盘状态

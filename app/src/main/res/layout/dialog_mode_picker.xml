@@ -41,10 +41,17 @@
         android:focusable="true"
         android:orientation="horizontal">
 
-        <ImageView
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:src="@drawable/ic_mode_pvp" />
+        <View
+            android:id="@+id/mode_card_accent"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="12dp"
+            android:background="#CCCCCC" />
+
+        <CustomView.ModeComboView
+            android:id="@+id/mode_card_glyph"
+            android:layout_width="52dp"
+            android:layout_height="30dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -78,10 +85,17 @@
         android:focusable="true"
         android:orientation="horizontal">
 
-        <ImageView
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:src="@drawable/ic_mode_pvai" />
+        <View
+            android:id="@+id/mode_card_accent"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="12dp"
+            android:background="#CCCCCC" />
+
+        <CustomView.ModeComboView
+            android:id="@+id/mode_card_glyph"
+            android:layout_width="52dp"
+            android:layout_height="30dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -115,10 +129,17 @@
         android:focusable="true"
         android:orientation="horizontal">
 
-        <ImageView
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:src="@drawable/ic_mode_pvai" />
+        <View
+            android:id="@+id/mode_card_accent"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="12dp"
+            android:background="#CCCCCC" />
+
+        <CustomView.ModeComboView
+            android:id="@+id/mode_card_glyph"
+            android:layout_width="52dp"
+            android:layout_height="30dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -152,10 +173,17 @@
         android:focusable="true"
         android:orientation="horizontal">
 
-        <ImageView
-            android:layout_width="26dp"
-            android:layout_height="26dp"
-            android:src="@drawable/ic_mode_aivai" />
+        <View
+            android:id="@+id/mode_card_accent"
+            android:layout_width="4dp"
+            android:layout_height="match_parent"
+            android:layout_marginEnd="12dp"
+            android:background="#CCCCCC" />
+
+        <CustomView.ModeComboView
+            android:id="@+id/mode_card_glyph"
+            android:layout_width="52dp"
+            android:layout_height="30dp" />
 
         <TextView
             android:id="@+id/mode_card_name"

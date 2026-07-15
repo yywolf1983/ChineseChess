@@ -2,6 +2,7 @@ package top.nones.chessgame;
 
 import android.app.Dialog;
 import android.content.Context;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -11,6 +12,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import CustomView.ModeComboView;
 import top.nones.chessgame.R;
 
 /**
@@ -24,6 +26,18 @@ public class ModePickerDialog extends Dialog implements View.OnClickListener {
             "人机对战(玩家黑)",
             "双机对战"
     };
+
+    // 每种模式的主题色（用于色条与选中高亮，直观区分模式）
+    private static final int[] THEME_COLORS = {
+            Color.rgb(76, 175, 80),   // 0 双人：绿
+            Color.rgb(200, 40, 40),   // 1 玩家红：红
+            Color.rgb(45, 45, 45),    // 2 玩家黑：黑
+            Color.rgb(90, 150, 235)   // 3 双机：蓝
+    };
+
+    private static final int RED = Color.rgb(200, 40, 40);
+    private static final int BLACK = Color.rgb(45, 45, 45);
+    private static final int BLUE = Color.rgb(90, 150, 235);
 
     private final int currentMode;
     private final OnModeSelectedListener listener;
@@ -60,8 +74,32 @@ public class ModePickerDialog extends Dialog implements View.OnClickListener {
             card.setOnClickListener(this);
             TextView name = card.findViewById(R.id.mode_card_name);
             name.setText(MODE_NAMES[i]);
+
+            // 双方阵营图标（形状区分人/电脑，颜色区分阵营/电脑）
+            ModeComboView glyph = card.findViewById(R.id.mode_card_glyph);
+            boolean leftAI = (i == 2 || i == 3);   // 红方为电脑
+            boolean rightAI = (i == 1 || i == 3);  // 黑方为电脑
+            int leftColor = leftAI ? BLUE : RED;
+            int rightColor = rightAI ? BLUE : BLACK;
+            glyph.setSides(leftAI, leftColor, rightAI, rightColor);
+
+            // 左侧主题色条（始终显示，颜色区分模式）
+            View accent = card.findViewById(R.id.mode_card_accent);
+            accent.setBackgroundColor(THEME_COLORS[i]);
+
             ImageView check = card.findViewById(R.id.mode_card_check);
-            check.setVisibility(i == currentMode ? View.VISIBLE : View.GONE);
+            if (i == currentMode) {
+                // 选中态：卡片浅色底 + 名称主题色 + 勾选图标主题色
+                card.setBackgroundColor(Color.argb(35,
+                        Color.red(THEME_COLORS[i]), Color.green(THEME_COLORS[i]), Color.blue(THEME_COLORS[i])));
+                name.setTextColor(THEME_COLORS[i]);
+                check.setColorFilter(THEME_COLORS[i]);
+                check.setVisibility(View.VISIBLE);
+            } else {
+                card.setBackgroundResource(R.drawable.bg_mode_card);
+                name.setTextColor(Color.rgb(34, 34, 34));
+                check.setVisibility(View.GONE);
+            }
         }
 
         findViewById(R.id.mode_cancel).setOnClickListener(v -> dismiss());
