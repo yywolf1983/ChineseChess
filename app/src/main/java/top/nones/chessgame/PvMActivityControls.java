@@ -87,6 +87,8 @@ public class PvMActivityControls {
                     // 重置棋谱相关变量
                     activity.notationManager.setCurrentNotation(null);
                     activity.notationManager.setCurrentMoveIndex(0);
+                    // 未加载棋谱：同步上一步/下一步按钮为不可用
+                    activity.notationManager.updateNavButtonsEnabled();
                     // 重置setupFEN，确保新局使用标准初始局面
                     activity.notationManager.setSetupFEN(null);
                     // 重置继续对局后的回合计数器
@@ -105,6 +107,9 @@ public class PvMActivityControls {
                     if (activity.roundView != null) {
                         activity.roundView.setChessInfo(activity.chessInfo);
                         activity.roundView.setMoveScore(0);
+                        // 新局后清空显示信息（步数信息 + 残留支招信息）
+                        activity.roundView.setMoveInfoText("");
+                        activity.roundView.setSuggestMoveText("");
                         activity.roundView.requestDraw();
                     }
                     if (activity.setupModeView != null) {
@@ -116,6 +121,8 @@ public class PvMActivityControls {
                     if (setupBtn instanceof android.widget.Button) {
                         ((android.widget.Button) setupBtn).setText("摆棋");
                     }
+                    // 还原摆棋按钮视觉状态并恢复其它被禁用的按钮
+                    activity.applySetupModeButtonUI(false);
                     // 停止之前的 AI 分析，避免状态残留
                     if (activity.aiManager != null) {
                         activity.aiManager.stopAIAnalysis();
@@ -226,19 +233,17 @@ public class PvMActivityControls {
     public void handleModeButton() {
         try {
             LogUtils.d("PvMActivityControls", "handleModeButton called");
-            // 显示模式切换对话框
-            android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
-            builder.setTitle("选择对战模式");
-            builder.setItems(new String[]{"双人对战", "人机对战(玩家红)", "人机对战(玩家黑)", "双机对战"}, (dialog, which) -> {
+            // 弹出统一的模式选择底部弹窗（图标卡片）
+            ModePickerDialog dialog = new ModePickerDialog(activity, activity.gameMode, mode -> {
                 try {
                     // 先停止当前AI分析，避免isAIAnalyzing标志残留导致棋子无法选中
                     if (activity.aiManager != null) {
                         activity.aiManager.stopAIAnalysis();
                     }
-                    activity.gameMode = which;
+                    activity.gameMode = mode;
                     // 更新RoundView的游戏模式显示
                     if (activity.roundView != null) {
-                        activity.roundView.setGameMode(which);
+                        activity.roundView.setGameMode(mode);
                     }
                     // 重新读取设置，确保新模式下使用最新设置
                     if (activity.setting != null && activity.chessInfo != null) {
@@ -253,7 +258,7 @@ public class PvMActivityControls {
                     LogUtils.e("PvMActivityControls", "Error in mode button click", e);
                 }
             });
-            builder.show();
+            dialog.show();
         } catch (Exception e) {
             LogUtils.e("PvMActivityControls", "Error in handleModeButton", e);
         }
@@ -302,9 +307,11 @@ public class PvMActivityControls {
             Button btn = (Button) btnView;
             if (analyzing) {
                 btn.setText("中断");
+                btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_stop, 0, 0);
                 btn.setBackgroundResource(R.drawable.bg_board_btn_stop_red);
             } else {
                 btn.setText("支招");
+                btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_suggest, 0, 0);
                 btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_teal);
             }
         } catch (Exception e) {

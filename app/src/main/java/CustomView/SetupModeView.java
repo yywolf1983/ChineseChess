@@ -265,14 +265,13 @@ public class SetupModeView extends View {
             }
         }
 
-        // 绘制清空棋盘、拍照、图片按钮
+        // 绘制清空棋盘、拍照、图片按钮（紧贴红棋下方）
         int buttonWidth = (int) convertDpToPixel(90, getContext()); // 3个按钮，每个90dp
         int buttonHeight = (int) convertDpToPixel(25, getContext());
-        int buttonYOffset = (int) convertDpToPixel(5, getContext());
         int buttonSpacing = (int) convertDpToPixel(10, getContext());
         int totalButtonsWidth = buttonWidth * 3 + buttonSpacing * 2;
         int startX = (windowWidth - totalButtonsWidth) / 2;
-        int buttonY = redStartY + pieceSize + buttonYOffset;
+        int buttonY = redStartY + pieceSize + (int) convertDpToPixel(6, getContext());
 
         // 按钮背景颜色
         int[] buttonColors = {
@@ -338,7 +337,7 @@ public class SetupModeView extends View {
 
         int width = MeasureSpec.getSize(widthMeasureSpec);
         // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-        int height = (int) convertDpToPixel(130, getContext()); // 135dp高度，在清空棋盘按钮下方留出空间
+        int height = (int) convertDpToPixel(135, getContext()); // 容纳标题/黑棋/红棋/操作按钮
 
         setMeasuredDimension(width, height);
     }
@@ -444,13 +443,13 @@ public class SetupModeView extends View {
             }
         }
 
-        // 检查清空棋盘、拍照、图片按钮
+        // 检查清空棋盘、拍照、图片按钮（紧贴红棋下方）
         int btnWidth = (int) convertDpToPixel(90, getContext());
         int btnHeight = (int) convertDpToPixel(25, getContext());
         int btnSpacing = (int) convertDpToPixel(10, getContext());
         int totalBtnsWidth = btnWidth * 3 + btnSpacing * 2;
         int btnStartX = (windowWidth - totalBtnsWidth) / 2;
-        int btnY = redStartY + pieceSize + buttonYOffset;
+        int btnY = redStartY + pieceSize + (int) convertDpToPixel(6, getContext());
 
         for (int i = 0; i < 3; i++) {
             int buttonX = btnStartX + i * (btnWidth + btnSpacing);

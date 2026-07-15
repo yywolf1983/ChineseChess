@@ -8,4 +8,13 @@
         <item name="android:backgroundDimEnabled">true</item>
     </style>
 
+    <style name="ModePickerBottomSheet" parent="CustomDialog">
+        <item name="android:windowAnimationStyle">@style/ModePickerAnim</item>
+    </style>
+
+    <style name="ModePickerAnim">
+        <item name="android:windowEnterAnimation">@anim/slide_in_up</item>
+        <item name="android:windowExitAnimation">@anim/slide_out_down</item>
+    </style>
+
 </resources>

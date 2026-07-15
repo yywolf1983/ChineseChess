@@ -67,6 +67,11 @@ public class PvMActivityNotation {
         notationManager.handleNextButton();
     }
     
+    // 同步上一步/下一步按钮的可用状态
+    public void updateNavButtonsEnabled() {
+        notationManager.updateNavButtonsEnabled();
+    }
+    
     // 生成棋盘状态
     public void generateBoardStateFromNotation() {
         BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);

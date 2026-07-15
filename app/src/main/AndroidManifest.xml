@@ -37,7 +37,6 @@
         <activity android:name=".PvPActivity" android:exported="false" />
         <activity android:name=".PvMActivity" android:exported="false" />
         <activity android:name=".NotationActivity" android:exported="false" />
-        <activity android:name=".ModeSelectionActivity" android:exported="false" />
         <activity
             android:name="com.reggate.lib.RegistrationGateActivity"
             android:exported="true"

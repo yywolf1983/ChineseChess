@@ -328,36 +328,10 @@ public class PvPActivityControls {
     public void handleSaveButton() {
         try {
             LogUtils.d("PvPActivityControls", "handleSaveButton called");
-            // 创建一个布局用于输入对局信息
-            android.view.LayoutInflater inflater = activity.getLayoutInflater();
-            android.view.View dialogView = inflater.inflate(R.layout.dialog_save_notation, null);
-            
-            final android.widget.EditText redPlayerEditText = dialogView.findViewById(R.id.red_player_edit);
-            final android.widget.EditText blackPlayerEditText = dialogView.findViewById(R.id.black_player_edit);
-            final android.widget.EditText dateEditText = dialogView.findViewById(R.id.date_edit);
-            final android.widget.EditText locationEditText = dialogView.findViewById(R.id.location_edit);
-            final android.widget.EditText eventEditText = dialogView.findViewById(R.id.event_edit);
-            final android.widget.EditText roundEditText = dialogView.findViewById(R.id.round_edit);
-            
-            // 设置默认值
-            dateEditText.setText(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()));
-            
-            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-            builder.setTitle("保存棋谱");
-            builder.setView(dialogView);
-            builder.setPositiveButton("保存", (dialog, which) -> {
+            SaveNotationDialog dialog = new SaveNotationDialog(activity, (fileName, redPlayer, blackPlayer,
+                    date, location, event, round) -> {
                 try {
-                    // 生成默认文件名
-                    String fileName = "双人对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date()) + ".pgn";
-                    
-                    String redPlayer = redPlayerEditText.getText().toString().trim();
-                    String blackPlayer = blackPlayerEditText.getText().toString().trim();
-                    String date = dateEditText.getText().toString().trim();
-                    String location = locationEditText.getText().toString().trim();
-                    String event = eventEditText.getText().toString().trim();
-                    String round = roundEditText.getText().toString().trim();
-                    
-                    // 保存信息到成员变量
+                    // 保存信息到成员变量（文件名不含扩展名，SAF 标题再补 .pgn）
                     pendingSaveFileName = fileName;
                     pendingSaveRedPlayer = redPlayer;
                     pendingSaveBlackPlayer = blackPlayer;
@@ -365,19 +339,20 @@ public class PvPActivityControls {
                     pendingSaveLocation = location;
                     pendingSaveEvent = event;
                     pendingSaveRound = round;
-                    
+
+                    String intentFileName = fileName.toLowerCase().endsWith(".pgn") ? fileName : fileName + ".pgn";
+
                     // 使用SAF打开文件保存选择器
                     android.content.Intent intent = new android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT);
                     intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
                     intent.setType("*/*");
-                    intent.putExtra(android.content.Intent.EXTRA_TITLE, fileName);
+                    intent.putExtra(android.content.Intent.EXTRA_TITLE, intentFileName);
                     activity.startActivityForResult(intent, 1003);
                 } catch (Exception e) {
                     LogUtils.e("PvPActivityControls", "Error in save button click", e);
                 }
             });
-            builder.setNegativeButton("取消", null);
-            builder.show();
+            dialog.show();
             LogUtils.d("PvPActivityControls", "handleSaveButton completed");
         } catch (Exception e) {
             LogUtils.e("PvPActivityControls", "Unexpected error in handleSaveButton", e);

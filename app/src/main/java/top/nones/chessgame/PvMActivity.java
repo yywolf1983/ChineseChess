@@ -87,9 +87,17 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public ChessView chessView;
     public RoundView roundView;
     public SetupModeView setupModeView;
+    public android.widget.ImageView flipButton;
+    // 进入摆棋前保存各按钮原始可用状态；退出时只恢复原本可用的，
+    // 原本就因「非加载棋局/无历史」而置灰的（如上一步/下一步）保持禁用
+    private final java.util.Map<Integer, Boolean> setupButtonEnabledState = new java.util.HashMap<>();
+    private Boolean flipButtonOriginalEnabled = null;
 
-    // 按钮组ID
-    private int buttonGroupId;
+    // 按钮组ID（在 PvMActivityInit 中给按钮组根布局设置该 ID 并赋值此字段）
+    public int buttonGroupId = 10001;
+    // 上一步/下一步按钮引用，用于在「未加载棋谱」时禁用
+    public android.widget.Button btnPrev;
+    public android.widget.Button btnNext;
     // 对战模式：0-双人对战, 1-人机对战(玩家红), 2-人机对战(玩家黑), 3-双机对战
     public int gameMode = 0;
     
@@ -204,6 +212,142 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 递归设置按钮监听器，处理嵌套布局
     private void setupButtonListeners(ViewGroup viewGroup) {
         controlsManager.setupButtonListeners(viewGroup);
+    }
+
+    /**
+     * 摆棋模式下切换"摆棋/完成"按钮的视觉状态，并禁用/恢复其它按钮。
+     * @param entering true=进入摆棋（显示"完成"、变色、禁用其它按钮）；false=退出摆棋（还原）
+     */
+    public void applySetupModeButtonUI(boolean entering) {
+        try {
+            View setupBtn = findViewById(R.id.btn_setup);
+            if (setupBtn instanceof Button) {
+                Button btn = (Button) setupBtn;
+                if (entering) {
+                    btn.setText("完成");
+                    btn.setBackgroundResource(R.drawable.bg_board_btn_done);
+                    btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_done, 0, 0);
+                } else {
+                    btn.setText("摆棋");
+                    btn.setBackgroundResource(R.drawable.bg_board_btn_setup);
+                    btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_setup, 0, 0);
+                }
+            }
+            // 进入摆棋时禁用其它按钮，退出时恢复
+            setNonSetupButtonsEnabled(!entering);
+        } catch (Exception e) {
+            LogUtils.e("PvMActivity", "applySetupModeButtonUI failed", e);
+        }
+    }
+
+    // 递归禁用/启用按钮组中除摆棋外的所有按钮。
+    // 进入摆棋(enabled=false)时记录各按钮原始可用状态再全部禁用；
+    // 退出摆棋(enabled=true)时只恢复原本可用的，原本禁用的保持禁用。
+    private void setNonSetupButtonsEnabled(boolean enabled) {
+        try {
+            if (enabled) {
+                // 退出摆棋：仅当确实存在进入时保存的状态才恢复按钮。
+                // 若为空（如新局时点此，并非从摆棋退出），不改动其它按钮，
+                // 避免把原本就因「非加载棋局/无历史」而置灰的上一步/下一步错误启用。
+                if (!setupButtonEnabledState.isEmpty() || flipButtonOriginalEnabled != null) {
+                    View bg = findViewById(buttonGroupId);
+                    if (bg instanceof ViewGroup) {
+                        restoreButtonsRecursively((ViewGroup) bg, R.id.btn_setup);
+                    }
+                    if (flipButton != null) {
+                        boolean orig = flipButtonOriginalEnabled != null ? flipButtonOriginalEnabled : true;
+                        flipButton.setEnabled(orig);
+                        flipButton.setAlpha(orig ? 1f : 0.4f);
+                    }
+                    setupButtonEnabledState.clear();
+                    flipButtonOriginalEnabled = null;
+                }
+            } else {
+                // 进入摆棋：先记录原始状态，再全部禁用
+                View bg = findViewById(buttonGroupId);
+                if (bg instanceof ViewGroup) {
+                    saveAndDisableRecursively((ViewGroup) bg, R.id.btn_setup);
+                }
+                if (flipButton != null) {
+                    flipButtonOriginalEnabled = flipButton.isEnabled();
+                    flipButton.setEnabled(false);
+                    flipButton.setAlpha(0.4f);
+                }
+            }
+            // 摆棋面板（SetupModeView：清空棋盘 / 拍照 / 图片）
+            // 属于摆棋功能本身，无论进入还是退出摆棋都必须保持可用，绝不能禁用。
+            // 它本身不在主按钮组里，这里做显式保证以防布局变化时被误伤。
+            if (setupModeView != null) {
+                setupModeView.setEnabled(true);
+                setupModeView.setAlpha(1f);
+            }
+            // 棋盘视图在摆棋模式下用于放置棋子，同样必须保持可交互
+            if (chessView != null) {
+                chessView.setEnabled(true);
+            }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivity", "setNonSetupButtonsEnabled failed", e);
+        }
+    }
+
+    private void saveAndDisableRecursively(ViewGroup viewGroup, int excludeId) {
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            if (child instanceof Button) {
+                if (child.getId() != excludeId) {
+                    setupButtonEnabledState.put(child.getId(), child.isEnabled());
+                    child.setEnabled(false);
+                    child.setAlpha(0.4f);
+                }
+            } else if (child instanceof ViewGroup) {
+                saveAndDisableRecursively((ViewGroup) child, excludeId);
+            }
+        }
+    }
+
+    private void restoreButtonsRecursively(ViewGroup viewGroup, int excludeId) {
+        for (int i = 0; i < viewGroup.getChildCount(); i++) {
+            View child = viewGroup.getChildAt(i);
+            if (child instanceof Button) {
+                if (child.getId() != excludeId) {
+                    Boolean orig = setupButtonEnabledState.get(child.getId());
+                    boolean enable = orig != null ? orig : true;
+                    child.setEnabled(enable);
+                    child.setAlpha(enable ? 1f : 0.4f);
+                }
+            } else if (child instanceof ViewGroup) {
+                restoreButtonsRecursively((ViewGroup) child, excludeId);
+            }
+        }
+    }
+
+    /**
+     * 停止所有 AI 相关工作：分析、引擎搜索、局面评分，并复位支招按钮。
+     * 在摆棋开始（无论通过按钮还是拍照识别）时调用。
+     */
+    public void stopAllAI() {
+        if (aiManager != null) {
+            aiManager.stopAIAnalysis();
+        }
+        if (pikafishAI != null) {
+            pikafishAI.interrupt();
+        }
+        // 取消进行中的局面评分任务，避免摆棋期间引擎仍在算分
+        if (evaluationExecutor != null && !evaluationExecutor.isShutdown()) {
+            try {
+                evaluationExecutor.shutdownNow();
+            } catch (Exception e) {
+                LogUtils.e("PvMActivity", "stopAllAI: shutdown evaluation failed", e);
+            }
+            try {
+                evaluationExecutor = Executors.newSingleThreadScheduledExecutor();
+            } catch (Exception e) {
+                LogUtils.e("PvMActivity", "stopAllAI: recreate evaluation failed", e);
+            }
+        }
+        if (controlsManager != null) {
+            controlsManager.updateSuggestButton(false);
+        }
     }
 
     @Override
@@ -674,9 +818,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             
             // 7. 进入摆棋模式
             if (!chessInfo.IsSetupMode) {
-                if (aiManager != null) {
-                    aiManager.stopAIAnalysis();
-                }
+                // 停止所有 AI（分析、引擎搜索、局面评分）并复位支招按钮
+                stopAllAI();
                 stopTurnTimer();
                 chessInfo.IsSetupMode = true;
                 gameMode = 0; // 重置为双人模式，防止 AI 在摆棋模式下触发
@@ -701,6 +844,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 if (roundView != null) {
                     roundView.setVisibility(View.GONE);
                 }
+                // 摆棋按钮变为"完成"：变色 + 变图标，并禁用其它按钮
+                applySetupModeButtonUI(true);
             }
             
             // 8. 重新计算攻击棋子数量

@@ -253,9 +253,9 @@ public class PvMActivityInit {
                     if (buttonGroup != null) {
                         activity.relativeLayout.addView(buttonGroup);
 
-                        // 使用手动定义的ID
-                        int buttonGroupId = 10001;
-                        buttonGroup.setId(buttonGroupId);
+                        // 使用手动定义的ID，并同步到 activity 字段供摆棋禁用逻辑使用
+                        activity.buttonGroupId = 10001;
+                        buttonGroup.setId(activity.buttonGroupId);
 
                         android.widget.RelativeLayout.LayoutParams paramsV = (android.widget.RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
                         if (paramsV != null) {
@@ -269,6 +269,14 @@ public class PvMActivityInit {
                             // 处理嵌套的LinearLayout布局
                             if (activity.controlsManager != null) {
                                 activity.controlsManager.setupButtonListeners(buttonGroup);
+                            }
+
+                            // 获取上一步/下一步按钮引用，并同步其初始可用状态
+                            // （未加载棋谱时应禁用）
+                            activity.btnPrev = buttonGroup.findViewById(R.id.btn_prev);
+                            activity.btnNext = buttonGroup.findViewById(R.id.btn_next);
+                            if (activity.notationManager != null) {
+                                activity.notationManager.updateNavButtonsEnabled();
                             }
                         }
                     }
@@ -346,6 +354,8 @@ public class PvMActivityInit {
         @Override
         public void onPieceSelected(int pieceID) {
             if (activity != null && activity.setupManager != null) {
+                // 选择面板棋子时清除棋盘上的选中，保持选中状态互斥
+                activity.setupManager.setSelectedBoardPiecePos(new int[]{-1, -1});
                 activity.setupManager.setSelectedPieceID(pieceID);
             }
         }
@@ -440,6 +450,7 @@ public class PvMActivityInit {
                 activity.chessView.toggleFlip();
             }
         });
+        activity.flipButton = flipButton;
         activity.relativeLayout.addView(flipButton);
 
         android.widget.RelativeLayout.LayoutParams flipParams =

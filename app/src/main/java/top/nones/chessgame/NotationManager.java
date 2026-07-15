@@ -41,6 +41,8 @@ public class NotationManager {
         this.currentMoveIndex = 0;
         // 显示初始棋谱信息
         updateMoveInfoDisplay();
+        // 同步上一步/下一步按钮的可用状态
+        updateNavButtonsEnabled();
     }
     
     public int getCurrentMoveIndex() {
@@ -49,6 +51,8 @@ public class NotationManager {
     
     public void setCurrentMoveIndex(int index) {
         this.currentMoveIndex = index;
+        // 同步上一步/下一步按钮的可用状态
+        updateNavButtonsEnabled();
     }
     
     public String getSetupFEN() {
@@ -61,42 +65,8 @@ public class NotationManager {
     
     // 显示保存棋谱对话框
     public void showSaveNotationDialog() {
-        // 先弹出对话框获取棋谱信息
-        android.view.LayoutInflater inflater = android.view.LayoutInflater.from(activity);
-        android.view.View dialogView = inflater.inflate(R.layout.dialog_save_notation, null);
-        
-        final android.widget.EditText redPlayerEditText = dialogView.findViewById(R.id.red_player_edit);
-        final android.widget.EditText blackPlayerEditText = dialogView.findViewById(R.id.black_player_edit);
-        final android.widget.EditText dateEditText = dialogView.findViewById(R.id.date_edit);
-        final android.widget.EditText locationEditText = dialogView.findViewById(R.id.location_edit);
-        final android.widget.EditText eventEditText = dialogView.findViewById(R.id.event_edit);
-        final android.widget.EditText roundEditText = dialogView.findViewById(R.id.round_edit);
-        final android.widget.EditText fileNameEditText = dialogView.findViewById(R.id.file_name_edit);
-        
-        // 设置默认值
-        dateEditText.setText(new java.text.SimpleDateFormat("yyyy-MM-dd").format(new java.util.Date()));
-        // 为文件名输入框设置默认值，不包含.pgn扩展名
-        String defaultFileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
-        fileNameEditText.setText(defaultFileName);
-        
-        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
-        builder.setTitle("保存棋谱");
-        builder.setView(dialogView);
-        builder.setPositiveButton("保存", (dialog, which) -> {
-            // 获取用户输入的文件名，不包含.pgn扩展名
-            String fileName = fileNameEditText.getText().toString().trim();
-            if (fileName.isEmpty()) {
-                // 如果用户没有输入文件名，使用默认文件名
-                fileName = "对局_" + new java.text.SimpleDateFormat("yyyyMMdd_HHmmss").format(new java.util.Date());
-            }
-            
-            String redPlayer = redPlayerEditText.getText().toString().trim();
-            String blackPlayer = blackPlayerEditText.getText().toString().trim();
-            String date = dateEditText.getText().toString().trim();
-            String location = locationEditText.getText().toString().trim();
-            String event = eventEditText.getText().toString().trim();
-            String round = roundEditText.getText().toString().trim();
-            
+        SaveNotationDialog dialog = new SaveNotationDialog(activity, (fileName, redPlayer, blackPlayer,
+                date, location, event, round) -> {
             // 保存信息到成员变量，不包含.pgn扩展名
             pendingSaveFileName = fileName;
             pendingSaveRedPlayer = redPlayer;
@@ -105,13 +75,10 @@ public class NotationManager {
             pendingSaveLocation = location;
             pendingSaveEvent = event;
             pendingSaveRound = round;
-            
+
             // 为Intent添加.pgn扩展名，确保保存的文件有正确的后缀名
-            String intentFileName = fileName;
-            if (!intentFileName.toLowerCase().endsWith(".pgn")) {
-                intentFileName += ".pgn";
-            }
-            
+            String intentFileName = fileName.toLowerCase().endsWith(".pgn") ? fileName : fileName + ".pgn";
+
             // 使用SAF打开文件保存选择器
             Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
@@ -119,8 +86,7 @@ public class NotationManager {
             intent.putExtra(Intent.EXTRA_TITLE, intentFileName);
             activity.startActivityForResult(intent, 1003);
         });
-        builder.setNegativeButton("取消", null);
-        builder.show();
+        dialog.show();
     }
     
     // 显示加载棋谱对话框
@@ -178,6 +144,11 @@ public class NotationManager {
                     // 生成棋盘状态
                     BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
                     boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
+                    
+                    // 加载后重置显示信息（第 0 步 / 共 N 步）
+                    updateMoveInfoDisplay();
+                    // 同步上一步/下一步按钮的可用状态
+                    updateNavButtonsEnabled();
                     
                     if (activity.chessView != null) {
                         activity.chessView.requestDraw();
@@ -442,6 +413,8 @@ public class NotationManager {
                 boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
+                // 同步导航按钮状态
+                updateNavButtonsEnabled();
             } else {
                 Utils.LogUtils.d("NotationManager", "已经是第一步");
             }
@@ -466,6 +439,8 @@ public class NotationManager {
                 boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
+                // 同步导航按钮状态
+                updateNavButtonsEnabled();
             } else {
                 Utils.LogUtils.d("NotationManager", "已经是最后一步");
             }
@@ -474,6 +449,34 @@ public class NotationManager {
         }
     }
     
+    // 根据棋谱加载状态与回放进度，更新「上一步/下一步」按钮的可用性
+    public void updateNavButtonsEnabled() {
+        if (activity == null) {
+            return;
+        }
+        android.widget.Button prev = activity.btnPrev;
+        android.widget.Button next = activity.btnNext;
+        if (prev == null || next == null) {
+            return;
+        }
+        if (currentNotation == null) {
+            // 未加载棋谱：两个按钮都不可用
+            prev.setEnabled(false);
+            prev.setAlpha(0.4f);
+            next.setEnabled(false);
+            next.setAlpha(0.4f);
+            return;
+        }
+        java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
+        int totalMoves = moveRecords != null ? moveRecords.size() * 2 : 0;
+        boolean prevEnabled = currentMoveIndex > 0;
+        boolean nextEnabled = currentMoveIndex < totalMoves;
+        prev.setEnabled(prevEnabled);
+        prev.setAlpha(prevEnabled ? 1f : 0.4f);
+        next.setEnabled(nextEnabled);
+        next.setAlpha(nextEnabled ? 1f : 0.4f);
+    }
+
     // 更新步数信息显示
     private void updateMoveInfoDisplay() {
         NotationUIUpdater uiUpdater = new NotationUIUpdater(activity);

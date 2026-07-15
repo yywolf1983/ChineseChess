@@ -26,6 +26,10 @@ public class PvMActivitySetup {
     
     public void setSelectedPieceID(int pieceID) {
         this.selectedPieceID = pieceID;
+        // 选择面板棋子时，清除棋盘上已选中的棋子，保持选中状态互斥
+        if (pieceID != 0) {
+            this.selectedBoardPiecePos = new int[]{-1, -1};
+        }
     }
     
     public int[] getSelectedBoardPiecePos() {
@@ -345,17 +349,15 @@ public class PvMActivitySetup {
     public void showSetupHelp() {
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setTitle("摆棋模式帮助");
-        builder.setMessage("1. 点击左侧棋子选择区域选择棋子\n" +
-                          "2. 点击棋盘放置选中的棋子\n" +
-                          "3. 点击棋盘上已放置的棋子可移动或移除\n" +
-                          "4. 点击清空棋盘按钮可清空除将/帅外的所有棋子\n" +
-                          "\n棋子放置规则：\n" +
+        builder.setMessage("1. 在「选择棋子」面板点击一个棋子，再点击棋盘即可放置\n" +
+                          "2. 点击棋盘上已放置的棋子可选中它，再点其他位置即可移动\n" +
+                          "3. 点击「清空棋盘」可移除除将/帅外的所有棋子\n" +
+                          "\n摆棋规则（摆棋模式下较为宽松）：\n" +
                           "- 将/帅：只能放在九宫格内\n" +
                           "- 士：只能放在九宫格内的斜线位置\n" +
-                          "- 象/相：只能放在己方半场的田字中心\n" +
-                          "- 卒/兵：只能放在己方兵线位置\n" +
-                          "- 马、车、炮：可以自由放置\n" +
-                          "\n摆棋完成后，会自动提示选择开局方。");
+                          "- 象/相：只能放在己方半场\n" +
+                          "- 马、车、炮、卒/兵：可自由摆放在任意合法格\n" +
+                          "\n双方都摆好将/帅后，点击「完成」即可选择开局方并开始。");
         builder.setPositiveButton("确定", null);
         builder.show();
     }
@@ -440,6 +442,8 @@ public class PvMActivitySetup {
                         }
                         // 摆棋结束后评估局面分数
                         activity.triggerPositionEvaluation();
+                        // 摆棋真正完成：还原按钮状态（摆棋→完成 还原、其它按钮恢复可用）
+                        restoreAfterSetup();
                     }
                 }
             });
@@ -484,18 +488,74 @@ public class PvMActivitySetup {
                         }
                         // 摆棋结束后评估局面分数
                         activity.triggerPositionEvaluation();
+                        // 摆棋真正完成：还原按钮状态（摆棋→完成 还原、其它按钮恢复可用）
+                        restoreAfterSetup();
                     }
                 }
             });
             builder.setCancelable(false); // 必须选择一个选项
             builder.show();
         } else {
-            if (activity != null) {
-                // 移除Toast提示，通过界面显示提示信息
+            // 摆棋未完成，给出明确提示而不是静默无反应
+            boolean hasRed = false;
+            boolean hasBlack = false;
+            if (activity.chessInfo.piece != null) {
+                for (int r = 0; r < 10 && r < activity.chessInfo.piece.length; r++) {
+                    if (activity.chessInfo.piece[r] == null) continue;
+                    for (int c = 0; c < 9 && c < activity.chessInfo.piece[r].length; c++) {
+                        int p = activity.chessInfo.piece[r][c];
+                        if (p == 8) hasRed = true;
+                        else if (p == 1) hasBlack = true;
+                    }
+                }
             }
+            StringBuilder missing = new StringBuilder();
+            if (!hasRed) {
+                missing.append("红帅");
+            }
+            if (!hasBlack) {
+                if (missing.length() > 0) {
+                    missing.append("、");
+                }
+                missing.append("黑将");
+            }
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+            builder.setTitle("摆棋未完成");
+            builder.setMessage("当前棋盘缺少" + (missing.length() > 0 ? missing.toString() : "必要棋子") +
+                    "，请先摆放完整（双方都需有将/帅）后再完成。");
+            builder.setPositiveButton("继续摆棋", null);
+            builder.show();
         }
     }
-    
+
+    // 摆棋真正完成后还原界面：隐藏摆棋面板、恢复回合视图、完成按钮还原、其它按钮恢复可用
+    private void restoreAfterSetup() {
+        if (activity == null) return;
+        // 摆棋按钮还原为"摆棋"：恢复原色原图标，并重新启用其它按钮
+        activity.applySetupModeButtonUI(false);
+        // 隐藏摆棋模式视图
+        if (activity.setupModeView != null) {
+            activity.setupModeView.setVisibility(View.GONE);
+        }
+        // 恢复回合信息视图
+        if (activity.roundView != null) {
+            activity.roundView.setVisibility(View.VISIBLE);
+            // 确保RoundView的chessInfo引用是最新的
+            activity.roundView.setChessInfo(activity.chessInfo);
+        }
+        // 确保ChessView的chessInfo引用是最新的
+        if (activity.chessView != null) {
+            activity.chessView.setChessInfo(activity.chessInfo);
+            activity.chessView.requestDraw();
+        }
+        // 摆棋结束后默认设置为双人模式
+        activity.gameMode = 0;
+        // 更新RoundView的游戏模式显示
+        if (activity.roundView != null) {
+            activity.roundView.setGameMode(0);
+        }
+    }
+
     // 处理摆棋模式的触摸事件
     public boolean handleSetupModeTouch(float x, float y, android.view.MotionEvent event) {
         if (activity == null || activity.chessInfo == null || !activity.chessInfo.IsSetupMode) {
@@ -519,7 +579,7 @@ public class PvMActivitySetup {
                             activity.chessInfo.piece[j] != null && activity.chessInfo.piece[j].length > i) {
                             boardPieceID = activity.chessInfo.piece[j][i];
                         }
-                        
+
                         // 如果已经选中了棋盘上的棋子
                         if (selectedBoardPiecePos != null && 
                             selectedBoardPiecePos[0] != -1 && selectedBoardPiecePos[1] != -1) {
@@ -562,6 +622,11 @@ public class PvMActivitySetup {
                         }
                         // 如果点击的是棋盘上的棋子，选中该棋子
                         else if (boardPieceID > 0) {
+                            // 选中棋盘棋子时清除面板选中，保持状态互斥
+                            selectedPieceID = 0;
+                            if (activity.setupModeView != null) {
+                                activity.setupModeView.clearSelection();
+                            }
                             selectedBoardPiecePos[0] = i;
                             selectedBoardPiecePos[1] = j;
                             // 显示选中效果
@@ -605,49 +670,20 @@ public class PvMActivitySetup {
         try {
             if (activity.chessInfo.IsSetupMode) {
                 // 关闭摆棋模式，检查摆棋是否完成
+                // 完成/退出的 UI 还原统一在 finishSetup 内（仅在真正完成时）执行，
+                // 避免棋局不完整时仍把摆棋面板隐藏掉的旧问题
                 finishSetup();
-                // 恢复摆棋按钮文字
-                android.view.View setupBtn = activity.findViewById(R.id.btn_setup);
-                if (setupBtn instanceof android.widget.Button) {
-                    ((android.widget.Button) setupBtn).setText("摆棋");
-                }
-                // 隐藏摆棋模式视图
-                if (activity.setupModeView != null) {
-                    activity.setupModeView.setVisibility(View.GONE);
-                }
-                // 恢复回合信息视图
-                if (activity.roundView != null) {
-                    activity.roundView.setVisibility(View.VISIBLE);
-                    // 确保RoundView的chessInfo引用是最新的
-                    activity.roundView.setChessInfo(activity.chessInfo);
-                }
-                // 确保ChessView的chessInfo引用是最新的
-                if (activity.chessView != null) {
-                    activity.chessView.setChessInfo(activity.chessInfo);
-                    activity.chessView.requestDraw();
-                }
-                // 摆棋结束后默认设置为双人模式
-                activity.gameMode = 0;
-                // 更新RoundView的游戏模式显示
-                if (activity.roundView != null) {
-                    activity.roundView.setGameMode(0);
-                }
 
             } else {
                 // 开启摆棋模式前，中断所有行棋
-                // 停止AI分析
-                if (activity.aiManager != null) {
-                    activity.aiManager.stopAIAnalysis();
-                }
+                // 停止所有 AI（分析、引擎搜索、局面评分）并复位支招按钮
+                activity.stopAllAI();
                 // 停止计时器
                 activity.stopTurnTimer();
                 // 开启摆棋模式
                 activity.chessInfo.IsSetupMode = true;
-                // 将摆棋按钮文字改为"完成"
-                android.view.View setupBtn = activity.findViewById(R.id.btn_setup);
-                if (setupBtn instanceof android.widget.Button) {
-                    ((android.widget.Button) setupBtn).setText("完成");
-                }
+                // 摆棋按钮变为"完成"：变色 + 变图标，并禁用其它按钮
+                activity.applySetupModeButtonUI(true);
                 // 清除旧的支招提示线和走棋轨迹
                 activity.chessInfo.suggestMoves = new java.util.ArrayList<>();
                 activity.chessInfo.suggestMoveLabels = new java.util.ArrayList<>();

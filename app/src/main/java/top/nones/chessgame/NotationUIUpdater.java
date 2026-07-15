@@ -12,6 +12,15 @@ public class NotationUIUpdater {
     // 更新步数信息显示
     public void updateMoveInfoDisplay(ChessNotation currentNotation, int currentMoveIndex) {
         if (activity != null) {
+            if (currentNotation == null) {
+                // 未加载棋谱（如新局）：清空显示信息
+                activity.runOnUiThread(() -> {
+                    if (activity.roundView != null) {
+                        activity.roundView.setMoveInfoText("");
+                    }
+                });
+                return;
+            }
             if (currentNotation != null) {
                 java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
                 int totalMoves = moveRecords != null ? moveRecords.size() * 2 : 0;
