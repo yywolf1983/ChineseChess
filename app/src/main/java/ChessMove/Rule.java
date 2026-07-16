@@ -321,8 +321,15 @@ public class Rule {
             int hy = kingY + offset[1];
             if (hx >= 0 && hx < BOARD_COLS && hy >= 0 && hy < BOARD_ROWS
                     && piece[hy][hx] == enemyHorse) {
-                int legX = kingX + (offset[0] == 0 ? 0 : offset[0] / 2);
-                int legY = kingY + (offset[1] == 0 ? 0 : offset[1] / 2);
+                // 蹩马腿：腿点在马与将之间、紧邻马的一步（沿 2 格长轴方向）
+                int legX, legY;
+                if (Math.abs(offset[0]) == 2) {
+                    legX = hx - offset[0] / 2;
+                    legY = hy;
+                } else {
+                    legX = hx;
+                    legY = hy - offset[1] / 2;
+                }
                 if (piece[legY][legX] == ChessPiece.EMPTY) {
                     Log.d(TAG, "将军检测: 马在 (" + hx + ", " + hy + ") 将军!");
                     return true;
