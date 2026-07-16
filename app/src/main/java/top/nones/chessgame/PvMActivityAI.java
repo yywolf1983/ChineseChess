@@ -815,7 +815,7 @@ public class PvMActivityAI {
         if (aiShouldMove) {
             // 立即在主线程启动 AI 思考动画，不等后台线程调度
             if (this.activity.roundView != null) {
-                this.activity.roundView.setSearchDepth(1, this.activity.chessInfo.IsRedGo);
+                this.activity.roundView.markThinking(this.activity.chessInfo.IsRedGo);
             }
             this.startAIThread();
         }
@@ -1303,12 +1303,13 @@ public class PvMActivityAI {
                 if (aiInstance.activity.pikafishAI != null) {
                     currentDepth = aiInstance.activity.pikafishAI.getCurrentDepth();
                 }
-                // 深度为 0 时可能引擎刚启动还未返回深度，保持动画不消失
+                // 深度为 0 时引擎刚启动尚未返回真实深度：仅维持"思考中"动画，
+                // 不写入占位深度 1，避免搜索被中断时占位值 1 被误当作最终深度显示
                 if (currentDepth == 0) {
-                    currentDepth = 1;
+                    aiInstance.activity.roundView.markThinking(isRed);
+                } else {
+                    aiInstance.activity.roundView.setSearchDepth(currentDepth, isRed);
                 }
-                
-                aiInstance.activity.roundView.setSearchDepth(currentDepth, isRed);
             }
         }
     }

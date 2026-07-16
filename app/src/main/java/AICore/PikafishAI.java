@@ -965,13 +965,14 @@ public class PikafishAI {
         // 记录本次搜索的代际，用于检测中断
         final int myGeneration = searchGeneration.get();
 
-        // 尝试获取搜索锁，如果被占用就停止当前搜索后重试
+        // 尝试获取搜索锁。搜索锁由主 AI 搜索（getBestMoveWithScore /
+        // getPvSequenceWithScore）独占，快速评估与它们共用同一引擎，必须串行。
+        // 注意：拿不到锁时绝不能再发送 stop —— 那样会中断正在进行的主搜索，
+        // 表现为"搜索被中断"、深度停在占位值 1。正确做法是等待主搜索释放锁。
         if (!searchLock.tryLock()) {
-            shouldStop.set(true);
-            sendCommand("stop");
             long waitStart = System.currentTimeMillis();
             while (!searchLock.tryLock()) {
-                if (System.currentTimeMillis() - waitStart > 1000) {
+                if (System.currentTimeMillis() - waitStart > 2000) {
                     LogUtils.w("PikafishAI", "无法获取搜索锁，放弃快速评估");
                     return 0;
                 }

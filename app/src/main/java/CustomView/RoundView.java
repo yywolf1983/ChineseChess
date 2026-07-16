@@ -167,6 +167,19 @@ public class RoundView extends View {
         postInvalidate();
     }
     
+    // 标记"AI 正在思考"：仅维持思考动画与行棋方，不写入任何深度值。
+    // 与 setSearchDepth(1) 的区别：不会把"启动初期的占位深度 1"误当作
+    // 真实深度记录进 pendingFinalDepth，从而避免搜索被中断时深度停在 1。
+    public void markThinking(boolean isRed) {
+        this.isAIThinking = true;
+        this.isRedTurn = isRed;
+        if (!isSuggestMode) {
+            this.aiThinkingProgress = 0;
+        }
+        syncDotAnimation();
+        postInvalidate();
+    }
+
     // 清除搜索深度与思考状态（用于棋谱导航/加载，避免残留深度与思考动画）
     public void clearSearchState() {
         this.redSearchDepth = 0;
