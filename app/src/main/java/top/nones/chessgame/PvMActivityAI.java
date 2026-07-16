@@ -15,6 +15,7 @@ import Info.Pos;
 import ChessMove.Rule;
 import ChessMove.Move;
 import AICore.PikafishAI;
+import AICore.OpeningBook;
 import CustomView.ChessView;
 import CustomView.RoundView;
 import top.nones.chessgame.R;
@@ -31,6 +32,10 @@ public class PvMActivityAI {
     private final AtomicBoolean aiInterrupted = new AtomicBoolean(false);
     // 使用有界队列和自定义拒绝策略，避免线程堆积
     private java.util.concurrent.ThreadPoolExecutor executorService;
+    // 内置开局库（仅双机对战 gameMode==3 时使用，随机走开局前两步）
+    private final OpeningBook openingBook = new OpeningBook();
+    // 开局库着法返回前的保底最短等待时间，避免 AI 瞬间落子、提升体验
+    private static final long OPENING_BOOK_MIN_WAIT_MS = 1000;
     private ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
     private java.util.concurrent.ScheduledFuture<?> depthUpdateFuture;
     
@@ -107,6 +112,28 @@ public class PvMActivityAI {
         }
         
         startAISearch(isRed);
+
+        // 双机对战（gameMode==3）开局阶段：使用内置开局库随机走前两步，
+        // 避免每局开局千篇一律；超出开局库范围后交还下方引擎正常计算。
+        // 走的是真实合法着法，且每步经 Rule.PossibleMoves 校验，不会破坏规则。
+        if (this.activity.gameMode == 3 && this.openingBook != null) {
+            long openingBookStartMs = System.currentTimeMillis();
+            Move bookMove = this.openingBook.getBookMove(this.activity.chessInfo, OpeningBook.DEFAULT_BOOK_PLIES);
+            if (bookMove != null) {
+                LogUtils.i("PvMActivityAI", "使用开局库着法: " + bookMove);
+                // 开局库着法计算极快，为保证体验（展示思考动画、避免瞬间落子）最少等待 1 秒
+                long waitMs = OPENING_BOOK_MIN_WAIT_MS - (System.currentTimeMillis() - openingBookStartMs);
+                if (waitMs > 0) {
+                    try {
+                        Thread.sleep(waitMs);
+                    } catch (InterruptedException e) {
+                        // 被外部中断（如悔棋 / 切换模式）时，恢复中断标志并按已算出的着法返回
+                        Thread.currentThread().interrupt();
+                    }
+                }
+                return bookMove;
+            }
+        }
         
         // 空值检查 + 等待引擎初始化完成（异步初始化可能还在进行中）
         if (this.activity == null || this.activity.chessInfo == null || this.activity.pikafishAI == null || this.activity.chessInfo.piece == null) {
@@ -1448,6 +1475,13 @@ public class PvMActivityAI {
         final PvMActivityControls controls = activity.controlsManager;
         if (controls == null) return;
         activity.runOnUiThread(() -> controls.updateSuggestButton(analyzing));
+    }
+
+    /** 重置开局库（新对局 / 切换到双机对战时调用，重新随机选取一个开局）。 */
+    public void resetOpeningBook() {
+        if (openingBook != null) {
+            openingBook.reset();
+        }
     }
 
     public void shutdown() {

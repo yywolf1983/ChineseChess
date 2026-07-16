@@ -127,6 +127,10 @@ public class PvMActivityControls {
                     if (activity.aiManager != null) {
                         activity.aiManager.stopAIAnalysis();
                     }
+                    // 新局：重置开局库，下一局双机对战将重新随机选取开局
+                    if (activity.aiManager != null) {
+                        activity.aiManager.resetOpeningBook();
+                    }
                     // 新局后检查是否需要 AI 先手
                     if (activity.gameManager != null) {
                         activity.gameManager.checkAIMove();
@@ -241,6 +245,10 @@ public class PvMActivityControls {
                         activity.aiManager.stopAIAnalysis();
                     }
                     activity.gameMode = mode;
+                    // 切换到双机对战时重置开局库，立即重新随机选取开局
+                    if (mode == 3 && activity.aiManager != null) {
+                        activity.aiManager.resetOpeningBook();
+                    }
                     // 更新RoundView的游戏模式显示
                     if (activity.roundView != null) {
                         activity.roundView.setGameMode(mode);
