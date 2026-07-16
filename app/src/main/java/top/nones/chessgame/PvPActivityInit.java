@@ -105,7 +105,7 @@ public class PvPActivityInit {
         RelativeLayout.LayoutParams paramsRound = (RelativeLayout.LayoutParams) roundView.getLayoutParams();
         paramsRound.addRule(RelativeLayout.CENTER_IN_PARENT);
         paramsRound.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-        paramsRound.setMargins(30, 30, 30, 30);
+        paramsRound.setMargins(10, 30, 10, 30);
         paramsRound.height = 150; // 设置固定高度
         roundView.setLayoutParams(paramsRound);
         roundView.setId(R.id.roundView);

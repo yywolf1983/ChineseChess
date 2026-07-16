@@ -78,7 +78,8 @@ public class RoundView extends View {
     private Paint redTextPaint;
     private Paint blackTextPaint; // 黑方回合画笔
     private Paint infoTextPaint; // 模式和评分画笔
-    private Paint borderPaint; // 边框画笔
+    private Paint borderPaint; // 边框画笔（底部信息条）
+    private Paint boardBorderPaint; // 棋盘外框专用画笔（加粗）
     private Paint modeTextPaint; // 模式文本画笔
     private Paint aiTextPaint; // 电脑方（AI）文本画笔
     private Paint iconPaint; // 阵营图标（人/电脑）画笔
@@ -294,6 +295,13 @@ public class RoundView extends View {
         borderPaint.setStrokeWidth(convertDpToPixel(1.5f, getContext()));
         borderPaint.setAntiAlias(true);
 
+        // 棋盘外框专用画笔（与底部信息条边框同宽，保留原始细线）
+        boardBorderPaint = new Paint();
+        boardBorderPaint.setStyle(Paint.Style.STROKE);
+        boardBorderPaint.setColor(Color.rgb(100, 60, 30));
+        boardBorderPaint.setStrokeWidth(convertDpToPixel(2.5f, getContext()));
+        boardBorderPaint.setAntiAlias(true);
+
         float textSize = convertDpToPixel(12, getContext());
 
         redTextPaint = new Paint();
@@ -448,9 +456,12 @@ public class RoundView extends View {
         android.graphics.RectF rectF = new android.graphics.RectF(
             borderPadding, borderPadding, 
             width - borderPadding, height - borderPadding);
-        // 红方行棋用红色边框，黑方行棋用深色边框
-        borderPaint.setColor(chessInfo.IsRedGo ? Color.rgb(180, 40, 40) : Color.rgb(35, 35, 35));
-        canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, borderPaint);
+        // 红方行棋用红色边框，黑方行棋用深色边框（使用加粗的棋盘专用画笔）
+        int turnColor = chessInfo.IsRedGo ? Color.rgb(180, 40, 40) : Color.rgb(35, 35, 35);
+        boardBorderPaint.setColor(turnColor);
+        canvas.drawRoundRect(rectF, cornerRadius, cornerRadius, boardBorderPaint);
+        // 底部信息条（滚动条）外框同样随行棋方显示红/黑，保留原始细线宽
+        borderPaint.setColor(turnColor);
         
         // 计算垂直间距与行坐标
         float paddingTop = convertDpToPixel(8, getContext());
@@ -604,11 +615,13 @@ public class RoundView extends View {
         infoTextPaint.setColor(neutralColor);
         infoTextPaint.setTextAlign(Paint.Align.LEFT);
         canvas.drawText(roundStr, padX, formY, infoTextPaint);
-        // 中：形势（始终居中，不随两侧内容移动）
+        // 中：形势/分数（始终居中，字号比回合、深度更大，突出评分）
+        infoTextPaint.setTextSize(convertDpToPixel(16, getContext()));
         infoTextPaint.setColor(formColor);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
-        canvas.drawText(formStr, width / 2, formY, infoTextPaint);
-        // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段）
+        canvas.drawText(formStr, width / 2, formY + convertDpToPixel(3, getContext()), infoTextPaint);
+        // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段），恢复原始字号
+        infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         infoTextPaint.setColor(neutralColor);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
         if (lastSearchDepth > 0) {

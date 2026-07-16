@@ -22,8 +22,8 @@ import top.nones.chessgame.R;
 public class ModePickerDialog extends Dialog implements View.OnClickListener {
     private static final String[] MODE_NAMES = {
             "双人对战",
-            "人机对战(玩家红)",
-            "人机对战(玩家黑)",
+            "玩家执红",
+            "玩家执黑",
             "双机对战"
     };
 

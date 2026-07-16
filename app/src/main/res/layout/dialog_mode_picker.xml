@@ -71,7 +71,7 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- 人机对战（玩家红） -->
+    <!-- 玩家执红 -->
     <LinearLayout
         android:id="@+id/mode_card_1"
         android:layout_width="match_parent"
@@ -103,7 +103,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="14dp"
-            android:text="人机对战(玩家红)"
+            android:text="玩家执红"
             android:textSize="16sp"
             android:textColor="#222222" />
 
@@ -115,7 +115,7 @@
             android:visibility="gone" />
     </LinearLayout>
 
-    <!-- 人机对战（玩家黑） -->
+    <!-- 玩家执黑 -->
     <LinearLayout
         android:id="@+id/mode_card_2"
         android:layout_width="match_parent"
@@ -147,7 +147,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:layout_marginStart="14dp"
-            android:text="人机对战(玩家黑)"
+            android:text="玩家执黑"
             android:textSize="16sp"
             android:textColor="#222222" />
 

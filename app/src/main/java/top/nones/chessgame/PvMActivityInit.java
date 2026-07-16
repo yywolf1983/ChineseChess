@@ -178,7 +178,7 @@ public class PvMActivityInit {
                         paramsRound.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
                         paramsRound.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsRound.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsRound.setMargins(30, 10, 30, 10);
+                        paramsRound.setMargins(10, 10, 10, 10);
                         activity.roundView.setLayoutParams(paramsRound);
                         activity.roundView.setId(R.id.roundView);
                     }

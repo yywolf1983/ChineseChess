@@ -59,12 +59,24 @@ public class ModeComboView extends View {
                     cx - r * 0.62f, cy + r * 0.05f, cx + r * 0.62f, cy + r * 1.0f);
             canvas.drawArc(body, 18, 144, false, paint);
         } else {
-            // 电脑：屏幕 + 支架 + 底座
-            android.graphics.RectF screen = new android.graphics.RectF(
-                    cx - r * 0.78f, cy - r * 0.72f, cx + r * 0.78f, cy + r * 0.22f);
-            canvas.drawRoundRect(screen, 2, 2, paint);
-            canvas.drawLine(cx, cy + r * 0.22f, cx, cy + r * 0.72f, paint);
-            canvas.drawLine(cx - r * 0.62f, cy + r * 0.72f, cx + r * 0.62f, cy + r * 0.72f, paint);
+            // 机器人：天线 + 方形头 + 眼睛 + 身体
+            // 天线
+            canvas.drawLine(cx, cy - r * 0.82f, cx, cy - r * 0.6f, paint);
+            canvas.drawCircle(cx, cy - r * 0.92f, r * 0.11f, paint);
+            // 头部
+            android.graphics.RectF head = new android.graphics.RectF(
+                    cx - r * 0.58f, cy - r * 0.6f, cx + r * 0.58f, cy + r * 0.06f);
+            canvas.drawRoundRect(head, r * 0.2f, r * 0.2f, paint);
+            // 眼睛（填充）
+            Paint.Style prevStyle = paint.getStyle();
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(cx - r * 0.24f, cy - r * 0.27f, r * 0.1f, paint);
+            canvas.drawCircle(cx + r * 0.24f, cy - r * 0.27f, r * 0.1f, paint);
+            paint.setStyle(prevStyle);
+            // 身体
+            android.graphics.RectF body = new android.graphics.RectF(
+                    cx - r * 0.44f, cy + r * 0.16f, cx + r * 0.44f, cy + r * 0.62f);
+            canvas.drawRoundRect(body, r * 0.16f, r * 0.16f, paint);
         }
     }
 
