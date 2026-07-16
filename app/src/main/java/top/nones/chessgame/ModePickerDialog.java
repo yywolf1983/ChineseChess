@@ -75,13 +75,15 @@ public class ModePickerDialog extends Dialog implements View.OnClickListener {
             TextView name = card.findViewById(R.id.mode_card_name);
             name.setText(MODE_NAMES[i]);
 
-            // 双方阵营图标（形状区分人/电脑，颜色区分阵营/电脑）
-            ModeComboView glyph = card.findViewById(R.id.mode_card_glyph);
+            // 双方阵营图标（形状区分人/电脑，颜色区分阵营/电脑），分别置于文字左右
+            ModeComboView glyphLeft = card.findViewById(R.id.mode_card_glyph_left);
+            ModeComboView glyphRight = card.findViewById(R.id.mode_card_glyph_right);
             boolean leftAI = (i == 2 || i == 3);   // 红方为电脑
             boolean rightAI = (i == 1 || i == 3);  // 黑方为电脑
             int leftColor = leftAI ? BLUE : RED;
             int rightColor = rightAI ? BLUE : BLACK;
-            glyph.setSides(leftAI, leftColor, rightAI, rightColor);
+            glyphLeft.setSide(leftAI, leftColor);
+            glyphRight.setSide(rightAI, rightColor);
 
             // 左侧主题色条（始终显示，颜色区分模式）
             View accent = card.findViewById(R.id.mode_card_accent);
@@ -97,7 +99,7 @@ public class ModePickerDialog extends Dialog implements View.OnClickListener {
                 check.setVisibility(View.VISIBLE);
             } else {
                 card.setBackgroundResource(R.drawable.bg_mode_card);
-                name.setTextColor(Color.rgb(34, 34, 34));
+                name.setTextColor(THEME_COLORS[i]);
                 check.setVisibility(View.GONE);
             }
         }

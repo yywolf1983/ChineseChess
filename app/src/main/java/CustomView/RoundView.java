@@ -741,12 +741,15 @@ public class RoundView extends View {
         bgPaint.setColor(Color.argb(45, Color.red(iconColor), Color.green(iconColor), Color.blue(iconColor)));
         canvas.drawCircle(cx, cy, size * 0.56f, bgPaint);
 
-        // 使用开源图标（Lucide）：玩家=人(ic_player)、电脑=机器人(ic_ai)
+        // 使用开源图标：玩家=人(ic_player)、电脑=机器人(ic_ai)
+        // 玩家图标按阵营色着色；机器人图标自带配色，不重新着色以免变单色
         int resId = isAI ? R.drawable.ic_ai : R.drawable.ic_player;
         Drawable d = ContextCompat.getDrawable(getContext(), resId);
         if (d != null) {
             d = DrawableCompat.wrap(d.mutate());
-            DrawableCompat.setTint(d, iconColor);
+            if (!isAI) {
+                DrawableCompat.setTint(d, iconColor);
+            }
             int s = (int) (size * 0.94f);
             d.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f),
                     Math.round(cx + s / 2f), Math.round(cy + s / 2f));

@@ -4,18 +4,20 @@ import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
 import android.view.View;
 
+import top.nones.chessgame.R;
+
 /**
- * 模式选择弹窗中的「双方阵营示意」图标：左侧红方、右侧黑方。
+ * 模式选择弹窗中的「单阵营示意」图标：红方/黑方玩家 或 电脑。
  * 形状区分人/电脑，颜色区分阵营（红/黑）与电脑（蓝）。
+ * 一张卡片左右各放一个，文字居中，形成「红 vs 黑 / 玩家 vs 电脑」的对照。
  */
 public class ModeComboView extends View {
-    private boolean leftAI = false;
-    private boolean rightAI = false;
-    private int leftColor = Color.rgb(200, 40, 40);
-    private int rightColor = Color.rgb(40, 40, 40);
+    private boolean ai = false;
+    private int color = Color.rgb(200, 40, 40);
     private final Paint paint = new Paint();
 
     public ModeComboView(Context context) {
@@ -41,42 +43,33 @@ public class ModeComboView extends View {
         paint.setStrokeCap(Paint.Cap.ROUND);
     }
 
-    public void setSides(boolean leftAI, int leftColor, boolean rightAI, int rightColor) {
-        this.leftAI = leftAI;
-        this.leftColor = leftColor;
-        this.rightAI = rightAI;
-        this.rightColor = rightColor;
+    public void setSide(boolean isAI, int color) {
+        this.ai = isAI;
+        this.color = color;
         invalidate();
     }
 
     private void drawGlyph(Canvas canvas, float cx, float cy, float size, boolean isAI, int color) {
-        paint.setColor(color);
-        float r = size / 2f;
+        int s = (int) size;
         if (!isAI) {
-            // 玩家：头部 + 肩膀弧线
-            canvas.drawCircle(cx, cy - r * 0.32f, r * 0.4f, paint);
-            android.graphics.RectF body = new android.graphics.RectF(
-                    cx - r * 0.62f, cy + r * 0.05f, cx + r * 0.62f, cy + r * 1.0f);
-            canvas.drawArc(body, 18, 144, false, paint);
+            // 玩家：使用矢量人形图标（ic_player），按阵营色着色，与 RoundView 一致
+            Drawable d = androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.ic_player);
+            if (d != null) {
+                d = androidx.core.graphics.drawable.DrawableCompat.wrap(d.mutate());
+                androidx.core.graphics.drawable.DrawableCompat.setTint(d, color);
+                d.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f),
+                        Math.round(cx + s / 2f), Math.round(cy + s / 2f));
+                d.draw(canvas);
+            }
         } else {
-            // 机器人：天线 + 方形头 + 眼睛 + 身体
-            // 天线
-            canvas.drawLine(cx, cy - r * 0.82f, cx, cy - r * 0.6f, paint);
-            canvas.drawCircle(cx, cy - r * 0.92f, r * 0.11f, paint);
-            // 头部
-            android.graphics.RectF head = new android.graphics.RectF(
-                    cx - r * 0.58f, cy - r * 0.6f, cx + r * 0.58f, cy + r * 0.06f);
-            canvas.drawRoundRect(head, r * 0.2f, r * 0.2f, paint);
-            // 眼睛（填充）
-            Paint.Style prevStyle = paint.getStyle();
-            paint.setStyle(Paint.Style.FILL);
-            canvas.drawCircle(cx - r * 0.24f, cy - r * 0.27f, r * 0.1f, paint);
-            canvas.drawCircle(cx + r * 0.24f, cy - r * 0.27f, r * 0.1f, paint);
-            paint.setStyle(prevStyle);
-            // 身体
-            android.graphics.RectF body = new android.graphics.RectF(
-                    cx - r * 0.44f, cy + r * 0.16f, cx + r * 0.44f, cy + r * 0.62f);
-            canvas.drawRoundRect(body, r * 0.16f, r * 0.16f, paint);
+            // 电脑：使用矢量机器人图标（ic_ai，自带配色）
+            Drawable d = androidx.core.content.ContextCompat.getDrawable(getContext(), R.drawable.ic_ai);
+            if (d != null) {
+                d = androidx.core.graphics.drawable.DrawableCompat.wrap(d.mutate());
+                d.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f),
+                        Math.round(cx + s / 2f), Math.round(cy + s / 2f));
+                d.draw(canvas);
+            }
         }
     }
 
@@ -86,10 +79,7 @@ public class ModeComboView extends View {
         int w = getWidth();
         int h = getHeight();
         float cy = h / 2f;
-        float size = Math.min(h * 0.72f, 26f);
-        float leftCx = w * 0.34f;
-        float rightCx = w * 0.66f;
-        drawGlyph(canvas, leftCx, cy, size, leftAI, leftColor);
-        drawGlyph(canvas, rightCx, cy, size, rightAI, rightColor);
+        float size = Math.min(h * 0.92f, 68f);
+        drawGlyph(canvas, w / 2f, cy, size, ai, color);
     }
 }

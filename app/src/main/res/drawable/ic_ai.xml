@@ -1,49 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <!-- Lucide "bot" 图标（ISC 开源），电脑/机器人 -->
+    android:viewportWidth="128"
+    android:viewportHeight="128">
+
+    <!-- 天线球 -->
     <path
-        android:pathData="M12 8V4H8"
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M 58,12 A 6,6 0 1 1 70,12 A 6,6 0 1 1 58,12 Z"
+        android:fillColor="#3498db" />
+
+    <!-- 天线 -->
     <path
-        android:pathData="M6 8H18A2 2 0 0 1 20 10V18A2 2 0 0 1 18 20H6A2 2 0 0 1 4 18V10A2 2 0 0 1 6 8Z"
+        android:pathData="M 64,18 L 64,32"
         android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:strokeColor="#2c3e50"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+
+    <!-- 头部主体 -->
     <path
-        android:pathData="M2 14h2"
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
+        android:pathData="M 42,32 H 86 A 16,16 0 0 1 102,48 V 78 A 16,16 0 0 1 86,94 H 42 A 16,16 0 0 1 26,78 V 48 A 16,16 0 0 1 42,32 Z"
+        android:fillColor="#d3e3f4"
+        android:strokeColor="#2c3e50"
+        android:strokeWidth="5"
         android:strokeLineJoin="round" />
+
+    <!-- 左耳 -->
     <path
-        android:pathData="M20 14h2"
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M 18,52 H 18 A 6,6 0 0 1 24,58 V 68 A 6,6 0 0 1 18,74 H 18 A 6,6 0 0 1 12,68 V 58 A 6,6 0 0 1 18,52 Z"
+        android:fillColor="#2c3e50" />
+
+    <!-- 右耳 -->
     <path
-        android:pathData="M15 13v2"
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M 110,52 H 110 A 6,6 0 0 1 116,58 V 68 A 6,6 0 0 1 110,74 H 110 A 6,6 0 0 1 104,68 V 58 A 6,6 0 0 1 110,52 Z"
+        android:fillColor="#2c3e50" />
+
+    <!-- 左眼 -->
     <path
-        android:pathData="M9 13v2"
-        android:fillColor="@android:color/transparent"
-        android:strokeColor="#FFFFFF"
-        android:strokeWidth="2"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round" />
+        android:pathData="M 40,60 A 10,10 0 1 1 60,60 A 10,10 0 1 1 40,60 Z"
+        android:fillColor="#3498db" />
+    <path
+        android:pathData="M 46,60 A 4,4 0 1 1 54,60 A 4,4 0 1 1 46,60 Z"
+        android:fillColor="#ffffff" />
+
+    <!-- 右眼 -->
+    <path
+        android:pathData="M 68,60 A 10,10 0 1 1 88,60 A 10,10 0 1 1 68,60 Z"
+        android:fillColor="#3498db" />
+    <path
+        android:pathData="M 74,60 A 4,4 0 1 1 82,60 A 4,4 0 1 1 74,60 Z"
+        android:fillColor="#ffffff" />
+
+    <!-- 嘴巴显示屏 -->
+    <path
+        android:pathData="M 50,78 H 78 A 6,6 0 0 1 84,84 V 84 A 6,6 0 0 1 78,90 H 50 A 6,6 0 0 1 44,84 V 84 A 6,6 0 0 1 50,78 Z"
+        android:fillColor="#2c3e50" />
+    <path
+        android:pathData="M 50,82 H 78 A 2,2 0 0 1 80,84 V 84 A 2,2 0 0 1 78,86 H 50 A 2,2 0 0 1 48,84 V 84 A 2,2 0 0 1 50,82 Z"
+        android:fillColor="#3498db" />
 </vector>
