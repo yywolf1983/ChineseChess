@@ -941,6 +941,14 @@ public class PikafishAI {
             LogUtils.e("PikafishAI", "搜索异常: " + e.getMessage(), e);
         } finally {
             isSearching.set(false);
+            // 搜索结束后把真实最终深度刷新给 UI。
+            // 否则界面只依赖每 1 秒一次的 DepthUpdateRunnable：当一次搜索在 1 秒内
+            // 完成（思考时间设短 / 简单或一步杀局面）时，定时任务来不及刷新，
+            // 深度会停在开始思考时的占位值 1。
+            try {
+                updateUIAfterSearch(currentDepth.get());
+            } catch (Exception ignored) {
+            }
             searchLock.unlock();
         }
 
