@@ -623,7 +623,15 @@ public class PvMActivityControls {
         if (activity.roundView != null) activity.roundView.requestDraw();
 
         if (activity.gameManager != null) {
-            if (activity.gameManager.shouldClearSuggest(isRed)) {
+            // 跟随模式下：若本步与候选变线一致则保留并高亮揭示后续，否则清除支招
+            if (activity.suggestFollowActive) {
+                ChessMove.Move played = new ChessMove.Move(
+                        new Info.Pos(activity.chessInfo.prePos.x, activity.chessInfo.prePos.y),
+                        new Info.Pos(targetX, targetY));
+                if (activity.aiManager != null) {
+                    activity.aiManager.handleMoveForSuggestFollow(played);
+                }
+            } else if (activity.gameManager.shouldClearSuggest(isRed)) {
                 activity.gameManager.clearSuggest();
             }
             activity.gameManager.checkAIMove();

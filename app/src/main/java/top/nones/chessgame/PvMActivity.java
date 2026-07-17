@@ -91,6 +91,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 结果框的滚动容器（用于整体显示/隐藏）
     public android.widget.ScrollView engineResultScroll;
 
+    // ========== 跟随支招（走子与支招变线一致时高亮并持续揭示后续步）==========
+    /** 是否处于「跟随支招」状态：支招后仍在跟踪实际走子是否与候选变线一致 */
+    public boolean suggestFollowActive = false;
+    /** 支招后已走且与某条候选变线一致的着法前缀（按走子顺序） */
+    public final java.util.List<ChessMove.Move> suggestFollowPrefix = new java.util.ArrayList<>();
+    /** 支招时刻的局面快照，用于回放已走步并渲染完整变线记谱 */
+    public ChessInfo suggestFollowStartInfo = null;
+
     // ========== 支招模拟行棋状态 ==========
     private boolean isSimulating = false;            // 是否处于模拟行棋演示中
     private ChessInfo simBackup = null;              // 进入模拟前的真实局面备份
@@ -163,8 +171,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (aiManager != null) aiManager.stopAIAnalysis();
 
         // 模拟行棋跟随展示：只走框中展示的步数（显示几步行棋就行几步）
-        int simCount = Math.min(SIM_DISPLAY_STEPS, line.pvSequence.size());
-        simMoves = new java.util.ArrayList<>(line.pvSequence.subList(0, simCount));
+        // 跟随模式下已走若干步，预览应从当前局面对应的后续着法开始，避免重放已走步
+        int startIdx = suggestFollowActive ? Math.min(suggestFollowPrefix.size(), line.pvSequence.size()) : 0;
+        int simCount = Math.min(startIdx + SIM_DISPLAY_STEPS, line.pvSequence.size());
+        if (startIdx >= simCount) return; // 该变线已无后续可演示
+        simMoves = new java.util.ArrayList<>(line.pvSequence.subList(startIdx, simCount));
         simStepIndex = 0;
 
         // 备份进入模拟前显示的支招线（返回真实局面时恢复）

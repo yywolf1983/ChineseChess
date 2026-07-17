@@ -38,6 +38,10 @@ public class PvMActivityGame {
         }
         activity.clearEngineResultBox();
         suggestForRed = null;
+        // 重置「跟随支招」状态
+        activity.suggestFollowActive = false;
+        activity.suggestFollowPrefix.clear();
+        activity.suggestFollowStartInfo = null;
         // 清除ChessInfo中的支招数据
         if (activity.chessInfo != null) {
             activity.chessInfo.suggestMoves.clear();
