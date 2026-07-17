@@ -2,6 +2,7 @@ package top.nones.chessgame;
 
 import android.app.AlertDialog;
 import android.view.View;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import Info.ChessInfo;
@@ -9,6 +10,7 @@ import Info.InfoSet;
 import CustomView.ChessView;
 import CustomView.SetupModeView;
 import top.nones.chessgame.FENHandler;
+import ChessMove.Rule;
 import Utils.LogUtils;
 
 public class PvMActivitySetup {
@@ -398,103 +400,7 @@ public class PvMActivitySetup {
     public void finishSetup() {
         if (activity != null && checkSetupComplete()) {
             // 显示选择开局方的对话框
-            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
-            builder.setTitle("选择开局方");
-            builder.setMessage("请选择由哪一方开始下棋");
-            builder.setPositiveButton("红方开始", (dialog, which) -> {
-                if (activity != null && activity.chessInfo != null) {
-                    Object lock = activity.chessInfo.getLock();
-                    synchronized (lock) {
-                        // 红方开始，设置IsRedGo为true
-                        activity.chessInfo.IsRedGo = true;
-                        // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
-                        FENHandler fenHandler = new FENHandler();
-                        String setupFEN = fenHandler.generateFEN(activity.chessInfo);
-                        if (activity.notationManager != null) {
-                            activity.notationManager.setSetupFEN(setupFEN);
-                            LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
-                        }
-                        // 退出摆棋模式
-                        activity.chessInfo.IsSetupMode = false;
-                        // 确保游戏状态为进行中
-                        activity.chessInfo.status = 1;
-                        // 重置infoSet，清空摆棋过程中的记录
-                        activity.infoSet = new InfoSet();
-                        // 将当前摆棋局面保存到infoSet中作为初始状态
-                        try {
-                            if (activity.infoSet != null) {
-                                activity.infoSet.pushInfo(activity.chessInfo);
-                            }
-                        } catch (CloneNotSupportedException e) {
-                            LogUtils.e("PvMActivitySetup", "操作失败", e);
-                        }
-                        // 重置时间
-                        activity.redTime = 0;
-                        activity.blackTime = 0;
-                        activity.currentTurnStartTime = 0;
-                        activity.updateTimeDisplay();
-                        // 重新绘制界面
-                        if (activity.chessView != null) {
-                            activity.chessView.requestDraw();
-                        }
-                        if (activity.roundView != null) {
-                            activity.roundView.requestDraw();
-                        }
-                        // 摆棋结束后评估局面分数
-                        activity.triggerPositionEvaluation();
-                        // 摆棋真正完成：还原按钮状态（摆棋→完成 还原、其它按钮恢复可用）
-                        restoreAfterSetup();
-                    }
-                }
-            });
-            builder.setNegativeButton("黑方开始", (dialog, which) -> {
-                if (activity != null && activity.chessInfo != null) {
-                    Object lock = activity.chessInfo.getLock();
-                    synchronized (lock) {
-                        // 黑方开始，设置IsRedGo为false
-                        activity.chessInfo.IsRedGo = false;
-                        // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
-                        FENHandler fenHandler = new FENHandler();
-                        String setupFEN = fenHandler.generateFEN(activity.chessInfo);
-                        if (activity.notationManager != null) {
-                            activity.notationManager.setSetupFEN(setupFEN);
-                            LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
-                        }
-                        // 退出摆棋模式
-                        activity.chessInfo.IsSetupMode = false;
-                        // 确保游戏状态为进行中
-                        activity.chessInfo.status = 1;
-                        // 重置infoSet，清空摆棋过程中的记录
-                        activity.infoSet = new InfoSet();
-                        // 将当前摆棋局面保存到infoSet中作为初始状态
-                        try {
-                            if (activity.infoSet != null) {
-                                activity.infoSet.pushInfo(activity.chessInfo);
-                            }
-                        } catch (CloneNotSupportedException e) {
-                            LogUtils.e("PvMActivitySetup", "操作失败", e);
-                        }
-                        // 重置时间
-                        activity.redTime = 0;
-                        activity.blackTime = 0;
-                        activity.currentTurnStartTime = 0;
-                        activity.updateTimeDisplay();
-                        // 重新绘制界面
-                        if (activity.chessView != null) {
-                            activity.chessView.requestDraw();
-                        }
-                        if (activity.roundView != null) {
-                            activity.roundView.requestDraw();
-                        }
-                        // 摆棋结束后评估局面分数
-                        activity.triggerPositionEvaluation();
-                        // 摆棋真正完成：还原按钮状态（摆棋→完成 还原、其它按钮恢复可用）
-                        restoreAfterSetup();
-                    }
-                }
-            });
-            builder.setCancelable(false); // 必须选择一个选项
-            builder.show();
+            showChooseSideDialog(null, false);
         } else {
             // 摆棋未完成，给出明确提示而不是静默无反应
             boolean hasRed = false;
@@ -525,6 +431,112 @@ public class PvMActivitySetup {
                     "，请先摆放完整（双方都需有将/帅）后再完成。");
             builder.setPositiveButton("继续摆棋", null);
             builder.show();
+        }
+    }
+
+    // 显示选择开局方的对话框，warning 为可选提示（例如选择了被将方不走时的警告）
+    // alreadyWarned 表示本次弹框已是冲突后的二次提示，用户再次选择即按用户意思执行
+    private void showChooseSideDialog(String warning, boolean alreadyWarned) {
+        if (activity == null) {
+            return;
+        }
+        String message = "请选择由哪一方开始下棋";
+        if (warning != null && !warning.isEmpty()) {
+            message = warning + "\n\n请选择由哪一方开始下棋";
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+        builder.setTitle("选择开局方");
+        builder.setMessage(message);
+        builder.setPositiveButton("红方开始", (dialog, which) -> confirmFinishSetup(true, alreadyWarned));
+        builder.setNegativeButton("黑方开始", (dialog, which) -> confirmFinishSetup(false, alreadyWarned));
+        builder.setCancelable(false); // 必须选择一个选项
+        AlertDialog dialog = builder.show();
+        // 若存在警告提示，将消息文字改为醒目颜色以引起注意
+        if (warning != null && !warning.isEmpty()) {
+            TextView messageView = dialog.findViewById(android.R.id.message);
+            if (messageView != null) {
+                messageView.setTextColor(0xFFFF8C00); // 橙色，提示需注意
+            }
+        }
+    }
+
+    // 校验并确认开局方：若所选方不动、而对方正被将军，则该开局方非法。
+    // 象棋规则下被将的一方必须应对，故提示用户（仅一次）让其重新决定；
+    // 用户再次选择后按用户意思执行，不再拦截。
+    // 若双方帅/将同时被将则局面非法，提示并停留在摆棋模式要求用户修正。
+    private void confirmFinishSetup(boolean redToMove, boolean alreadyWarned) {
+        if (activity == null || activity.chessInfo == null || activity.chessInfo.piece == null) {
+            return;
+        }
+        int[][] piece = activity.chessInfo.piece;
+        boolean redChecked = Rule.isKingDanger(piece, true);
+        boolean blackChecked = Rule.isKingDanger(piece, false);
+        if (redChecked && blackChecked) {
+            Toast.makeText(activity, "当前局面非法：双方帅/将同时被将，请调整棋子后再完成摆棋",
+                    Toast.LENGTH_LONG).show();
+            return; // 保持摆棋模式，等待用户修正
+        }
+        if (!alreadyWarned) {
+            if (redChecked && !redToMove) {
+                // 红方被将，但用户选择黑方先行：提示一次并让用户重新决定
+                showChooseSideDialog("提示：红方正被将军，按规则应由红方先行应对。是否仍选择黑方开始？", true);
+                return;
+            }
+            if (blackChecked && redToMove) {
+                // 黑方被将，但用户选择红方先行：提示一次并让用户重新决定
+                showChooseSideDialog("提示：黑方正被将军，按规则应由黑方先行应对。是否仍选择红方开始？", true);
+                return;
+            }
+        }
+        // 用户所选符合规则（双方均未被将），或已提示过一次后用户再次决定：按用户意思执行
+        performFinishSetup(redToMove);
+    }
+
+    // 真正完成摆棋：设置开局方并退出摆棋模式（原两支分支的公共逻辑）
+    private void performFinishSetup(boolean redToMove) {
+        if (activity != null && activity.chessInfo != null) {
+            Object lock = activity.chessInfo.getLock();
+            synchronized (lock) {
+                // 设置开局方
+                activity.chessInfo.IsRedGo = redToMove;
+                // 生成并保存摆棋结束时的FEN信息（在IsSetupMode被设置为false之前）
+                FENHandler fenHandler = new FENHandler();
+                String setupFEN = fenHandler.generateFEN(activity.chessInfo);
+                if (activity.notationManager != null) {
+                    activity.notationManager.setSetupFEN(setupFEN);
+                    LogUtils.d("PvMActivitySetup", "摆棋结束，保存FEN: " + setupFEN);
+                }
+                // 退出摆棋模式
+                activity.chessInfo.IsSetupMode = false;
+                // 确保游戏状态为进行中
+                activity.chessInfo.status = 1;
+                // 重置infoSet，清空摆棋过程中的记录
+                activity.infoSet = new InfoSet();
+                // 将当前摆棋局面保存到infoSet中作为初始状态
+                try {
+                    if (activity.infoSet != null) {
+                        activity.infoSet.pushInfo(activity.chessInfo);
+                    }
+                } catch (CloneNotSupportedException e) {
+                    LogUtils.e("PvMActivitySetup", "操作失败", e);
+                }
+                // 重置时间
+                activity.redTime = 0;
+                activity.blackTime = 0;
+                activity.currentTurnStartTime = 0;
+                activity.updateTimeDisplay();
+                // 重新绘制界面
+                if (activity.chessView != null) {
+                    activity.chessView.requestDraw();
+                }
+                if (activity.roundView != null) {
+                    activity.roundView.requestDraw();
+                }
+                // 摆棋结束后评估局面分数
+                activity.triggerPositionEvaluation();
+                // 摆棋真正完成：还原按钮状态（摆棋→完成 还原、其它按钮恢复可用）
+                restoreAfterSetup();
+            }
         }
     }
 
