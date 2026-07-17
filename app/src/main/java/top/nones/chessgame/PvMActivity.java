@@ -86,8 +86,212 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public InfoSet infoSet;
     public ChessView chessView;
     public RoundView roundView;
+    // 按钮组底部「引擎计算结果」展示框容器（每行一个独立单行 TextView）
+    public android.widget.LinearLayout engineResultContainer;
+    // 结果框的滚动容器（用于整体显示/隐藏）
+    public android.widget.ScrollView engineResultScroll;
+
+    // ========== 支招模拟行棋状态 ==========
+    private boolean isSimulating = false;            // 是否处于模拟行棋演示中
+    private ChessInfo simBackup = null;              // 进入模拟前的真实局面备份
+    private final android.os.Handler simHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private java.util.List<ChessMove.Move> simMoves = null; // 当前模拟要走的步序列（来自某条候选变线）
+    private int simStepIndex = 0;                    // 当前已演示到第几步
+    private static final long SIM_START_DELAY_MS = 800;  // 进入模拟行棋前的初始停顿
+    private static final long SIM_STEP_INTERVAL_MS = 600; // 模拟行棋每步间隔
+    /** 模拟行棋跟随的步数 = 候选变线框中展示的步数（显示几步行棋就行几步） */
+    public static final int SIM_DISPLAY_STEPS = 5;
+    // 进入模拟行棋前备份的真实支招线（含每条变线的箭头/记谱），返回时恢复
+    private java.util.List<ChessMove.Move> simSuggestBackupMoves;
+    private java.util.List<String> simSuggestBackupLabels;
+    private java.util.List<String> simSuggestBackupNotations;
+    private java.util.List<Boolean> simSuggestBackupIsRed;
+
+    /** 清空按钮组底部的引擎结果框 */
+    public void clearEngineResultBox() {
+        // 模拟行棋演示期间不隐藏候选变线框，避免被中断的 AI 线程回调清掉
+        if (isSimulating) return;
+        if (engineResultContainer != null) {
+            engineResultContainer.removeAllViews();
+        }
+        if (engineResultScroll != null) {
+            engineResultScroll.setVisibility(android.view.View.GONE);
+        }
+    }
     public SetupModeView setupModeView;
     public android.widget.ImageView flipButton;
+
+    /** 是否处于模拟行棋演示中（供触摸/AI 守卫判断） */
+    public boolean isSimulating() {
+        return isSimulating;
+    }
+
+    /** 点击回合信息条中的"最优一步"：以 600ms 一步模拟第 1 条候选变线（line 0），启动前停顿 800ms */
+    public void onRoundBestMoveClick() {
+        if (isSimulating()) {
+            return;
+        }
+        if (roundView != null && roundView.hasBestMove()) {
+            startSimulation(0);
+        }
+    }
+
+    /** 开始模拟某条候选变线（lineIndex 为引擎结果框中的真实变线序号），启动前停顿 800ms、以 600ms 一步演示 */
+    public void startSimulation(int lineIndex) {
+        // 已在模拟中：先返回（恢复真实局面），再重新模拟新选的变线
+        if (isSimulating) stopSimulation();
+        if (pikafishAI == null || chessInfo == null) return;
+
+        java.util.List<PikafishAI.PvSequenceWithScore> lines = pikafishAI.getLastMultiPvLines();
+        if (lines == null || lineIndex < 0 || lineIndex >= lines.size()) return;
+        PikafishAI.PvSequenceWithScore line = lines.get(lineIndex);
+        if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) return;
+
+        // 备份真实局面，供返回时恢复
+        try {
+            simBackup = (ChessInfo) chessInfo.clone();
+        } catch (CloneNotSupportedException e) {
+            LogUtils.e("PvMActivity", "模拟行棋: 克隆局面失败", e);
+            return;
+        }
+
+        // 先标记进入模拟：后续被中断 AI 线程的收尾回调中的清空
+        // 会被 isSimulating 守卫跳过，避免刚设置的模拟支招被清掉
+        isSimulating = true;
+
+        // 停止任何正在进行的 AI 分析，避免干扰
+        if (aiManager != null) aiManager.stopAIAnalysis();
+
+        // 模拟行棋跟随展示：只走框中展示的步数（显示几步行棋就行几步）
+        int simCount = Math.min(SIM_DISPLAY_STEPS, line.pvSequence.size());
+        simMoves = new java.util.ArrayList<>(line.pvSequence.subList(0, simCount));
+        simStepIndex = 0;
+
+        // 备份进入模拟前显示的支招线（返回真实局面时恢复）
+        try {
+            simSuggestBackupMoves = new java.util.ArrayList<>(chessInfo.suggestMoves);
+            simSuggestBackupLabels = new java.util.ArrayList<>(chessInfo.suggestMoveLabels);
+            simSuggestBackupNotations = new java.util.ArrayList<>(chessInfo.suggestMoveNotations);
+            simSuggestBackupIsRed = new java.util.ArrayList<>(chessInfo.suggestMovesIsRed);
+        } catch (Exception e) {
+            simSuggestBackupMoves = null;
+        }
+
+        // 模拟行棋开始后不显示棋盘提示线（箭头），仅由棋子移动演示变线
+        chessInfo.suggestMoves.clear();
+        chessInfo.suggestMoveLabels.clear();
+        chessInfo.suggestMovesIsRed.clear();
+
+        // 支招按钮变为"返回"
+        if (controlsManager != null) controlsManager.updateReturnButton(true);
+        if (roundView != null) roundView.setSimulating(true);
+        highlightSimLine(lineIndex);
+
+        // 进入模拟行棋前停顿 800ms，再开始逐步演示
+        simHandler.postDelayed(this::runSimStep, SIM_START_DELAY_MS);
+    }
+
+    /** 逐步演示：每步以 600ms 间隔应用到棋盘（仅显示层），走完保持最终局面直到用户返回 */
+    private void runSimStep() {
+        if (!isSimulating || simMoves == null || simStepIndex >= simMoves.size()) {
+            return; // 演示完成：保持最终局面，等待用户点"返回"
+        }
+        ChessMove.Move mv = simMoves.get(simStepIndex);
+        if (mv == null || mv.fromPos == null || mv.toPos == null) {
+            simStepIndex++;
+            runSimStep();
+            return;
+        }
+
+        // 应用一步到真实 chessInfo（模拟演示，不写历史栈）
+        int movingPiece = chessInfo.piece[mv.fromPos.y][mv.fromPos.x];
+        chessInfo.piece[mv.toPos.y][mv.toPos.x] = movingPiece;
+        chessInfo.piece[mv.fromPos.y][mv.fromPos.x] = 0;
+        chessInfo.IsRedGo = !chessInfo.IsRedGo;
+        chessInfo.Select = new int[]{-1, -1};
+        chessInfo.ret.clear();
+        chessInfo.prePos = mv.fromPos;
+        chessInfo.curPos = mv.toPos;
+        simStepIndex++;
+
+        // 移除已演示的支招箭头，使剩余支招线随模拟进度逐步跟随显示
+        if (chessInfo.suggestMoves != null && !chessInfo.suggestMoves.isEmpty()) {
+            chessInfo.suggestMoves.remove(0);
+            if (chessInfo.suggestMoveLabels != null && !chessInfo.suggestMoveLabels.isEmpty())
+                chessInfo.suggestMoveLabels.remove(0);
+            if (chessInfo.suggestMovesIsRed != null && !chessInfo.suggestMovesIsRed.isEmpty())
+                chessInfo.suggestMovesIsRed.remove(0);
+        }
+
+        if (chessView != null) chessView.requestDraw();
+        if (roundView != null) roundView.requestDraw();
+
+        simHandler.postDelayed(this::runSimStep, SIM_STEP_INTERVAL_MS);
+    }
+
+    /** 停止模拟并恢复进入模拟前的真实局面 */
+    public void stopSimulation() {
+        simHandler.removeCallbacksAndMessages(null);
+        if (simBackup != null && chessInfo != null) {
+            try {
+                chessInfo.setInfo(simBackup);
+            } catch (CloneNotSupportedException e) {
+                LogUtils.e("PvMActivity", "模拟行棋: 恢复局面失败", e);
+            }
+            // 恢复进入模拟前显示的支招线（箭头/记谱），保持返回后的展示一致
+            try {
+                chessInfo.suggestMoves.clear();
+                chessInfo.suggestMoveLabels.clear();
+                chessInfo.suggestMoveNotations.clear();
+                chessInfo.suggestMovesIsRed.clear();
+                if (simSuggestBackupMoves != null) chessInfo.suggestMoves.addAll(simSuggestBackupMoves);
+                if (simSuggestBackupLabels != null) chessInfo.suggestMoveLabels.addAll(simSuggestBackupLabels);
+                if (simSuggestBackupNotations != null) chessInfo.suggestMoveNotations.addAll(simSuggestBackupNotations);
+                if (simSuggestBackupIsRed != null) chessInfo.suggestMovesIsRed.addAll(simSuggestBackupIsRed);
+            } catch (Exception e) {
+                LogUtils.e("PvMActivity", "模拟行棋: 恢复支招线失败", e);
+            }
+        }
+        simBackup = null;
+        simMoves = null;
+        simStepIndex = 0;
+        isSimulating = false;
+
+        if (controlsManager != null) controlsManager.updateReturnButton(false);
+        if (roundView != null) roundView.setSimulating(false);
+        clearSimLineHighlight();
+
+        if (chessView != null) chessView.requestDraw();
+        if (roundView != null) roundView.requestDraw();
+    }
+
+    /** 高亮当前正在模拟的候选变线 */
+    private void highlightSimLine(int lineIndex) {
+        if (engineResultContainer == null) return;
+        for (int i = 0; i < engineResultContainer.getChildCount(); i++) {
+            android.view.View v = engineResultContainer.getChildAt(i);
+            Integer tag = (Integer) v.getTag();
+            // 斑马纹与高亮都设在内容行 colRow（rowView）上；其 minWidth 已撑满整行宽度
+            android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
+                    ? ((android.view.ViewGroup) v).getChildAt(0) : v;
+            if (tag != null && tag == lineIndex) {
+                rowView.setBackgroundColor(0xFF5C8AC0); // 高亮蓝
+            } else {
+                rowView.setBackgroundColor((i % 2 == 0) ? 0xFF16222E : 0xFF30485F);
+            }
+        }
+    }
+
+    /** 清除候选变线高亮，恢复斑马纹 */
+    private void clearSimLineHighlight() {
+        if (engineResultContainer == null) return;
+        for (int i = 0; i < engineResultContainer.getChildCount(); i++) {
+            android.view.View v = engineResultContainer.getChildAt(i);
+            android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
+                    ? ((android.view.ViewGroup) v).getChildAt(0) : v;
+            rowView.setBackgroundColor((i % 2 == 0) ? 0xFF16222E : 0xFF30485F);
+        }
+    }
     // 进入摆棋前保存各按钮原始可用状态；退出时只恢复原本可用的，
     // 原本就因「非加载棋局/无历史」而置灰的（如上一步/下一步）保持禁用
     private final java.util.Map<Integer, Boolean> setupButtonEnabledState = new java.util.HashMap<>();
@@ -367,7 +571,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
             int viewId = view.getId();
             LogUtils.d("PvMActivity", "Button clicked: " + viewId);
-            
+
+            // 模拟行棋演示中：点击支招/返回按钮以外的任何按钮，先退出模拟、恢复正常局面
+            if (isSimulating && viewId != R.id.btn_statistics) {
+                stopSimulation();
+            }
+
             if (viewId == R.id.btn_retry) {
                 controlsManager.handleRetryButton();
             } else if (viewId == R.id.btn_prev) {
@@ -390,11 +599,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 // 加载棋谱 - 使用SAF选择文件
                 notationManager.showLoadNotationDialog();
             } else if (viewId == R.id.btn_statistics) {
-                // AI支招功能
-                controlsManager.handleStatisticsButton();
+                // 模拟行棋演示中：此按钮为"返回"，点击恢复正常局面；否则触发支招
+                if (isSimulating) {
+                    stopSimulation();
+                } else {
+                    controlsManager.handleStatisticsButton();
+                }
             } else if (viewId == R.id.btn_setup) {
                 // 切换摆棋模式
                 setupManager.toggleSetupMode();
+            } else if (viewId == R.id.btn_flip) {
+                // 翻转棋盘（仅显示层）
+                if (chessView != null) {
+                    chessView.toggleFlip();
+                }
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "Error in button click handler", e);

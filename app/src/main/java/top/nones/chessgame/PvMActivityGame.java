@@ -31,14 +31,19 @@ public class PvMActivityGame {
     
     // 清除支招信息
     public void clearSuggest() {
+        // 模拟行棋演示期间禁止清除支招（箭头/候选框），避免被中断的 AI 线程回调清掉
+        if (activity.isSimulating()) return;
         if (activity.roundView != null) {
             activity.roundView.setSuggestMoveText("");
         }
+        activity.clearEngineResultBox();
         suggestForRed = null;
         // 清除ChessInfo中的支招数据
         if (activity.chessInfo != null) {
             activity.chessInfo.suggestMoves.clear();
             activity.chessInfo.suggestMoveLabels.clear();
+            activity.chessInfo.suggestMoveNotations.clear();
+            activity.chessInfo.suggestMovesIsRed.clear();
             activity.chessInfo.suggestFromPos = null;
             activity.chessInfo.suggestToPos = null;
         }

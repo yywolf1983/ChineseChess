@@ -110,6 +110,7 @@ public class PvMActivityControls {
                         // 新局后清空显示信息（步数信息 + 残留支招信息）
                         activity.roundView.setMoveInfoText("");
                         activity.roundView.setSuggestMoveText("");
+                        activity.clearEngineResultBox();
                         activity.roundView.requestDraw();
                     }
                     if (activity.setupModeView != null) {
@@ -326,6 +327,28 @@ public class PvMActivityControls {
             LogUtils.e("PvMActivityControls", "Error updating suggest button", e);
         }
     }
+
+    // 模拟行棋演示中：支招按钮变为"返回"
+    public void updateReturnButton(boolean returning) {
+        try {
+            android.view.View btnView = activity.findViewById(R.id.btn_statistics);
+            if (!(btnView instanceof Button)) return;
+            Button btn = (Button) btnView;
+            if (returning) {
+                btn.setText("返回");
+                btn.setTextColor(0xFFFFFFFF);
+                btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_prev, 0, 0);
+                btn.setBackgroundResource(R.drawable.bg_board_btn_return);
+            } else {
+                btn.setText("支招");
+                btn.setTextColor(0xFFFFFFFF);
+                btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_suggest, 0, 0);
+                btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_teal);
+            }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error updating return button", e);
+        }
+    }
     
     // 处理上一步按钮
     public void handlePrevButton() {
@@ -376,6 +399,11 @@ public class PvMActivityControls {
             activity.curClickTime = now;
 
             if (activity.aiManager != null && activity.aiManager.isAIAnalyzing) {
+                return false;
+            }
+
+            // 模拟行棋演示中禁止手动选子/走子
+            if (activity.isSimulating()) {
                 return false;
             }
 

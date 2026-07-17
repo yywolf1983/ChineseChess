@@ -178,9 +178,16 @@ public class PvMActivityInit {
                         paramsRound.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
                         paramsRound.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsRound.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsRound.setMargins(10, 10, 10, 10);
+                        paramsRound.setMargins(0, 0, 0, 0); // 贴屏幕顶部，不留空隙
                         activity.roundView.setLayoutParams(paramsRound);
                         activity.roundView.setId(R.id.roundView);
+
+                        // 点击回合信息条中的"最优一步"：触发模拟行棋（等同于点击第 1 条候选变线）
+                        activity.roundView.setOnClickListener(v -> {
+                            if (activity != null) {
+                                activity.onRoundBestMoveClick();
+                            }
+                        });
                     }
                 }
             }
@@ -202,7 +209,7 @@ public class PvMActivityInit {
                         paramsSetup.addRule(android.widget.RelativeLayout.BELOW, R.id.roundView);
                         paramsSetup.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsSetup.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsSetup.setMargins(10, 10, 10, 10); // 减小左右边距，使UI更宽
+                        paramsSetup.setMargins(0, 0, 0, 0); // 摆棋视图同样不留空隙
                         activity.setupModeView.setLayoutParams(paramsSetup);
                         activity.setupModeView.setId(R.id.setupModeView);
                         activity.setupModeView.setVisibility(android.view.View.GONE); // 默认隐藏
@@ -231,7 +238,7 @@ public class PvMActivityInit {
                         paramsChess.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
                         paramsChess.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsChess.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        paramsChess.setMargins(10, 10, 10, 10);
+                        paramsChess.setMargins(0, 0, 0, 0); // 棋盘上下不留空隙
                         activity.chessView.setLayoutParams(paramsChess);
                         activity.chessView.setId(R.id.chessView);
                     }
@@ -257,13 +264,17 @@ public class PvMActivityInit {
                         activity.buttonGroupId = 10001;
                         buttonGroup.setId(activity.buttonGroupId);
 
+                        // 绑定按钮组底部的引擎结果框引用
+                        activity.engineResultContainer = buttonGroup.findViewById(R.id.engine_result_container);
+                        activity.engineResultScroll = buttonGroup.findViewById(R.id.engine_result_scroll);
+
                         android.widget.RelativeLayout.LayoutParams paramsV = (android.widget.RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
                         if (paramsV != null) {
                             paramsV.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
                             paramsV.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
                             paramsV.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                             paramsV.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                            paramsV.setMargins(30, 20, 30, 20); // 减少顶部边距，将按钮整体位置向上移动
+                            paramsV.setMargins(0, 0, 0, 0); // 按钮组贴棋盘，不留空隙
                             buttonGroup.setLayoutParams(paramsV);
 
                             // 处理嵌套的LinearLayout布局
@@ -286,8 +297,7 @@ public class PvMActivityInit {
             Log.e("PvMActivityInit", "Error initializing button group: " + e.getMessage());
         }
 
-        // 添加翻转按钮（浮动在棋盘右上角，仅显示层翻转）
-        addFlipButton();
+        // 翻转功能已并入按钮组（btn_flip），不再使用浮动图标
 
         // 初始绘制界面
         try {
@@ -426,41 +436,6 @@ public class PvMActivityInit {
                 activity.dispatchGalleryIntent();
             }
         }
-    }
-
-    // 添加翻转棋盘按钮（棋盘右下角外侧，半透明圆形）
-    private void addFlipButton() {
-        if (activity == null || activity.chessView == null || activity.relativeLayout == null) return;
-
-        int sizeDp = 44;
-        float density = activity.getResources().getDisplayMetrics().density;
-        int sizePx = (int) (sizeDp * density + 0.5f);
-        int paddingPx = (int) (10 * density + 0.5f);
-
-        ImageView flipButton = new ImageView(activity);
-        flipButton.setImageResource(R.drawable.ic_flip);
-        flipButton.setBackgroundResource(R.drawable.bg_flip_button);
-        flipButton.setPadding(paddingPx, paddingPx, paddingPx, paddingPx);
-        flipButton.setScaleType(ImageView.ScaleType.CENTER_INSIDE);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            flipButton.setElevation(4 * density);
-        }
-        flipButton.setOnClickListener(v -> {
-            if (activity.chessView != null) {
-                activity.chessView.toggleFlip();
-            }
-        });
-        activity.flipButton = flipButton;
-        activity.relativeLayout.addView(flipButton);
-
-        android.widget.RelativeLayout.LayoutParams flipParams =
-                new android.widget.RelativeLayout.LayoutParams(sizePx, sizePx);
-        flipParams.addRule(android.widget.RelativeLayout.ABOVE, 10001);
-        flipParams.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT);
-        flipParams.setMargins(0, 0,
-                (int) (12 * density + 0.5f),
-                (int) (-18 * density + 0.5f));
-        flipButton.setLayoutParams(flipParams);
     }
 
     // 棋盘触摸监听器类

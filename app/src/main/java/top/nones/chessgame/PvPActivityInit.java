@@ -105,8 +105,8 @@ public class PvPActivityInit {
         RelativeLayout.LayoutParams paramsRound = (RelativeLayout.LayoutParams) roundView.getLayoutParams();
         paramsRound.addRule(RelativeLayout.CENTER_IN_PARENT);
         paramsRound.addRule(RelativeLayout.ALIGN_PARENT_TOP);
-        paramsRound.setMargins(10, 30, 10, 30);
-        paramsRound.height = 150; // 设置固定高度
+        paramsRound.setMargins(0, 0, 0, 0); // 贴屏幕顶部，不留空隙
+        paramsRound.height = RelativeLayout.LayoutParams.WRAP_CONTENT; // 使用内部实测高度，避免硬凑150dp留白
         roundView.setLayoutParams(paramsRound);
         roundView.setId(R.id.roundView);
     }
@@ -119,7 +119,7 @@ public class PvPActivityInit {
         paramsChess.addRule(RelativeLayout.BELOW, R.id.roundView);
         paramsChess.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         paramsChess.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
-        paramsChess.setMargins(10, 10, 10, 10);
+        paramsChess.setMargins(0, 0, 0, 0); // 棋盘上下不留空隙
         chessView.setLayoutParams(paramsChess);
         chessView.setId(R.id.chessView);
     }
@@ -134,7 +134,7 @@ public class PvPActivityInit {
         paramsV.addRule(RelativeLayout.CENTER_HORIZONTAL);
         paramsV.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         paramsV.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
-        paramsV.setMargins(30, 20, 30, 20); // 与 PvM 模式一致，避免棋盘下方过大留白
+        paramsV.setMargins(0, 0, 0, 0); // 按钮组贴棋盘，不留空隙
         buttonGroup.setLayoutParams(paramsV);
         
         // 设置按钮监听器

@@ -584,6 +584,7 @@ public class PvMActivityAI {
             } else if (this.activity.roundView != null) {
                 // 如果没有gameManager，直接清除
                 this.activity.roundView.setSuggestMoveText("");
+                this.activity.clearEngineResultBox();
             }
             
             this.activity.continueGameRoundCount++;
@@ -811,6 +812,10 @@ public class PvMActivityAI {
     }
     
     public void checkAIMove() {
+        // 模拟行棋演示期间禁止 AI 自动落子，避免打断演示
+        if (this.activity != null && this.activity.isSimulating()) {
+            return;
+        }
         if (this.activity == null || this.activity.chessInfo == null || this.activity.chessInfo.status != 1) {
             return;
         }
@@ -998,6 +1003,12 @@ public class PvMActivityAI {
             if (aiInstance == null || activity == null || activity.chessInfo == null || activity.chessView == null) {
                 return;
             }
+
+            // 模拟行棋演示中（尚未按返回）：不显示支招提示线，保持模拟局面直到用户返回
+            if (activity.isSimulating()) {
+                LogUtils.i("PvMActivityAI", "模拟行棋中，跳过支招结果显示");
+                return;
+            }
             
             aiInstance.stopAISearch();
             
@@ -1022,13 +1033,14 @@ public class PvMActivityAI {
                     activity.roundView.setMoveInfoText("");
                 }
                 
-                // 显示多步走法，用颜色区分
-                if (activity.roundView != null && activity.chessInfo.suggestMoveNotations != null && activity.chessInfo.suggestMovesIsRed != null) {
-                    activity.roundView.setSuggestMoveTextWithColor(
-                        activity.chessInfo.suggestMoveNotations,
-                        activity.chessInfo.suggestMovesIsRed
-                    );
+                // 最优一步显示在 RoundView（回合信息条）中，便于用户一眼看到最佳着法
+                if (activity.roundView != null && activity.chessInfo.suggestMoveNotations != null
+                        && !activity.chessInfo.suggestMoveNotations.isEmpty()) {
+                    activity.roundView.setBestMoveText(activity.chessInfo.suggestMoveNotations.get(0));
                 }
+
+                // 在按钮组底部框中逐条、逆序展示引擎多条候选变线
+                fillEngineResultBox();
             }
         }
         
@@ -1050,14 +1062,13 @@ public class PvMActivityAI {
                 
                 java.util.List<Move> pvSequence = pvSequenceWithScore.pvSequence;
                 LogUtils.i("PvMActivityAI", "使用已缓存的 pv 序列，长度: " + pvSequence.size());
-                
-                // 只取前 6 步（如果有的话）
-                int maxSteps = Math.min(6, pvSequence.size());
+
+                // 支招线只显示两步：当前方一步 + 对方一步，双方各按各自颜色显示
                 boolean currentIsRed = forRed;
-                
+
                 ChessInfo simulatedInfo = (ChessInfo) activity.chessInfo.clone();
-                
-                for (int i = 0; i < maxSteps; i++) {
+
+                for (int i = 0; i < pvSequence.size() && i < 2; i++) {
                     Move move = pvSequence.get(i);
                     
                     if (move == null) {
@@ -1107,6 +1118,179 @@ public class PvMActivityAI {
                 
             } catch (Exception e) {
                 LogUtils.e("PvMActivityAI", "多步支招生成异常: " + e.getMessage());
+            }
+        }
+        
+        /** 在按钮组底部框中逐条展示引擎多条候选变线：每行一条、单行不折行（可横向滑动）、按阵营着色、每行独立 */
+        private void fillEngineResultBox() {
+            try {
+                if (activity.engineResultContainer == null || activity.pikafishAI == null || activity.chessInfo == null) {
+                    return;
+                }
+                android.widget.LinearLayout container = activity.engineResultContainer;
+                container.removeAllViews();
+                // 记录每行内容视图，填充后统一把 minWidth 撑满整行宽度（斑马纹以行为准）
+                final java.util.List<android.widget.LinearLayout> rowViews = new java.util.ArrayList<>();
+
+                java.util.List<PikafishAI.PvSequenceWithScore> lines = activity.pikafishAI.getLastMultiPvLines();
+                if (lines == null || lines.isEmpty()) {
+                    activity.clearEngineResultBox();
+                    return;
+                }
+
+                // 红方走子用红色、黑方走子用青色，区分每一步；每行独立推演
+                final int RED_MOVE_COLOR = 0xFFFF8A80;
+                final int BLACK_MOVE_COLOR = 0xFF80D8FF;
+
+                int added = 0;
+                for (int li = 0; li < lines.size() && added < 6; li++) {
+                    final int lineIndex = li;
+                    PikafishAI.PvSequenceWithScore line = lines.get(li);
+                    if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) {
+                        continue;
+                    }
+                    // 非最高评分的候选变线：步数不足 4 步的不展示（最高分变线始终显示）
+                    if (li > 0 && line.pvSequence.size() < 4) {
+                        continue;
+                    }
+
+                    // 模拟该变线，生成中文记谱与每步所属阵营（每条线都从当前局面开始独立推演）
+                    java.util.List<String> notations = new java.util.ArrayList<>();
+                    java.util.List<Boolean> isRedStep = new java.util.ArrayList<>();
+                    try {
+                        ChessInfo sim = (ChessInfo) activity.chessInfo.clone();
+                        int total = line.pvSequence.size();
+                        int showMax = Math.min(PvMActivity.SIM_DISPLAY_STEPS, total); // 每行只显示与模拟一致的步数
+                        for (int i = 0; i < showMax; i++) {
+                            Move mv = line.pvSequence.get(i);
+                            if (mv == null || mv.fromPos == null || mv.toPos == null) break;
+                            boolean redMove = sim.IsRedGo;
+                            int piece = 0;
+                            if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9) {
+                                piece = sim.piece[mv.fromPos.y][mv.fromPos.x];
+                            }
+                            notations.add(convertMoveToChineseNotation(mv, piece));
+                            isRedStep.add(redMove);
+                            // 更新模拟棋盘
+                            if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9
+                                    && mv.toPos.y >= 0 && mv.toPos.y < 10 && mv.toPos.x >= 0 && mv.toPos.x < 9) {
+                                int mp = sim.piece[mv.fromPos.y][mv.fromPos.x];
+                                sim.piece[mv.toPos.y][mv.toPos.x] = mp;
+                                sim.piece[mv.fromPos.y][mv.fromPos.x] = 0;
+                                sim.IsRedGo = !sim.IsRedGo;
+                            }
+                        }
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvMActivityAI", "克隆棋盘失败: " + e.getMessage());
+                    }
+
+                    if (notations.isEmpty()) continue;
+
+                    // 每行一条候选变线：评分列 + 每一步各占固定宽度的一列，
+                    // 所有行使用相同列宽，使不同候选变线的同一步垂直对齐成表格。
+                    final float density = activity.getResources().getDisplayMetrics().density;
+                    final int SCORE_COL_W = (int) (44 * density); // 评分列固定宽度(dp)
+                    final int MOVE_COL_W = (int) (60 * density);  // 每一步着法列固定宽度(dp)
+                    final float TEXT_SP = 15;                      // 支招区域文字（放大更清晰）
+
+                    // 整行外层包横向滚动，列数较多时可横向滑动查看
+                    android.widget.HorizontalScrollView hsv = new android.widget.HorizontalScrollView(activity);
+                    hsv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                            android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                    hsv.setHorizontalScrollBarEnabled(true);
+
+                    android.widget.LinearLayout colRow = new android.widget.LinearLayout(activity);
+                    colRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                    colRow.setPadding(0, 0, 0, 0); // 整行去除上下内边距，行更紧凑以容纳更多条
+                    // 斑马纹：以「整行」为准，背景设在内容行 colRow 上，
+                    // 并用 minWidth 撑满整行宽度，使着法少的行右侧也不会露出底色
+                    colRow.setBackgroundColor((added % 2 == 0) ? 0xFF16222E : 0xFF30485F);
+                    rowViews.add(colRow);
+
+                    // 评分列（固定宽度、居中、等宽字体保证对齐）
+                    android.widget.TextView scoreTv = new android.widget.TextView(activity);
+                    scoreTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                            SCORE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                    scoreTv.setGravity(android.view.Gravity.CENTER);
+                    scoreTv.setSingleLine(true);
+                    scoreTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
+                    scoreTv.setTypeface(android.graphics.Typeface.MONOSPACE);
+                    scoreTv.setIncludeFontPadding(false); // 与着法列一致，去掉字体默认留白
+                    scoreTv.setPadding(0, 0, 0, 0);
+                    scoreTv.setTextColor(0xFFD6E4F0);
+                    // 将死局面：评分列显示清晰的「杀N / 被杀N」，不再显示难懂的数值
+                    String scoreStr;
+                    if (line.mateIn > 0) {
+                        // 当前行棋方将在 mateIn 步内将死对方
+                        scoreStr = "杀" + line.mateIn;
+                        scoreTv.setTextColor(0xFFFFD54F); // 绝杀用金色高亮
+                    } else if (line.mateIn < 0) {
+                        // 当前行棋方将在 |mateIn| 步内被将死
+                        scoreStr = "被杀" + Math.abs(line.mateIn);
+                        scoreTv.setTextColor(0xFF9AA7B4); // 被将死用灰色
+                    } else {
+                        int normScore = PvMActivity.normalizeScore(line.score, activity.chessInfo.IsRedGo);
+                        scoreStr = normScore > 0 ? "+" + normScore : String.valueOf(normScore);
+                    }
+                    scoreTv.setText(scoreStr);
+                    colRow.addView(scoreTv);
+
+                    // 每一步一列（固定宽度、居中、按阵营着色）
+                    for (int i = 0; i < notations.size(); i++) {
+                        android.widget.TextView mvTv = new android.widget.TextView(activity);
+                        mvTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                                MOVE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                        mvTv.setGravity(android.view.Gravity.CENTER);
+                        mvTv.setSingleLine(true);
+                        mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
+                        mvTv.setTypeface(android.graphics.Typeface.MONOSPACE);
+                        mvTv.setPadding(0, 0, 0, 0);
+                        mvTv.setIncludeFontPadding(false); // 去掉字体默认上下留白，行更矮
+                        mvTv.setText(notations.get(i));
+                        int color = isRedStep.get(i) ? RED_MOVE_COLOR : BLACK_MOVE_COLOR;
+                        mvTv.setTextColor(color);
+                        colRow.addView(mvTv);
+                    }
+
+                    // 点击某一候选变线：以 500ms 一步的速度模拟行棋演示
+                    // 点击同时设在内部 LinearLayout 与 HorizontalScrollView 上：
+                    // HorizontalScrollView 横向滚动时单击易失效，内部 LinearLayout 点击最可靠
+                    hsv.setTag(lineIndex);
+                    colRow.setTag(lineIndex);
+                    android.view.View.OnClickListener simClick = v -> {
+                        if (activity != null) {
+                            activity.startSimulation(lineIndex);
+                        }
+                    };
+                    colRow.setOnClickListener(simClick);
+                    hsv.setOnClickListener(simClick);
+                    hsv.addView(colRow);
+                    container.addView(hsv);
+                    added++;
+                }
+
+                if (added == 0) {
+                    activity.clearEngineResultBox();
+                    return;
+                }
+                if (activity.engineResultScroll != null) {
+                    activity.engineResultScroll.setVisibility(android.view.View.VISIBLE);
+                }
+
+                // 布局完成后把每行内容视图的 minWidth 设为容器宽度，
+                // 保证斑马纹整行铺满（着法少的行右侧也不留白），内容超宽仍可横向滚动
+                container.post(() -> {
+                    try {
+                        int fullW = container.getWidth();
+                        if (fullW <= 0) return;
+                        for (android.widget.LinearLayout row : rowViews) {
+                            row.setMinimumWidth(fullW);
+                        }
+                    } catch (Exception ignored) {}
+                });
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityAI", "填充引擎结果框异常: " + e.getMessage());
             }
         }
         
@@ -1228,6 +1412,7 @@ public class PvMActivityAI {
         if (this.activity.roundView != null) {
             this.activity.runOnUiThread(() -> {
                 this.activity.roundView.setSuggestMoveText("");
+                this.activity.clearEngineResultBox();
                 this.activity.roundView.setSuggestMode(true);
             });
         }
@@ -1312,23 +1497,34 @@ public class PvMActivityAI {
     private static class DepthUpdateRunnable implements Runnable {
         private final PvMActivityAI aiInstance;
         private final boolean isRed;
-        
+        private final int myGeneration;
+
         public DepthUpdateRunnable(PvMActivityAI aiInstance, boolean isRed) {
             this.aiInstance = aiInstance;
             this.isRed = isRed;
+            // 捕获启动时的代际，用于判断本次分析是否仍有效
+            this.myGeneration = aiInstance.aiGeneration.get();
         }
-        
+
         @Override
         public void run() {
             if (aiInstance != null && aiInstance.activity != null && aiInstance.activity.roundView != null) {
-                // AI 不在分析中时，确保深度为 0，避免残留动画
-                if (!aiInstance.isAIAnalyzing) {
+                // AI 不在分析中、或代际已变化（分析已结束/被新分析取代）时，
+                // 直接清空深度并重置思考动画，避免残留动画
+                if (!aiInstance.isAIAnalyzing || aiInstance.aiGeneration.get() != myGeneration) {
                     aiInstance.activity.roundView.setSearchDepth(0, isRed);
                     return;
                 }
                 int currentDepth = 0;
                 if (aiInstance.activity.pikafishAI != null) {
                     currentDepth = aiInstance.activity.pikafishAI.getCurrentDepth();
+                }
+                // 二次校验：getCurrentDepth 是 JNI 调用，期间分析可能已结束并递增代际，
+                // 必须在写入 RoundView 前再次确认仍在分析中且代际未变，
+                // 否则会把"思考中"状态写死，导致 AI 已停止但动画仍在动
+                if (!aiInstance.isAIAnalyzing || aiInstance.aiGeneration.get() != myGeneration) {
+                    aiInstance.activity.roundView.setSearchDepth(0, isRed);
+                    return;
                 }
                 // 深度为 0 时引擎刚启动尚未返回真实深度：仅维持"思考中"动画，
                 // 不写入占位深度 1，避免搜索被中断时占位值 1 被误当作最终深度显示
@@ -1452,6 +1648,8 @@ public class PvMActivityAI {
         if (aiAnalyzingState.compareAndSet(true, false)) {
             isAIAnalyzing = false;
             aiInterrupted.set(true);
+            // 结束分析时递增代际，使仍在进行中的旧深度更新任务失效，避免残留"思考中"动画
+            aiGeneration.incrementAndGet();
             // 恢复支招按钮为"支招"状态
             notifySuggestButton(false);
         }
@@ -1464,6 +1662,8 @@ public class PvMActivityAI {
     private void tryFinishAnalyzing(int myGeneration) {
         if (myGeneration == aiGeneration.get() && aiAnalyzingState.compareAndSet(true, false)) {
             isAIAnalyzing = false;
+            // 结束分析时递增代际，使仍在进行中的旧深度更新任务失效，避免残留"思考中"动画
+            aiGeneration.incrementAndGet();
             // 恢复支招按钮为"支招"状态
             notifySuggestButton(false);
         }

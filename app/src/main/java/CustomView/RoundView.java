@@ -42,10 +42,13 @@ public class RoundView extends View {
     private boolean isRedTurn = false; // 当前是否是红方回合
     private int aiThinkingProgress = 0; // AI思考动画进度
     private boolean isSuggestMode = false; // 是否处于支招模式
+    private boolean isSimulatingView = false; // 是否处于模拟行棋演示中
+    private int simProgress = 0; // 模拟行棋动画进度
     private String suggestMoveText = ""; // 支招走法文本
     private List<String> suggestMoveTexts = null; // 彩色支招文本列表
     private List<Boolean> suggestMoveIsRed = null; // 彩色支招是否红方
     private String moveInfoText = ""; // 步数信息文本
+    private String bestMoveText = ""; // 最优一步（支招结果核心着法，显示在回合信息条）
     private boolean isAILoading = false; // AI 是否正在加载
     private int aiLoadingProgress = 0; // AI 加载动画进度
     private boolean isShowLoadingComplete = false; // 是否显示加载完成
@@ -69,6 +72,9 @@ public class RoundView extends View {
         }
         if (isAILoading) {
             aiLoadingProgress = (aiLoadingProgress + 1) % AI_DOT_CYCLE;
+        }
+        if (isSimulatingView) {
+            simProgress = (simProgress + 1) % AI_DOT_CYCLE;
         }
         invalidate();
         scheduleNextDotAnimation();
@@ -275,6 +281,16 @@ public class RoundView extends View {
         postInvalidate();
     }
     
+    // 设置模拟行棋演示状态（回合信息条显示"模拟行棋中"）
+    public void setSimulating(boolean simulating) {
+        this.isSimulatingView = simulating;
+        if (simulating) {
+            this.simProgress = 0;
+        }
+        syncDotAnimation();
+        postInvalidate();
+    }
+    
     // 设置支招走法文本
     public void setSuggestMoveText(String moveText) {
         this.suggestMoveText = moveText;
@@ -295,6 +311,21 @@ public class RoundView extends View {
     public void setMoveInfoText(String infoText) {
         this.moveInfoText = infoText;
         invalidate();
+    }
+
+    // 设置最优一步走法文本（用于回合信息条显示核心着法）
+    public void setBestMoveText(String text) {
+        this.bestMoveText = (text != null) ? text : "";
+        // 清空彩色多步文本，确保回合信息条只显示最优一步
+        this.suggestMoveText = "";
+        this.suggestMoveTexts = null;
+        this.suggestMoveIsRed = null;
+        invalidate();
+    }
+
+    // 当前是否显示最优一步（供点击模拟判断）
+    public boolean hasBestMove() {
+        return bestMoveText != null && !bestMoveText.isEmpty();
     }
 
     private void initPaints() {
@@ -411,7 +442,7 @@ public class RoundView extends View {
     }
 
     private boolean shouldAnimateDots() {
-        return isSuggestMode || isAILoading || isAIThinking;
+        return isSuggestMode || isAILoading || isAIThinking || isSimulatingView;
     }
 
     private void scheduleNextDotAnimation() {
@@ -647,13 +678,19 @@ public class RoundView extends View {
         
         boolean hasSuggest = (suggestMoveText != null && !suggestMoveText.isEmpty())
                 || (suggestMoveTexts != null && !suggestMoveTexts.isEmpty());
-        boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking || isSuggestMode;
+        boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking || isSuggestMode
+                || (bestMoveText != null && !bestMoveText.isEmpty()) || isSimulatingView;
         
         // 绘制AI加载中、加载完成、支招思考或AI走棋思考动画
         float aiTextSize = convertDpToPixel(14, getContext());
         infoTextPaint.setColor(Color.rgb(130, 195, 255)); // AI/支招提示统一醒目蓝
         if (isSuggestMode) {
             drawThinkingText(canvas, width, currentY, aiTextSize, "AI思考中", aiThinkingProgress);
+            currentY += lineHeight;
+        } else if (isSimulatingView) {
+            // 模拟行棋演示中：醒目青色提示（区别于橙色/蓝色），带脉动动画点
+            infoTextPaint.setColor(Color.rgb(38, 198, 218));
+            drawThinkingText(canvas, width, currentY, aiTextSize, "模拟行棋中", simProgress);
             currentY += lineHeight;
         } else if (!hasSuggest) {
             if (isAILoading) {
@@ -680,6 +717,21 @@ public class RoundView extends View {
             infoTextPaint.setTextSize(originalTextSize);
         }
         
+        // 显示最优一步（支招结果的核心着法，显示在回合信息条，可点击模拟行棋）
+        // 沿用原支招彩色显示模式：按行棋方着色（红方红、黑方黑），不加"最优"前缀
+        if (!isSuggestMode && !isAIThinking && bestMoveText != null && !bestMoveText.isEmpty()) {
+            float bestTextSize = infoTextPaint.getTextSize();
+            boolean bestFakeBold = infoTextPaint.isFakeBoldText();
+            infoTextPaint.setColor(chessInfo.IsRedGo ? Color.RED : Color.BLACK);
+            infoTextPaint.setTextSize(convertDpToPixel(15, getContext()));
+            infoTextPaint.setTextAlign(Paint.Align.CENTER);
+            infoTextPaint.setFakeBoldText(true);
+            canvas.drawText(bestMoveText, width / 2, currentY, infoTextPaint);
+            currentY += lineHeight;
+            infoTextPaint.setTextSize(bestTextSize);
+            infoTextPaint.setFakeBoldText(bestFakeBold);
+        }
+
         // 显示彩色支招走法信息（支招思考或AI走棋思考时不显示，避免覆盖）
         if (!isSuggestMode && !isAIThinking && suggestMoveTexts != null && !suggestMoveTexts.isEmpty() && suggestMoveIsRed != null) {
             float originalTextSize = infoTextPaint.getTextSize();

@@ -89,6 +89,14 @@ public class PikafishAI {
     private volatile int cachedSkillLevel = 20;   // 技能级别 (1-20, 20=满血)
     private volatile int cachedDepth = 10;        // 搜索深度 (5-120)
     private volatile int cachedMultiPV = 1;       // 多主变 (1-5, 1=单主变无额外开销)
+
+    /** 最近一次 PV 搜索得到的多条候选变线（索引 1 为最佳），供界面“引擎结果”框逐条展示 */
+    private volatile java.util.List<PikafishAI.PvSequenceWithScore> lastMultiPvLines = new java.util.ArrayList<>();
+
+    /** 获取最近一次支招搜索的多条候选变线（按质量排序，索引 1 最佳） */
+    public java.util.List<PikafishAI.PvSequenceWithScore> getLastMultiPvLines() {
+        return lastMultiPvLines;
+    }
     private volatile int cachedTimeSeconds = 3;   // 思考时间（秒, 1-60）
     private volatile int cachedThreads = 0;       // 线程数 (0=自动)
     private volatile int cachedHashMB = 0;        // 哈希表 MB (0=自动)
@@ -132,9 +140,12 @@ public class PikafishAI {
     public static class PvSequenceWithScore {
         public java.util.List<Move> pvSequence;
         public int score;
+        /** 将死步数：>0 表示行棋方将在 mateIn 步内将死对方；<0 表示行棋方将在 |mateIn| 步内被将死；0 表示非将死局面 */
+        public int mateIn;
         public PvSequenceWithScore(java.util.List<Move> pvSequence, int score) {
             this.pvSequence = pvSequence;
             this.score = score;
+            this.mateIn = 0;
         }
     }
 
@@ -1088,14 +1099,16 @@ public class PikafishAI {
             isSearching.set(true);
             currentDepth.set(0);
 
-            // 下发引擎参数：强制变着模式仅覆盖 MultiPV
+            // 下发引擎参数：强制变着模式仅覆盖 MultiPV；支招结果框需展示多条候选变线，至少 5 条
+            int effectiveMultiPV = cachedMultiPV;
             if (chessInfo != null && chessInfo.forceVariation) {
                 depth = depth + Math.max(1, chessInfo.variationRandomness);
-                int varMultiPV = Math.max(2, cachedMultiPV);
-                applyMultiPV(varMultiPV);
-            } else {
-                applyMultiPV(cachedMultiPV);
+                effectiveMultiPV = Math.max(2, cachedMultiPV);
             }
+            // 保证支招结果框至少展示 5 条候选变线
+            effectiveMultiPV = Math.max(5, effectiveMultiPV);
+            applyMultiPV(effectiveMultiPV);
+            LogUtils.i("PikafishAI", "支招搜索 MultiPV=" + effectiveMultiPV);
 
             String fen = boardToFEN(chessInfo);
             sendCommand("position fen " + fen);
@@ -1105,8 +1118,12 @@ public class PikafishAI {
             sendCommand(goCmd);
 
             String bestMoveStr = null;
-            List<String> pvMoveList = new ArrayList<>();
             int score = 0;
+            // 按 multipv 序号分别收集多条候选变线
+            java.util.Map<Integer, java.util.List<String>> pvMap = new java.util.LinkedHashMap<>();
+            java.util.Map<Integer, Integer> scoreMap = new java.util.HashMap<>();
+            java.util.Map<Integer, Integer> mateInMap = new java.util.HashMap<>();
+            int maxMultiPVSeen = 1;
             long startTime = System.currentTimeMillis();
             long maxSearchTime = timeMs + getSearchTimeBuffer(timeMs);
             int infoLineCount = 0;
@@ -1144,29 +1161,44 @@ public class PikafishAI {
                 if (line.startsWith("info")) {
                     infoLineCount++;
                     String[] parts = line.split(" ");
+                    // 第一遍：解析 depth 与 multipv 序号
+                    int infoMultiPV = 1;
                     for (int i = 0; i < parts.length; i++) {
-                        if (parts[i].equals("depth") && i + 1 < parts.length) {
+                        if (parts[i].equals("multipv") && i + 1 < parts.length) {
+                            try { infoMultiPV = Integer.parseInt(parts[i + 1]); } catch (NumberFormatException ignored) {}
+                        } else if (parts[i].equals("depth") && i + 1 < parts.length) {
                             try {
                                 int newDepth = Integer.parseInt(parts[i + 1]);
                                 int cur = currentDepth.get();
                                 if (newDepth > cur) currentDepth.set(newDepth);
                                 if (newDepth > maxDepthSeen) maxDepthSeen = newDepth;
                             } catch (NumberFormatException ignored) {}
-                        } else if (parts[i].equals("score") && i + 2 < parts.length) {
+                        }
+                    }
+                    if (infoMultiPV > maxMultiPVSeen) maxMultiPVSeen = infoMultiPV;
+                    // 第二遍：按 multipv 序号分别记录 score 与 pv
+                    for (int i = 0; i < parts.length; i++) {
+                        if (parts[i].equals("score") && i + 2 < parts.length) {
+                            int s = 0;
+                            int mateIn = 0;
                             if (parts[i + 1].equals("cp")) {
-                                try { score = Integer.parseInt(parts[i + 2]); } catch (NumberFormatException ignored) {}
+                                try { s = Integer.parseInt(parts[i + 2]); } catch (NumberFormatException ignored) {}
                             } else if (parts[i + 1].equals("mate")) {
                                 try {
-                                    int mateIn = Integer.parseInt(parts[i + 2]);
-                                    score = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
+                                    mateIn = Integer.parseInt(parts[i + 2]);
+                                    s = mateIn > 0 ? 1000 - mateIn * 10 : -1000 + mateIn * 10;
                                 } catch (NumberFormatException ignored) {}
                             }
+                            scoreMap.put(infoMultiPV, s);
+                            mateInMap.put(infoMultiPV, mateIn);
+                            if (infoMultiPV == 1) score = s;
                         } else if (parts[i].equals("pv") && i + 1 < parts.length) {
-                            pvMoveList.clear();
+                            java.util.List<String> cur = new java.util.ArrayList<>();
                             for (int j = i + 1; j < parts.length; j++) {
-                                pvMoveList.add(parts[j]);
+                                cur.add(parts[j]);
                             }
-                            if (bestMoveStr == null) {
+                            pvMap.put(infoMultiPV, cur);
+                            if (infoMultiPV == 1 && bestMoveStr == null) {
                                 bestMoveStr = parts[i + 1];
                             }
                         }
@@ -1188,16 +1220,44 @@ public class PikafishAI {
             long searchElapsed = System.currentTimeMillis() - startTime;
             LogUtils.i("PikafishAI", "搜索结束: 耗时=" + searchElapsed + "ms"
                 + " info行数=" + infoLineCount + " 最大depth=" + maxDepthSeen
-                + " bestmove=" + bestMoveStr + " pv长度=" + pvMoveList.size()
+                + " bestmove=" + bestMoveStr + " pv长度=" + (pvMap.get(1) != null ? pvMap.get(1).size() : 0)
                 + " score=" + score);
 
-            List<Move> moveSequence = new ArrayList<>();
-            for (String uciMove : pvMoveList) {
-                Move move = uciToMove(uciMove);
-                if (move != null) moveSequence.add(move);
+            // 组装多条候选变线（按 multipv 序号 1..N，索引 1 为最佳）
+            java.util.List<PikafishAI.PvSequenceWithScore> multiLines = new java.util.ArrayList<>();
+            for (int idx = 1; idx <= maxMultiPVSeen; idx++) {
+                java.util.List<String> pvl = pvMap.get(idx);
+                if (pvl != null && !pvl.isEmpty()) {
+                    java.util.List<Move> seq = new java.util.ArrayList<>();
+                    for (String uciMove : pvl) {
+                        Move mv = uciToMove(uciMove);
+                        if (mv != null) seq.add(mv);
+                    }
+                    Integer sc = scoreMap.get(idx);
+                    PikafishAI.PvSequenceWithScore line = new PikafishAI.PvSequenceWithScore(seq, sc == null ? 0 : sc);
+                    Integer mi = mateInMap.get(idx);
+                    line.mateIn = (mi == null ? 0 : mi);
+                    multiLines.add(line);
+                }
+            }
+            // 按评分从高到低排序，保证评分最高的变线展示在最上面
+            java.util.Collections.sort(multiLines, (a, b) -> Integer.compare(b.score, a.score));
+            lastMultiPvLines = multiLines;
+
+            // 主变线（multipv 1）用于界面支招高亮，保持原有行为
+            java.util.List<Move> moveSequence = new java.util.ArrayList<>();
+            java.util.List<String> mainPv = pvMap.get(1);
+            if (mainPv != null) {
+                for (String uciMove : mainPv) {
+                    Move m = uciToMove(uciMove);
+                    if (m != null) moveSequence.add(m);
+                }
             }
 
-            return new PvSequenceWithScore(moveSequence, score);
+            PvSequenceWithScore result = new PvSequenceWithScore(moveSequence, score);
+            Integer mainMate = mateInMap.get(1);
+            result.mateIn = (mainMate == null ? 0 : mainMate);
+            return result;
         } catch (Exception e) {
             LogUtils.e("PikafishAI", "获取 PV 序列异常: " + e.getMessage());
             return new PvSequenceWithScore(new ArrayList<>(), 0);
