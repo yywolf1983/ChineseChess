@@ -149,6 +149,20 @@ public class PikafishAI {
         }
     }
 
+    /**
+     * 计算候选变线的综合排序分值：
+     * - 将死对方（mateIn > 0）：越高越优，且步数越少越优；
+     * - 被将死（mateIn < 0）：越低越劣，且步数越少越劣；
+     * - 非将死：直接取原始评分。
+     * 用于让最优变线（含速胜的“杀N”）排在最前面。
+     */
+    private static int rankPvLine(PikafishAI.PvSequenceWithScore line) {
+        if (line == null) return Integer.MIN_VALUE;
+        if (line.mateIn > 0) return 1_000_000 - line.mateIn;
+        if (line.mateIn < 0) return -1_000_000 - line.mateIn;
+        return line.score;
+    }
+
     // ========== 构造函数 ==========
     public PikafishAI(Context context) {
         this.context = context;
@@ -1240,8 +1254,10 @@ public class PikafishAI {
                     multiLines.add(line);
                 }
             }
-            // 按评分从高到低排序，保证评分最高的变线展示在最上面
-            java.util.Collections.sort(multiLines, (a, b) -> Integer.compare(b.score, a.score));
+            // 按评分从高到低排序，保证评分最高的变线展示在最上面。
+            // 注意：将死（mate）变线的 score 通常为 0，胜负由 mateIn 表示，
+            // 因此排序需把 mate 纳入优先度（杀棋最高、被将死最低），否则最优的“杀N”会变线沉到后面。
+            java.util.Collections.sort(multiLines, (a, b) -> Integer.compare(rankPvLine(b), rankPvLine(a)));
             lastMultiPvLines = multiLines;
 
             // 主变线（multipv 1）用于界面支招高亮，保持原有行为

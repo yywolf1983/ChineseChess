@@ -5,11 +5,7 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
-import android.graphics.drawable.Drawable;
 import android.view.View;
-
-import androidx.core.content.ContextCompat;
-import androidx.core.graphics.drawable.DrawableCompat;
 
 import top.nones.chessgame.R;
 
@@ -88,11 +84,11 @@ public class RoundView extends View {
     private Paint boardBorderPaint; // 棋盘外框专用画笔（加粗）
     private Paint modeTextPaint; // 模式文本画笔
     private Paint aiTextPaint; // 电脑方（AI）文本画笔
-    private Paint iconPaint; // 阵营图标（人/电脑）画笔
     private Paint winBgPaint; // 胜利背景画笔（缓存，避免onDraw中频繁创建）
     private Path scoreBarPath; // 评分条裁剪路径（缓存，避免onDraw中频繁创建）
     private Paint redBarPaint; // 红方进度条画笔（缓存，避免onDraw中频繁创建）
     private Paint blackBarPaint; // 黑方进度条画笔（缓存，避免onDraw中频繁创建）
+    private Paint turnPaint; // 行棋方指示图标画笔（红/黑圆点，缓存）
     private HideLoadingCompleteRunnable hideLoadingCompleteRunnable; // 隐藏加载完成回调（缓存引用，便于移除）
     private int viewWidth = 0;
     private int viewHeight = 0;
@@ -339,11 +335,11 @@ public class RoundView extends View {
         borderPaint.setStrokeWidth(convertDpToPixel(1.5f, getContext()));
         borderPaint.setAntiAlias(true);
 
-        // 棋盘外框专用画笔（与底部信息条边框同宽，保留原始细线）
+        // 棋盘外框专用画笔（回合信息条外框，加粗以更醒目）
         boardBorderPaint = new Paint();
         boardBorderPaint.setStyle(Paint.Style.STROKE);
         boardBorderPaint.setColor(Color.rgb(100, 60, 30));
-        boardBorderPaint.setStrokeWidth(convertDpToPixel(2.5f, getContext()));
+        boardBorderPaint.setStrokeWidth(convertDpToPixel(4.5f, getContext()));
         boardBorderPaint.setAntiAlias(true);
 
         float textSize = convertDpToPixel(12, getContext());
@@ -387,14 +383,6 @@ public class RoundView extends View {
         aiTextPaint.setColor(Color.rgb(110, 175, 240));
         aiTextPaint.setFakeBoldText(true);
 
-        iconPaint = new Paint();
-        iconPaint.setAntiAlias(true);
-        iconPaint.setStyle(Paint.Style.STROKE);
-        iconPaint.setStrokeWidth(convertDpToPixel(1.5f, getContext()));
-        iconPaint.setStrokeJoin(Paint.Join.ROUND);
-        iconPaint.setStrokeCap(Paint.Cap.ROUND);
-        iconPaint.setColor(Color.rgb(200, 40, 40));
-
         infoTextPaint = new Paint();
         infoTextPaint.setTextSize(textSize);
         infoTextPaint.setStrokeWidth(convertDpToPixel(0.3f, getContext()));
@@ -419,6 +407,14 @@ public class RoundView extends View {
         blackBarPaint = new Paint();
         blackBarPaint.setStyle(Paint.Style.FILL);
         blackBarPaint.setColor(Color.rgb(40, 40, 40));
+
+        turnPaint = new Paint();
+        turnPaint.setAntiAlias(true);
+        turnPaint.setStyle(Paint.Style.FILL);
+        // 描边用于浅色背景上更醒目（颜色在 onDraw 中按行棋方设置）
+        turnPaint.setStrokeWidth(convertDpToPixel(1f, getContext()));
+        turnPaint.setStrokeJoin(Paint.Join.ROUND);
+        turnPaint.setStrokeCap(Paint.Cap.ROUND);
     }
     
     // 将dp转换为像素
@@ -511,13 +507,7 @@ public class RoundView extends View {
         float paddingTop = convertDpToPixel(8, getContext());
         float lineHeight = convertDpToPixel(22, getContext());
 
-        // 双方阵营（人/电脑）判定：红方为电脑当且仅当 gameMode 为 2 或 3；黑方为电脑当且仅当 gameMode 为 1 或 3
-        boolean isRedAI = (gameMode == 2 || gameMode == 3);
-        boolean isBlackAI = (gameMode == 1 || gameMode == 3);
-        int redSideColor = isRedAI ? Color.rgb(90, 150, 235) : Color.rgb(200, 40, 40);
-        int blackSideColor = isBlackAI ? Color.rgb(90, 150, 235) : Color.rgb(40, 40, 40);
-
-        // ========== 行坐标（紧凑三行：形势/回合/深度 → 时间+图标+评分条 → AI提示） ==========
+        // ========== 行坐标（紧凑三行：形势/回合/深度 → 时间+评分条 → AI提示） ==========
         float formY = paddingTop + convertDpToPixel(16, getContext());   // 第1行：回合 / 形势 / 深度
         float row2Y = paddingTop + convertDpToPixel(44, getContext());   // 第2行：时间 + 阵营图标 + 评分条
         float row3Y = paddingTop + convertDpToPixel(66, getContext());   // 第3行：AI思考 / 支招 / 步数
@@ -586,45 +576,30 @@ public class RoundView extends View {
             }
         }
         
-        // 红方阵营图标（时间旁）+ 红方时间（左侧）
-        // 轮到红方走棋时，图标加大并加金色高亮环，提示当前行棋方
-        boolean isRedTurnNow = chessInfo.IsRedGo;
-        float sideIconSize2 = convertDpToPixel(isRedTurnNow ? 22 : 16, getContext());
-        float redIconCx = convertDpToPixel(12, getContext()) + sideIconSize2 / 2;
-        float redIconCy = row2Y - convertDpToPixel(4, getContext());
-        if (isRedTurnNow) {
-            drawActiveRing(canvas, redIconCx, redIconCy, sideIconSize2);
-        }
-        drawSideIcon(canvas, redIconCx, redIconCy, sideIconSize2, isRedAI, redSideColor);
-        float redTimeX = convertDpToPixel(12, getContext()) + sideIconSize2 + convertDpToPixel(4, getContext());
+        // 红方时间（左侧）
+        float redTimeX = convertDpToPixel(12, getContext());
         redTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         redTextPaint.setTextAlign(Paint.Align.LEFT);
         redTextPaint.setFakeBoldText(true);
         String redText = formatTime(redTime);
         canvas.drawText(redText, redTimeX, row2Y, redTextPaint);
-
-        // 评分（居中）- 双向进度条
-        drawScoreBar(canvas, width, row2Y, moveScore);
+        float redTimeW = redTextPaint.measureText(redText);
 
         // 黑方时间（右侧）
         blackTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         blackTextPaint.setTextAlign(Paint.Align.RIGHT);
         blackTextPaint.setFakeBoldText(true);
         String blackText = formatTime(blackTime);
-        canvas.drawText(blackText, width - convertDpToPixel(12, getContext()), row2Y, blackTextPaint);
-
-        // 黑方阵营图标（时间左侧）
-        // 轮到黑方走棋时，图标加大并加金色高亮环，提示当前行棋方
-        boolean isBlackTurnNow = !chessInfo.IsRedGo;
-        float blackIconSize = convertDpToPixel(isBlackTurnNow ? 22 : 16, getContext());
+        float blackRightX = width - convertDpToPixel(12, getContext());
+        canvas.drawText(blackText, blackRightX, row2Y, blackTextPaint);
         float blackTimeW = blackTextPaint.measureText(blackText);
-        float blackIconCx = width - convertDpToPixel(12, getContext()) - blackTimeW
-                - convertDpToPixel(4, getContext()) - blackIconSize / 2;
-        float blackIconCy = row2Y - convertDpToPixel(4, getContext());
-        if (isBlackTurnNow) {
-            drawActiveRing(canvas, blackIconCx, blackIconCy, blackIconSize);
-        }
-        drawSideIcon(canvas, blackIconCx, blackIconCy, blackIconSize, isBlackAI, blackSideColor);
+
+        // 评分条：左右两端分别贴近红/黑时间，填满两者之间的空隙（左半红、右半黑对应两侧）
+        float barGap = convertDpToPixel(10, getContext());
+        float barX = redTimeX + redTimeW + barGap;
+        float barEnd = blackRightX - blackTimeW - barGap;
+        float barWidth = Math.max(convertDpToPixel(60, getContext()), barEnd - barX);
+        drawScoreBar(canvas, barX, barWidth, row2Y, moveScore);
 
         // 评分条上方：回合数 + 形势（带文字提示）
         int score = moveScore;
@@ -664,6 +639,18 @@ public class RoundView extends View {
         infoTextPaint.setColor(formColor);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(formStr, width / 2, formY + convertDpToPixel(3, getContext()), infoTextPaint);
+        // 行棋方指示图标：位于居中“形势/分数”文字左侧，红方回合用红色、黑方回合用黑色（深色）
+        float formTextW = infoTextPaint.measureText(formStr);
+        float turnR = convertDpToPixel(9, getContext());
+        float formTextLeft = width / 2 - formTextW / 2;
+        float turnCx = formTextLeft - convertDpToPixel(11, getContext()) - turnR;
+        float turnCy = formY + convertDpToPixel(3, getContext()) - convertDpToPixel(6, getContext());
+        turnPaint.setColor(chessInfo.IsRedGo ? Color.rgb(205, 45, 45) : Color.rgb(35, 35, 35));
+        turnPaint.setStyle(Paint.Style.FILL);
+        canvas.drawCircle(turnCx, turnCy, turnR, turnPaint);
+        turnPaint.setStyle(Paint.Style.STROKE);
+        turnPaint.setColor(Color.argb(120, 255, 255, 255));
+        canvas.drawCircle(turnCx, turnCy, turnR, turnPaint);
         // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段），恢复原始字号
         infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         infoTextPaint.setColor(neutralColor);
@@ -794,43 +781,6 @@ public class RoundView extends View {
         seconds = seconds % 60;
         return String.format("%02d:%02d", minutes, seconds);
     }
-    
-    // 在 (cx, cy) 处绘制一个阵营图标：isAI 为 true 表示电脑（机器人），否则为玩家（棋子）
-    private void drawSideIcon(Canvas canvas, float cx, float cy, float size, boolean isAI, int color) {
-        // 机器人（AI）使用固定科技蓝色，与红/黑阵营区分；玩家按阵营色
-        int iconColor = isAI ? Color.parseColor("#3D7BFF") : color;
-        // 圆形底色衬底，让图标更醒目
-        Paint bgPaint = new Paint();
-        bgPaint.setAntiAlias(true);
-        bgPaint.setStyle(Paint.Style.FILL);
-        bgPaint.setColor(Color.argb(45, Color.red(iconColor), Color.green(iconColor), Color.blue(iconColor)));
-        canvas.drawCircle(cx, cy, size * 0.56f, bgPaint);
-
-        // 使用开源图标：玩家=人(ic_player)、电脑=机器人(ic_ai)
-        // 玩家图标按阵营色着色；机器人图标自带配色，不重新着色以免变单色
-        int resId = isAI ? R.drawable.ic_ai : R.drawable.ic_player;
-        Drawable d = ContextCompat.getDrawable(getContext(), resId);
-        if (d != null) {
-            d = DrawableCompat.wrap(d.mutate());
-            if (!isAI) {
-                DrawableCompat.setTint(d, iconColor);
-            }
-            int s = (int) (size * 0.94f);
-            d.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f),
-                    Math.round(cx + s / 2f), Math.round(cy + s / 2f));
-            d.draw(canvas);
-        }
-    }
-
-    // 行棋方高亮环：围绕时间旁的阵营图标，金色环提示当前该方走棋
-    private void drawActiveRing(Canvas canvas, float cx, float cy, float size) {
-        Paint ring = new Paint();
-        ring.setAntiAlias(true);
-        ring.setStyle(Paint.Style.STROKE);
-        ring.setStrokeWidth(convertDpToPixel(2f, getContext()));
-        ring.setColor(Color.rgb(245, 210, 120));
-        canvas.drawCircle(cx, cy, size * 0.6f, ring);
-    }
 
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
@@ -896,10 +846,8 @@ public class RoundView extends View {
         cachedBlackStalemated = Rule.isStalemate(chessInfo.piece, false);
     }
     
-    private void drawScoreBar(Canvas canvas, int width, float centerY, int score) {
-        float barWidth = width * 0.56f;
+    private void drawScoreBar(Canvas canvas, float barX, float barWidth, float centerY, int score) {
         float barHeight = convertDpToPixel(14, getContext());
-        float barX = (width - barWidth) / 2;
         float barY = centerY - barHeight / 2 - convertDpToPixel(3, getContext());
         
         float cornerRadius = barHeight / 2;
@@ -947,7 +895,7 @@ public class RoundView extends View {
             infoTextPaint.setFakeBoldText(true);
             infoTextPaint.setColor(winColor);
             infoTextPaint.setShadowLayer(convertDpToPixel(2f, getContext()), 0, 0, Color.argb(100, 255, 255, 255));
-            canvas.drawText(winText, width / 2, centerY - convertDpToPixel(3, getContext()) + convertDpToPixel(4, getContext()), infoTextPaint);
+            canvas.drawText(winText, barX + barWidth / 2, centerY - convertDpToPixel(3, getContext()) + convertDpToPixel(4, getContext()), infoTextPaint);
             
             infoTextPaint.clearShadowLayer();
             infoTextPaint.setColor(Color.rgb(255, 250, 240));
@@ -963,7 +911,7 @@ public class RoundView extends View {
         float scoreRatio = Math.abs(score) / maxScore;
         if (scoreRatio > 1) scoreRatio = 1;
         
-        float centerX = width / 2;
+        float centerX = barX + barWidth / 2;
         float totalRange = barWidth / 2;
         
         // redBarPaint 和 blackBarPaint 已在 initPaints() 中初始化缓存

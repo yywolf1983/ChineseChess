@@ -1256,6 +1256,12 @@ public class PvMActivityAI {
             final java.util.List<android.widget.LinearLayout> rowViews = new java.util.ArrayList<>();
 
             java.util.List<PikafishAI.PvSequenceWithScore> lines = this.activity.pikafishAI.getLastMultiPvLines();
+            // 防御性排序：确保综合评分最高（含速胜“杀N”）的变线排在最前展示
+            lines = new java.util.ArrayList<>(lines);
+            java.util.Collections.sort(lines, (a, b) -> {
+                int ea = rankLineScore(a), eb = rankLineScore(b);
+                return Integer.compare(eb, ea);
+            });
             if (lines == null || lines.isEmpty()) {
                 this.activity.clearEngineResultBox();
                 return;
@@ -1304,20 +1310,26 @@ public class PvMActivityAI {
                 }
 
                 int total = line.pvSequence.size();
-                int showMax;
+                int revealed;
                 if (followMode) {
                     // 前 5 步只显示 5 步；第 5 步之后每多走一步就揭示一步后续，直到显示到最后一步
-                    showMax = Math.min(total, Math.max(PvMActivity.SIM_DISPLAY_STEPS, consumed + 1));
+                    revealed = Math.min(total, Math.max(PvMActivity.SIM_DISPLAY_STEPS, consumed + 1));
                 } else {
-                    showMax = Math.min(PvMActivity.SIM_DISPLAY_STEPS, total);
+                    revealed = Math.min(PvMActivity.SIM_DISPLAY_STEPS, total);
+                }
+                // 跟随模式：最多保留 SIM_DISPLAY_STEPS 步，超过后前面的逐步消失（滑窗）
+                int windowStart = 0;
+                if (followMode) {
+                    windowStart = Math.max(0, revealed - PvMActivity.SIM_DISPLAY_STEPS);
                 }
 
                 // 模拟该变线，生成中文记谱与每步所属阵营（从基准局面开始独立推演）
+                // 需从第 0 步完整推演以获得正确棋盘，但仅记录窗口内的着法记谱
                 java.util.List<String> notations = new java.util.ArrayList<>();
                 java.util.List<Boolean> isRedStep = new java.util.ArrayList<>();
                 try {
                     ChessInfo sim = (ChessInfo) baseInfo.clone();
-                    for (int i = 0; i < showMax; i++) {
+                    for (int i = 0; i < revealed; i++) {
                         Move mv = line.pvSequence.get(i);
                         if (mv == null || mv.fromPos == null || mv.toPos == null) break;
                         boolean redMove = sim.IsRedGo;
@@ -1325,8 +1337,11 @@ public class PvMActivityAI {
                         if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9) {
                             piece = sim.piece[mv.fromPos.y][mv.fromPos.x];
                         }
-                        notations.add(ShowAIMoveUIRunnable.convertMoveToChineseNotation(mv, piece));
-                        isRedStep.add(redMove);
+                        if (i >= windowStart) {
+                            // 仅窗口内的着法参与记谱展示
+                            notations.add(ShowAIMoveUIRunnable.convertMoveToChineseNotation(mv, piece));
+                            isRedStep.add(redMove);
+                        }
                         if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9
                                 && mv.toPos.y >= 0 && mv.toPos.y < 10 && mv.toPos.x >= 0 && mv.toPos.x < 9) {
                             int mp = sim.piece[mv.fromPos.y][mv.fromPos.x];
@@ -1400,7 +1415,8 @@ public class PvMActivityAI {
                     mvTv.setIncludeFontPadding(false);
                     mvTv.setText(notations.get(i));
                     int color;
-                    if (followMode && i < consumed) {
+                    // 已走且一致的步用灰色显示（考虑滑窗偏移：窗口内第 i 列对应变线第 windowStart+i 步）
+                    if (followMode && windowStart + i < consumed) {
                         color = PLAYED_COLOR;
                     } else {
                         color = isRedStep.get(i) ? RED_MOVE_COLOR : BLACK_MOVE_COLOR;
@@ -1511,6 +1527,14 @@ public class PvMActivityAI {
             if (!movesEqual(line.pvSequence.get(i), prefix.get(i))) return false;
         }
         return true;
+    }
+
+    /** 候选变线综合排序分值（与 PikafishAI.rankPvLine 一致）：杀棋最高、被将死最低、其余取评分 */
+    private static int rankLineScore(PikafishAI.PvSequenceWithScore line) {
+        if (line == null) return Integer.MIN_VALUE;
+        if (line.mateIn > 0) return 1_000_000 - line.mateIn;
+        if (line.mateIn < 0) return -1_000_000 - line.mateIn;
+        return line.score;
     }
 
     public void showAIMove(final boolean isRed) {
