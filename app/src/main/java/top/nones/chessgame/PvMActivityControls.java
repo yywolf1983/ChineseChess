@@ -259,6 +259,8 @@ public class PvMActivityControls {
                     if (activity.roundView != null) {
                         activity.roundView.setGameMode(mode);
                     }
+                    // 更新「模式」按钮图标（以图标形式显示当前模式）
+                    activity.updateModeButton();
                     // 重新读取设置，确保新模式下使用最新设置
                     if (activity.setting != null && activity.chessInfo != null) {
                         activity.chessInfo.setting = activity.setting;

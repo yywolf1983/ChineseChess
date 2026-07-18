@@ -291,6 +291,8 @@ public class PvMActivityInit {
                             if (activity.notationManager != null) {
                                 activity.notationManager.updateNavButtonsEnabled();
                             }
+                            // 初始化「模式」按钮图标（以图标形式显示当前模式）
+                            activity.updateModeButton();
                         }
                     }
                 }

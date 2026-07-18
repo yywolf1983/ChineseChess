@@ -571,6 +571,8 @@ public class PvMActivitySetup {
         if (activity.roundView != null) {
             activity.roundView.setGameMode(0);
         }
+        // 更新「模式」按钮图标（摆棋退出后回到双人模式）
+        activity.updateModeButton();
     }
 
     // 处理摆棋模式的触摸事件

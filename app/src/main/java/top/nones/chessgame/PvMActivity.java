@@ -28,6 +28,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 
 import Utils.GameResourceManager;
+import CustomView.ModeIconDrawable;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -358,7 +359,25 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public android.widget.Button btnNext;
     // 对战模式：0-双人对战, 1-人机对战(玩家红), 2-人机对战(玩家黑), 3-双机对战
     public int gameMode = 0;
-    
+
+    // 模式按钮短名（与 ModePickerDialog.MODE_NAMES 对应，用于按钮文字）
+    private static final String[] MODE_SHORT_NAMES = {"双人", "执红", "执黑", "双机"};
+
+    /** 更新「模式」按钮：顶部图标以组合图标表示当前对战模式，文字显示短模式名 */
+    public void updateModeButton() {
+        try {
+            android.widget.Button btn = findViewById(R.id.btn_mode);
+            if (btn == null) return;
+            float density = getResources().getDisplayMetrics().density;
+            ModeIconDrawable d = new ModeIconDrawable(this, gameMode, density);
+            btn.setCompoundDrawablesWithIntrinsicBounds(null, d, null, null);
+            int m = Math.max(0, Math.min(MODE_SHORT_NAMES.length - 1, gameMode));
+            btn.setText(MODE_SHORT_NAMES[m]);
+        } catch (Exception e) {
+            LogUtils.e("PvMActivity", "updateModeButton failed", e);
+        }
+    }
+
     // 继续对局后的回合计数器，用于控制和棋提示的频率
     public int continueGameRoundCount = 0;
     // AI相关变量
