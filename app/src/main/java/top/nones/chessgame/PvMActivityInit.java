@@ -267,6 +267,8 @@ public class PvMActivityInit {
                         // 绑定按钮组底部的引擎结果框引用
                         activity.engineResultContainer = buttonGroup.findViewById(R.id.engine_result_container);
                         activity.engineResultScroll = buttonGroup.findViewById(R.id.engine_result_scroll);
+                        // 绑定底部评分曲线视图（提示盒背景层）
+                        activity.scoreCurveView = buttonGroup.findViewById(R.id.score_curve_view);
 
                         android.widget.RelativeLayout.LayoutParams paramsV = (android.widget.RelativeLayout.LayoutParams) buttonGroup.getLayoutParams();
                         if (paramsV != null) {

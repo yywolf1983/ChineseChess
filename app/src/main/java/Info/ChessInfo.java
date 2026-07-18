@@ -49,6 +49,10 @@ public class ChessInfo implements Cloneable, Serializable {
     public List<Boolean> suggestMovesIsRed;
     public List<String> suggestMoveNotations;
     
+    // 整局评分曲线：每步落子后追加一个评分点（centipawns，+红优 / -黑优），引擎定分时修正末点
+    public int currentEvaluation = 0;
+    public final java.util.List<Integer> evalHistory = new java.util.ArrayList<>();
+    
     public Map<String, Integer> positionHistory;
     public int consecutiveCheckRed;
     public int consecutiveCheckBlack;
@@ -216,6 +220,10 @@ public class ChessInfo implements Cloneable, Serializable {
             // 复制和棋判断相关字段 - 使用线程安全的Map
             this.positionHistory = Collections.synchronizedMap(new PositionHistoryMap());
             this.positionHistory.putAll(info.positionHistory);
+            
+            // 注意：setInfo 不再清空评分曲线历史。
+            // 曲线历史由各自场景显式管理：新局/摆棋/加载后由调用方重置或重新计算，
+            // 悔棋/上一步(走 setInfo 恢复快照)则保留并截断到当前步数。
             this.consecutiveCheckRed = info.consecutiveCheckRed;
             this.consecutiveCheckBlack = info.consecutiveCheckBlack;
             this.lastMoveWasCheck = info.lastMoveWasCheck;
@@ -238,6 +246,52 @@ public class ChessInfo implements Cloneable, Serializable {
         }
     }
     
+    /** 引擎给出当前局面最终评分时调用：若已落子点数与总步数一致则修正末点，否则仅记录最新值（不新增点数） */
+    public void pushOrUpdateEval(int eval) {
+        currentEvaluation = eval;
+        synchronized (lock) {
+            if (!evalHistory.isEmpty() && evalHistory.size() == totalMoves) {
+                evalHistory.set(evalHistory.size() - 1, eval);
+            }
+        }
+    }
+
+    /** 回退评分曲线到指定步数（用于悔棋/上一步：丢弃超出当前步数的点） */
+    public void truncateEvalTo(int moves) {
+        synchronized (lock) {
+            if (moves < 0) moves = 0;
+            if (evalHistory.size() > moves) {
+                evalHistory.subList(moves, evalHistory.size()).clear();
+            }
+        }
+    }
+
+    /** 用整段评估结果替换曲线（用于加载棋谱后按步回放计算） */
+    public void setEvalHistoryAll(java.util.List<Integer> list) {
+        synchronized (lock) {
+            evalHistory.clear();
+            if (list != null) evalHistory.addAll(list);
+        }
+    }
+
+    /** 返回曲线历史的线程安全快照（用于绘制时拷贝） */
+    public java.util.List<Integer> getEvalSnapshot() {
+        synchronized (lock) {
+            return new java.util.ArrayList<>(evalHistory);
+        }
+    }
+
+    /** 在第 index 个位置写入评分点（不足则向后补 0 直到该位置），用于按步记录 */
+    public void setEvalAt(int index, int score) {
+        synchronized (lock) {
+            if (index < 0) return;
+            while (evalHistory.size() <= index) {
+                evalHistory.add(0);
+            }
+            evalHistory.set(index, score);
+        }
+    }
+    
     // 内部版本，不获取锁（用于已持有锁的情况）
     private void updateAllInfoInternal(Pos prePos, Pos curPos, int piece, int capturedPiece, boolean isCheck) {
         // 更新走棋信息
@@ -254,6 +308,9 @@ public class ChessInfo implements Cloneable, Serializable {
         
         // 增加总走步数
         totalMoves++;
+        
+        // 整局评分曲线：每步落子追加一个评分点（当前已知评估，引擎定分时会修正末点）
+        evalHistory.add(currentEvaluation);
         
         // 检查是否吃子
         if (capturedPiece != 0) {

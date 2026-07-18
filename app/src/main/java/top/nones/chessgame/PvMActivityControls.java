@@ -112,6 +112,8 @@ public class PvMActivityControls {
                         activity.roundView.setSuggestMoveText("");
                         activity.clearEngineResultBox();
                         activity.roundView.requestDraw();
+                        // 新局：清空并重置评分曲线（新 ChessInfo 的历史已为空）
+                        activity.refreshScoreCurve();
                     }
                     if (activity.setupModeView != null) {
                         activity.setupModeView.setChessInfo(activity.chessInfo);
@@ -191,6 +193,9 @@ public class PvMActivityControls {
             if (activity.roundView != null) {
                 activity.roundView.requestDraw();
             }
+            // 悔棋：将评分曲线回退到本步之前的步数（丢弃最后一点）
+            activity.chessInfo.truncateEvalTo(activity.chessInfo.totalMoves);
+            activity.refreshScoreCurve();
             activity.triggerPositionEvaluation();
         } catch (CloneNotSupportedException e) {
             LogUtils.e("PvMActivityControls", "Error restoring board state", e);
@@ -587,6 +592,8 @@ public class PvMActivityControls {
         boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
         activity.chessInfo.updateAllInfo(activity.chessInfo.prePos, activity.chessInfo.curPos,
                 movingPiece, capturedPiece, isCheck);
+        // 玩家落子后追加评分曲线点并刷新
+        activity.refreshScoreCurve();
 
         if (isCheck) {
             playEffect(activity.checkMusic);

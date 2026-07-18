@@ -170,6 +170,8 @@ public class BoardStateGenerator {
                     }
                     
                     Utils.LogUtils.d("BoardStateGenerator", "界面重新绘制完成");
+                    // 棋谱导航后按当前回放步数刷新评分曲线（上一步/下一步随之回退/延伸）
+                    activity.refreshScoreCurve();
                     // 棋谱导航后重新评估局面分数
                     activity.triggerPositionEvaluation();
                 }
@@ -232,6 +234,8 @@ public class BoardStateGenerator {
                     if (activity.controlsManager != null) {
                         activity.controlsManager.checkGameStatus(activity.chessInfo.IsRedGo);
                     }
+                    // 棋谱导航后按当前回放步数刷新评分曲线（上一步/下一步随之回退/延伸）
+                    activity.refreshScoreCurve();
                     // 棋谱导航后重新评估局面分数
                     activity.triggerPositionEvaluation();
 

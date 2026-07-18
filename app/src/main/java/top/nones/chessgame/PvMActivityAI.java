@@ -505,7 +505,10 @@ public class PvMActivityAI {
             this.activity.stopTurnTimer();
             
             boolean isCheck = this.activity.chessInfo.IsChecked;
+            // 记录 AI 落子后的局面评分（currentAIScore 即该着法后的评估，红优为正），供曲线本步取点
+            this.activity.chessInfo.currentEvaluation = this.currentAIScore;
             this.activity.chessInfo.updateAllInfo(this.activity.chessInfo.prePos, this.activity.chessInfo.curPos, this.activity.chessInfo.piece[toPos.y][toPos.x], tmp, isCheck);
+            this.activity.refreshScoreCurve();
             this.activity.chessInfo.isMachine = true;
             
             // 播放AI落子音效，将军优先
@@ -566,6 +569,8 @@ public class PvMActivityAI {
                 // 直接使用当前分数，避免再次触发AI搜索
                 this.activity.roundView.setMoveScore(this.currentAIScore);
             }
+            // 用 AI 最终评分（即 round 评分）记录本步曲线点并刷新
+            this.activity.recordRoundScore(this.currentAIScore);
             
             if (this.activity.chessView != null) {
                 this.activity.chessView.requestDraw();
@@ -965,6 +970,8 @@ public class PvMActivityAI {
                             activity.roundView.setSearchDepth(0, isRed);
                             activity.roundView.setSuggestMode(false);
                         }
+                        // 用分析得出的最终评分（round 评分）记录本步曲线点并刷新
+                        activity.recordRoundScore(finalScore);
                     });
                 }
 

@@ -90,6 +90,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public android.widget.LinearLayout engineResultContainer;
     // 结果框的滚动容器（用于整体显示/隐藏）
     public android.widget.ScrollView engineResultScroll;
+    // 底部评分曲线视图（提示盒背景层，展示整局评分走势）
+    public CustomView.ScoreCurveView scoreCurveView;
 
     // ========== 跟随支招（走子与支招变线一致时高亮并持续揭示后续步）==========
     /** 是否处于「跟随支招」状态：支招后仍在跟踪实际走子是否与候选变线一致 */
@@ -125,6 +127,47 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (engineResultScroll != null) {
             engineResultScroll.setVisibility(android.view.View.GONE);
         }
+    }
+
+    /** 将当前整局评分历史刷新到评分曲线视图（提示盒背景层） */
+    public void refreshScoreCurve() {
+        if (scoreCurveView != null && chessInfo != null) {
+            java.util.List<Integer> full = chessInfo.getEvalSnapshot();
+            int displayCount = full.size();
+            // 加载/回放棋谱时，按当前回放步数只显示「已回放到」的前缀，
+            // 上一步/下一步/悔棋会随之回退或延伸。
+            if (notationManager != null && notationManager.getCurrentNotation() != null) {
+                int idx = notationManager.getCurrentMoveIndex();
+                if (idx < 0) idx = 0;
+                displayCount = Math.min(idx, full.size());
+            }
+            scoreCurveView.setScores(full.subList(0, displayCount));
+        }
+    }
+
+    /**
+     * 按当前 round 的评分记录一个曲线点：每走一步（或回放一步）记录一次。
+     * - 实时对局：更新最后一手对应的点（updateAllInfoInternal 已先占位）；
+     * - 棋谱回放/导航：按当前回放步数截断并写入该步的点（上一步回退、下一步延伸）。
+     */
+    public void recordRoundScore(int score) {
+        if (chessInfo == null) return;
+        if (notationManager != null && notationManager.getCurrentNotation() != null) {
+            // 回放场景：截断到当前步数，只保留已回放到的部分
+            int steps = notationManager.getCurrentMoveIndex();
+            chessInfo.truncateEvalTo(steps);
+            int idx = steps - 1; // 当前最后一步（0 基）的评分点
+            if (idx >= 0) {
+                chessInfo.setEvalAt(idx, score);
+            }
+        } else {
+            // 实时对局：写入最后一手
+            int idx = chessInfo.totalMoves - 1;
+            if (idx >= 0) {
+                chessInfo.setEvalAt(idx, score);
+            }
+        }
+        refreshScoreCurve();
     }
     public SetupModeView setupModeView;
     public android.widget.ImageView flipButton;
@@ -662,6 +705,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                     if (roundView != null) {
                         roundView.setMoveScore(finalScore);
                     }
+                    // 按 round 的评分记录当前步的曲线点（每走一步记录一次）
+                    recordRoundScore(finalScore);
                 });
             });
         }

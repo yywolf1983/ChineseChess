@@ -512,6 +512,9 @@ public class PvMActivitySetup {
                 activity.chessInfo.status = 1;
                 // 重置infoSet，清空摆棋过程中的记录
                 activity.infoSet = new InfoSet();
+                // 摆棋结束：清空评分曲线历史（新局面的走势从头开始）
+                activity.chessInfo.evalHistory.clear();
+                activity.chessInfo.currentEvaluation = 0;
                 // 将当前摆棋局面保存到infoSet中作为初始状态
                 try {
                     if (activity.infoSet != null) {
@@ -532,6 +535,8 @@ public class PvMActivitySetup {
                 if (activity.roundView != null) {
                     activity.roundView.requestDraw();
                 }
+                // 刷新评分曲线（已清空历史，显示空曲线）
+                activity.refreshScoreCurve();
                 // 摆棋结束后评估局面分数
                 activity.triggerPositionEvaluation();
                 // 摆棋真正完成：还原按钮状态（摆棋→完成 还原、其它按钮恢复可用）

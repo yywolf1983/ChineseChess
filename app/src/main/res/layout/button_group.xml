@@ -188,23 +188,38 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 引擎计算结果展示框：默认隐藏，支招结果到达时显示；
-         每行一条独立候选变线（单行、可横向滑动、不折行），整体可竖向滚动 -->
-    <ScrollView
-        android:id="@+id/engine_result_scroll"
+    <!-- 底部区域：评分曲线（背景层） + 引擎结果提示盒（浮于其上）。
+         提示盒默认隐藏，显示时覆盖曲线（半透明背景使曲线透出在后面）；提示消失后曲线重新露出。 -->
+    <FrameLayout
+        android:id="@+id/score_curve_frame"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="0dp"
-        android:background="@drawable/bg_engine_box"
-        android:scrollbars="vertical"
-        android:visibility="gone">
+        android:layout_marginTop="4dp">
 
-        <LinearLayout
-            android:id="@+id/engine_result_container"
+        <!-- 整局评分曲线（背景层，始终可见） -->
+        <CustomView.ScoreCurveView
+            android:id="@+id/score_curve_view"
+            android:layout_width="match_parent"
+            android:layout_height="72dp" />
+
+        <!-- 引擎计算结果展示框：默认隐藏，支招结果到达时显示；
+             每行一条独立候选变线（单行、可横向滑动、不折行），整体可竖向滚动 -->
+        <ScrollView
+            android:id="@+id/engine_result_scroll"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
-            android:padding="0dp" />
-    </ScrollView>
+            android:layout_marginTop="0dp"
+            android:background="@drawable/bg_engine_box"
+            android:scrollbars="vertical"
+            android:visibility="gone">
+
+            <LinearLayout
+                android:id="@+id/engine_result_container"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="0dp" />
+        </ScrollView>
+    </FrameLayout>
 
 </LinearLayout>

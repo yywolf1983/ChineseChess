@@ -127,6 +127,7 @@ public class NotationManager {
                     // 初始化棋盘状态为初始状态
                     activity.chessInfo = new ChessInfo();
                     activity.infoSet = new Info.InfoSet();
+                    // 加载棋谱：新 ChessInfo 的评分曲线历史初始为空，稍后在成功分支统一计算
                     if (activity.setting != null) {
                         activity.chessInfo.setting = activity.setting;
                     }
@@ -156,6 +157,8 @@ public class NotationManager {
                     if (activity.roundView != null) {
                         activity.roundView.requestDraw();
                     }
+                    // 加载后曲线初始为空，将随「下一步」逐步行棋记录（按 round 评分每步一点）
+                    activity.refreshScoreCurve();
                     // 移除Toast提示，通过界面显示加载成功信息
                 } else {
                     // 移除Toast提示，通过界面显示格式错误信息
