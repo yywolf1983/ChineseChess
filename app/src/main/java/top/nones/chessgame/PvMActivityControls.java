@@ -48,6 +48,9 @@ public class PvMActivityControls {
                 // 直接是Button
                 Button btn = (Button) child;
                 btn.setOnClickListener(activity);
+            } else if (child.getId() == R.id.btn_mode) {
+                // 模式按钮是内嵌图标-文字-图标的容器，监听挂在自身即可
+                child.setOnClickListener(activity);
             } else if (child instanceof ViewGroup) {
                 // 是ViewGroup，递归处理
                 setupButtonListeners((ViewGroup) child);
@@ -344,7 +347,7 @@ public class PvMActivityControls {
             if (returning) {
                 btn.setText("返回");
                 btn.setTextColor(0xFFFFFFFF);
-                btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_prev, 0, 0);
+                btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_prev_small, 0, 0);
                 btn.setBackgroundResource(R.drawable.bg_board_btn_return);
             } else {
                 btn.setText("支招");

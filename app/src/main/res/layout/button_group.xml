@@ -6,6 +6,14 @@
     android:orientation="vertical"
     android:padding="0dp">
 
+    <!-- 控制面板：包裹两行按钮，与下方评分曲线同款深色材质，消除与棋盘的割裂感 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_control_panel"
+        android:padding="8dp"
+        android:orientation="vertical">
+
     <!-- 第1行：常用操作（新局/设置/保存/加载 文字，上一步/下一步/翻转 图标） -->
     <LinearLayout
         android:layout_width="match_parent"
@@ -112,25 +120,46 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="3dp"
+        android:baselineAligned="false"
         android:orientation="horizontal"
         android:weightSum="4">
 
-        <Button
+        <LinearLayout
             android:id="@+id/btn_mode"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:minHeight="0dp"
-            android:layout_weight="1"
+            android:layout_weight="1.15"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_mode"
-            android:drawableTop="@drawable/ic_mode"
-            android:drawablePadding="3dp"
-            android:textSize="13sp"
-            android:gravity="center"
-            android:text="模式"
-            android:textColor="#FFFFFF"
-            android:textStyle="bold" />
+            android:paddingVertical="5dp"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <ImageView
+                android:id="@+id/mode_icon_left"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginEnd="3dp"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:id="@+id/mode_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="#FFFFFF"
+                android:text="模式" />
+
+            <ImageView
+                android:id="@+id/mode_icon_right"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_marginStart="3dp"
+                android:scaleType="fitCenter" />
+        </LinearLayout>
 
         <Button
             android:id="@+id/btn_setup"
@@ -138,13 +167,14 @@
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:minHeight="0dp"
-            android:layout_weight="1"
+            android:layout_weight="0.85"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_setup"
             android:drawableTop="@drawable/ic_setup"
             android:drawableTint="#FFFFFF"
-            android:drawablePadding="0dp"
-            android:textSize="13sp"
+            android:drawablePadding="2dp"
+            android:paddingVertical="5dp"
+            android:textSize="12sp"
             android:gravity="center"
             android:text="摆棋"
             android:textColor="#FFFFFF"
@@ -156,13 +186,14 @@
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:minHeight="0dp"
-            android:layout_weight="1"
+            android:layout_weight="0.85"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_recall"
             android:drawableTop="@drawable/ic_recall"
             android:drawableTint="#FFFFFF"
-            android:drawablePadding="0dp"
-            android:textSize="13sp"
+            android:drawablePadding="2dp"
+            android:paddingVertical="5dp"
+            android:textSize="12sp"
             android:gravity="center"
             android:text="悔棋"
             android:textColor="#FFFFFF"
@@ -174,13 +205,14 @@
             android:layout_width="0dp"
             android:layout_height="46dp"
             android:minHeight="0dp"
-            android:layout_weight="1"
+            android:layout_weight="1.15"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_suggest_teal"
             android:drawableTop="@drawable/ic_suggest"
             android:drawableTint="#FFFFFF"
-            android:drawablePadding="0dp"
-            android:textSize="13sp"
+            android:drawablePadding="2dp"
+            android:paddingVertical="5dp"
+            android:textSize="12sp"
             android:gravity="center"
             android:text="支招"
             android:textColor="#FFFFFF"
@@ -188,18 +220,19 @@
     </LinearLayout>
 
     <!-- 底部区域：评分曲线（背景层） + 引擎结果提示盒（浮于其上）。
-         提示盒默认隐藏，显示时覆盖曲线（半透明背景使曲线透出在后面）；提示消失后曲线重新露出。 -->
+         与按钮同处一个控制面板内，材质统一、无割裂；提示盒默认隐藏，
+         显示时覆盖曲线（半透明背景使曲线透出在后面）；提示消失后曲线重新露出。 -->
     <FrameLayout
         android:id="@+id/score_curve_frame"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp">
+        android:layout_marginTop="6dp">
 
         <!-- 整局评分曲线（背景层，始终可见） -->
         <CustomView.ScoreCurveView
             android:id="@+id/score_curve_view"
             android:layout_width="match_parent"
-            android:layout_height="72dp" />
+            android:layout_height="100dp" />
 
         <!-- 引擎计算结果展示框：默认隐藏，支招结果到达时显示；
              每行一条独立候选变线（单行、可横向滑动、不折行），整体可竖向滚动 -->
@@ -220,5 +253,6 @@
                 android:padding="0dp" />
         </ScrollView>
     </FrameLayout>
+    </LinearLayout>
 
 </LinearLayout>

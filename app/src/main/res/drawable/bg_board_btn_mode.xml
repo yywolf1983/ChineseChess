@@ -6,13 +6,13 @@
             <gradient
                 android:type="linear"
                 android:angle="135"
-                android:startColor="#A9744E"
-                android:centerColor="#8D5E3C"
-                android:endColor="#6F4628" />
+                android:startColor="#3F4E80"
+                android:centerColor="#33426B"
+                android:endColor="#263358" />
             <corners android:radius="10dp" />
             <stroke
                 android:width="1dp"
-                android:color="#B87C54" />
+                android:color="#5C6BA0" />
         </shape>
     </item>
 </ripple>

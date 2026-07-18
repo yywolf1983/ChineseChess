@@ -276,7 +276,7 @@ public class PvMActivityInit {
                             paramsV.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
                             paramsV.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                             paramsV.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                            paramsV.setMargins(0, 0, 0, 0); // 按钮组贴棋盘，不留空隙
+                            paramsV.setMargins(0, 0, 0, 0); // 控制栏紧贴棋盘，整体下沉至界面底部
                             buttonGroup.setLayoutParams(paramsV);
 
                             // 处理嵌套的LinearLayout布局

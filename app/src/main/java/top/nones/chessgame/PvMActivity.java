@@ -18,7 +18,9 @@ import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.RadioButton;
+import android.widget.TextView;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import android.content.DialogInterface;
@@ -363,16 +365,21 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 模式按钮短名（与 ModePickerDialog.MODE_NAMES 对应，用于按钮文字）
     private static final String[] MODE_SHORT_NAMES = {"双人", "执红", "执黑", "双机"};
 
-    /** 更新「模式」按钮：顶部图标以组合图标表示当前对战模式，文字显示短模式名 */
+    /** 更新「模式」按钮：左、右各一个 glyph 表示对战双方，文字居中显示短模式名 */
     public void updateModeButton() {
         try {
-            android.widget.Button btn = findViewById(R.id.btn_mode);
+            View btn = findViewById(R.id.btn_mode);
             if (btn == null) return;
             float density = getResources().getDisplayMetrics().density;
-            ModeIconDrawable d = new ModeIconDrawable(this, gameMode, density);
-            btn.setCompoundDrawablesWithIntrinsicBounds(null, d, null, null);
+            ModeIconDrawable leftD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_LEFT);
+            ModeIconDrawable rightD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_RIGHT);
+            ImageView iconLeft = btn.findViewById(R.id.mode_icon_left);
+            ImageView iconRight = btn.findViewById(R.id.mode_icon_right);
+            TextView modeText = btn.findViewById(R.id.mode_text);
+            if (iconLeft != null) iconLeft.setImageDrawable(leftD);
+            if (iconRight != null) iconRight.setImageDrawable(rightD);
             int m = Math.max(0, Math.min(MODE_SHORT_NAMES.length - 1, gameMode));
-            btn.setText(MODE_SHORT_NAMES[m]);
+            if (modeText != null) modeText.setText(MODE_SHORT_NAMES[m]);
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "updateModeButton failed", e);
         }

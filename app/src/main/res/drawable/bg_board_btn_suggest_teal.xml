@@ -3,8 +3,16 @@
     android:color="#33FFFFFF">
     <item>
         <shape android:shape="rectangle">
-            <solid android:color="#4A7C74" />
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#3E8E7F"
+                android:centerColor="#2F7268"
+                android:endColor="#235A53" />
             <corners android:radius="10dp" />
+            <stroke
+                android:width="1dp"
+                android:color="#56AB9C" />
         </shape>
     </item>
 </ripple>

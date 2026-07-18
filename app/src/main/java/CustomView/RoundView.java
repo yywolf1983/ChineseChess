@@ -504,13 +504,13 @@ public class RoundView extends View {
         borderPaint.setColor(turnColor);
         
         // 计算垂直间距与行坐标
-        float paddingTop = convertDpToPixel(8, getContext());
-        float lineHeight = convertDpToPixel(22, getContext());
+        float paddingTop = convertDpToPixel(5, getContext());
+        float lineHeight = convertDpToPixel(20, getContext());
 
         // ========== 行坐标（紧凑三行：形势/回合/深度 → 时间+评分条 → AI提示） ==========
-        float formY = paddingTop + convertDpToPixel(16, getContext());   // 第1行：回合 / 形势 / 深度
-        float row2Y = paddingTop + convertDpToPixel(44, getContext());   // 第2行：时间 + 阵营图标 + 评分条
-        float row3Y = paddingTop + convertDpToPixel(66, getContext());   // 第3行：AI思考 / 支招 / 步数
+        float formY = paddingTop + convertDpToPixel(14, getContext());   // 第1行：回合 / 形势 / 深度
+        float row2Y = paddingTop + convertDpToPixel(39, getContext());   // 第2行：时间 + 阵营图标 + 评分条
+        float row3Y = paddingTop + convertDpToPixel(59, getContext());   // 第3行：AI思考 / 支招 / 步数
 
 
         // 评分计算
@@ -795,7 +795,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(88, getContext()); // 紧凑三行：形势/时间评分条/AI提示
+            height = (int) convertDpToPixel(74, getContext()); // 紧凑三行：形势/时间评分条/AI提示
         }
         
         viewWidth = width;

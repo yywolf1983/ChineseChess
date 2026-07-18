@@ -1119,8 +1119,8 @@ public class PikafishAI {
                 depth = depth + Math.max(1, chessInfo.variationRandomness);
                 effectiveMultiPV = Math.max(2, cachedMultiPV);
             }
-            // 保证支招结果框至少展示 5 条候选变线
-            effectiveMultiPV = Math.max(5, effectiveMultiPV);
+            // 保证支招结果框至少展示 7 条候选变线
+            effectiveMultiPV = Math.max(7, effectiveMultiPV);
             applyMultiPV(effectiveMultiPV);
             LogUtils.i("PikafishAI", "支招搜索 MultiPV=" + effectiveMultiPV);
 

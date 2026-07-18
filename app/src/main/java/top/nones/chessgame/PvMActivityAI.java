@@ -1301,7 +1301,7 @@ public class PvMActivityAI {
             final int HIGHLIGHT_BG = 0xFF244A34;
 
             int added = 0;
-            for (int li = 0; li < lines.size() && added < 6; li++) {
+            for (int li = 0; li < lines.size() && added < 8; li++) {
                 final int lineIndex = li;
                 PikafishAI.PvSequenceWithScore line = lines.get(li);
                 if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) {
