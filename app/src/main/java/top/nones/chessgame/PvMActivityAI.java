@@ -1131,6 +1131,9 @@ public class PvMActivityAI {
                 activity.chessInfo.suggestMoveNotations.clear();
                 activity.chessInfo.suggestMoveNotations.addAll(notations);
                 
+                // 初始支招（未跟随走棋）一律实线红/黑，不使用虚线
+                activity.chessInfo.suggestDashedStepIdx = -1;
+                
                 activity.chessInfo.suggestFromPos = null;
                 activity.chessInfo.suggestToPos = null;
                 
@@ -1587,6 +1590,57 @@ public class PvMActivityAI {
             this.activity.roundView.setBestMoveText("");   // 先清「最优一步」，避免与彩色多步在同一行重叠
             this.activity.roundView.setSuggestMoveTextWithColor(notations, isRedStep, isPlayedStep);
             this.activity.clearEngineResultBox();
+
+            // 棋盘同步：把命中路的「下一步要走的棋子」以虚线画在棋盘上（与头部置灰逻辑一致）。
+            // 从当前局面（已走 consumed 步）取后续 2 步（下一步 + 对方应对），与初始支招的 2 步风格一致，
+            // 其中第 1 步（下一步）用虚线提示。
+            try {
+                ChessInfo boardSim = (ChessInfo) baseInfo.clone();
+                java.util.List<Move> boardMoves = new java.util.ArrayList<>();
+                java.util.List<String> boardLabels = new java.util.ArrayList<>();
+                java.util.List<Boolean> boardIsRed = new java.util.ArrayList<>();
+                // 快进到当前局面
+                for (int i = 0; i < consumed && i < chosen.pvSequence.size(); i++) {
+                    Move mv = chosen.pvSequence.get(i);
+                    if (mv == null || mv.fromPos == null || mv.toPos == null) break;
+                    if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9
+                            && mv.toPos.y >= 0 && mv.toPos.y < 10 && mv.toPos.x >= 0 && mv.toPos.x < 9) {
+                        int mp = boardSim.piece[mv.fromPos.y][mv.fromPos.x];
+                        boardSim.piece[mv.toPos.y][mv.toPos.x] = mp;
+                        boardSim.piece[mv.fromPos.y][mv.fromPos.x] = 0;
+                        boardSim.IsRedGo = !boardSim.IsRedGo;
+                    }
+                }
+                int end = Math.min(chosen.pvSequence.size(), consumed + 2);
+                int stepNo = 1;
+                for (int i = consumed; i < end; i++) {
+                    Move mv = chosen.pvSequence.get(i);
+                    if (mv == null || mv.fromPos == null || mv.toPos == null) break;
+                    boardMoves.add(mv);
+                    boardLabels.add(String.valueOf(stepNo));
+                    boardIsRed.add(boardSim.IsRedGo);
+                    stepNo++;
+                    if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9
+                            && mv.toPos.y >= 0 && mv.toPos.y < 10 && mv.toPos.x >= 0 && mv.toPos.x < 9) {
+                        int mp = boardSim.piece[mv.fromPos.y][mv.fromPos.x];
+                        boardSim.piece[mv.toPos.y][mv.toPos.x] = mp;
+                        boardSim.piece[mv.fromPos.y][mv.fromPos.x] = 0;
+                        boardSim.IsRedGo = !boardSim.IsRedGo;
+                    }
+                }
+                if (!boardMoves.isEmpty() && this.activity.chessInfo != null) {
+                    this.activity.chessInfo.suggestMoves.clear();
+                    this.activity.chessInfo.suggestMoves.addAll(boardMoves);
+                    this.activity.chessInfo.suggestMoveLabels.clear();
+                    this.activity.chessInfo.suggestMoveLabels.addAll(boardLabels);
+                    this.activity.chessInfo.suggestMovesIsRed.clear();
+                    this.activity.chessInfo.suggestMovesIsRed.addAll(boardIsRed);
+                    this.activity.chessInfo.suggestDashedStepIdx = 0; // 进入跟随模式：棋盘后续步全部虚线，区别于初次支招实线
+                    if (this.activity.chessView != null) this.activity.chessView.requestDraw();
+                }
+            } catch (CloneNotSupportedException e) {
+                LogUtils.e("PvMActivityAI", "棋盘同步跟随支招异常: " + e.getMessage());
+            }
         } catch (Exception e) {
             LogUtils.e("PvMActivityAI", "头部显示跟随支招异常: " + e.getMessage());
         }
@@ -1595,6 +1649,20 @@ public class PvMActivityAI {
     /** 结束跟随支招并清除结果框 */
     private void clearSuggestFollow() {
         if (this.activity == null) return;
+        // 清除棋盘上的跟随虚线提示，恢复常规状态
+        if (this.activity.chessInfo != null) {
+            this.activity.chessInfo.suggestDashedStepIdx = -1;
+            if (this.activity.chessInfo.suggestMoves != null) {
+                this.activity.chessInfo.suggestMoves.clear();
+            }
+            if (this.activity.chessInfo.suggestMoveLabels != null) {
+                this.activity.chessInfo.suggestMoveLabels.clear();
+            }
+            if (this.activity.chessInfo.suggestMovesIsRed != null) {
+                this.activity.chessInfo.suggestMovesIsRed.clear();
+            }
+            if (this.activity.chessView != null) this.activity.chessView.requestDraw();
+        }
         if (this.activity.gameManager != null) {
             this.activity.gameManager.clearSuggest(); // 内部会重置跟随状态并清空结果框
         } else {

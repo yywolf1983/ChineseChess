@@ -48,6 +48,8 @@ public class ChessInfo implements Cloneable, Serializable {
     public List<String> suggestMoveLabels;
     public List<Boolean> suggestMovesIsRed;
     public List<String> suggestMoveNotations;
+    /** 支招线中需用虚线提示「下一步」的步下标（>=0 时该步用虚线），-1 表示不虚线 */
+    public int suggestDashedStepIdx = -1;
     
     // 整局评分曲线：每步落子后追加一个评分点（centipawns，+红优 / -黑优），引擎定分时修正末点
     public int currentEvaluation = 0;
@@ -193,6 +195,7 @@ public class ChessInfo implements Cloneable, Serializable {
                 this.ret.add((Pos) pos.clone());
             }
             this.Select = info.Select.clone();
+            this.suggestDashedStepIdx = info.suggestDashedStepIdx;
             this.isMachine = info.isMachine;
             this.status = info.status;
             this.peaceRound = info.peaceRound;
@@ -679,6 +682,7 @@ public class ChessInfo implements Cloneable, Serializable {
             }
             
             info.Select = this.Select.clone();
+            info.suggestDashedStepIdx = this.suggestDashedStepIdx;
             info.IsRedGo = this.IsRedGo;
             info.IsChecked = this.IsChecked;
             info.isMachine = this.isMachine;
