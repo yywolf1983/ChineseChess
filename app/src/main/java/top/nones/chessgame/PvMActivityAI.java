@@ -1502,8 +1502,94 @@ public class PvMActivityAI {
             return;
         }
         this.activity.suggestFollowPrefix.add(played);
-        // 重新渲染：高亮命中行并按已走步数揭示后续
-        fillEngineResultBox(this.activity.suggestFollowPrefix.size(), true);
+        // 重合命中：把命中的那一路显示到头部「支招」位置（复用现有彩色支招显示），不再显示在下方结果框
+        fillSuggestFollowInHeader(this.activity.suggestFollowPrefix.size());
+    }
+
+    /**
+     * 跟随命中后：将命中的那一路走法显示到头部「支招」位置（彩色多步），并隐藏下方结果框。
+     * 记谱推演与揭示窗口（revealed/windowStart 滑窗）逻辑与 fillEngineResultBox(followMode=true) 保持一致。
+     */
+    private void fillSuggestFollowInHeader(int consumed) {
+        try {
+            if (this.activity == null || this.activity.roundView == null
+                    || this.activity.pikafishAI == null || this.activity.chessInfo == null) {
+                return;
+            }
+            java.util.List<PikafishAI.PvSequenceWithScore> lines =
+                    this.activity.pikafishAI.getLastMultiPvLines();
+            if (lines == null || lines.isEmpty()) {
+                return;
+            }
+            // 与下方结果框一致：按综合评分排序，最优匹配变线优先
+            lines = new java.util.ArrayList<>(lines);
+            java.util.Collections.sort(lines, (a, b) -> Integer.compare(rankLineScore(b), rankLineScore(a)));
+
+            java.util.List<Move> prefix = this.activity.suggestFollowPrefix;
+            ChessInfo baseInfo;
+            try {
+                baseInfo = this.activity.suggestFollowStartInfo != null
+                        ? (ChessInfo) this.activity.suggestFollowStartInfo.clone()
+                        : (ChessInfo) this.activity.chessInfo.clone();
+            } catch (CloneNotSupportedException e) {
+                return;
+            }
+            if (baseInfo == null) return;
+
+            // 选出命中的那一路（最优的、仍与已走前缀一致且有后续的变线）
+            PikafishAI.PvSequenceWithScore chosen = null;
+            for (PikafishAI.PvSequenceWithScore line : lines) {
+                if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) continue;
+                if (!lineMatchesPrefix(line, prefix)) continue;
+                if (line.pvSequence.size() <= consumed) continue;
+                chosen = line;
+                break;
+            }
+            if (chosen == null) return;
+
+            int total = chosen.pvSequence.size();
+            int revealed = Math.min(total, Math.max(PvMActivity.SIM_DISPLAY_STEPS, consumed + 1));
+            int windowStart = Math.max(0, revealed - PvMActivity.SIM_DISPLAY_STEPS);
+
+            // 从基准局面推演该变线，生成窗口内每步的中文记谱、所属阵营与是否已走（置灰用）
+            java.util.List<String> notations = new java.util.ArrayList<>();
+            java.util.List<Boolean> isRedStep = new java.util.ArrayList<>();
+            java.util.List<Boolean> isPlayedStep = new java.util.ArrayList<>();
+            try {
+                ChessInfo sim = (ChessInfo) baseInfo.clone();
+                for (int i = 0; i < revealed; i++) {
+                    Move mv = chosen.pvSequence.get(i);
+                    if (mv == null || mv.fromPos == null || mv.toPos == null) break;
+                    boolean redMove = sim.IsRedGo;
+                    int piece = 0;
+                    if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9) {
+                        piece = sim.piece[mv.fromPos.y][mv.fromPos.x];
+                    }
+                    if (i >= windowStart) {
+                        notations.add(ShowAIMoveUIRunnable.convertMoveToChineseNotation(mv, piece));
+                        isRedStep.add(redMove);
+                        isPlayedStep.add(i < consumed); // 已走的前缀步置灰
+                    }
+                    if (mv.fromPos.y >= 0 && mv.fromPos.y < 10 && mv.fromPos.x >= 0 && mv.fromPos.x < 9
+                            && mv.toPos.y >= 0 && mv.toPos.y < 10 && mv.toPos.x >= 0 && mv.toPos.x < 9) {
+                        int mp = sim.piece[mv.fromPos.y][mv.fromPos.x];
+                        sim.piece[mv.toPos.y][mv.toPos.x] = mp;
+                        sim.piece[mv.fromPos.y][mv.fromPos.x] = 0;
+                        sim.IsRedGo = !sim.IsRedGo;
+                    }
+                }
+            } catch (CloneNotSupportedException e) {
+                return;
+            }
+            if (notations.isEmpty()) return;
+
+            // 显示到头部「支招」位置（彩色多步，红/黑按阵营着色，符合头部风格），并隐藏下方结果框
+            this.activity.roundView.setBestMoveText("");   // 先清「最优一步」，避免与彩色多步在同一行重叠
+            this.activity.roundView.setSuggestMoveTextWithColor(notations, isRedStep, isPlayedStep);
+            this.activity.clearEngineResultBox();
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityAI", "头部显示跟随支招异常: " + e.getMessage());
+        }
     }
 
     /** 结束跟随支招并清除结果框 */

@@ -338,45 +338,37 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
-                if (i == 0) {
-                    suggestPaint.setColor(stepColor);
-                    suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(5);
+                // 选中某个棋子后，该棋子对应的着法即为「下一步」，用虚线提示；
+                // 其余支招一律使用实线红/黑提示，不使用虚线
+                boolean isNextMove = chessInfo.Select != null && chessInfo.Select.length >= 2
+                        && move.fromPos.x == chessInfo.Select[0] && move.fromPos.y == chessInfo.Select[1];
+                
+                // 连线（箭头）
+                suggestPaint.setColor(stepColor);
+                suggestPaint.setStyle(Paint.Style.STROKE);
+                suggestPaint.setStrokeWidth(5);
+                if (isNextMove) {
+                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{12, 8}, 0));
+                    suggestPaint.setAlpha(210);
+                } else {
                     suggestPaint.setPathEffect(null);
                     suggestPaint.setAlpha(180);
-                    drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
-                    
-                    suggestPaint.setColor(stepColor);
-                    suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setAlpha(160);
-                    int circleRadius = Scale(20);
-                    canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
-                    
-                    suggestPaint.setColor(Color.WHITE);
-                    suggestPaint.setTextSize(Scale(38));
-                    suggestPaint.setAlpha(255);
-                    suggestPaint.setFakeBoldText(true);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(11), suggestPaint);
-                } else {
-                    suggestPaint.setColor(stepColor);
-                    suggestPaint.setStyle(Paint.Style.STROKE);
-                    suggestPaint.setStrokeWidth(5);
-                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{12, 8}, 0));
-                    suggestPaint.setAlpha(120);
-                    drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
-                    
-                    suggestPaint.setColor(stepColor);
-                    suggestPaint.setStyle(Paint.Style.FILL);
-                    suggestPaint.setAlpha(100);
-                    int circleRadius = Scale(16);
-                    canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
-                    
-                    suggestPaint.setColor(Color.WHITE);
-                    suggestPaint.setTextSize(Scale(30));
-                    suggestPaint.setAlpha(255);
-                    suggestPaint.setFakeBoldText(true);
-                    canvas.drawText(label, fromCenterX, fromCenterY + Scale(9), suggestPaint);
                 }
+                drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
+                
+                // 起点圆圈
+                suggestPaint.setColor(stepColor);
+                suggestPaint.setStyle(Paint.Style.FILL);
+                suggestPaint.setAlpha(isNextMove ? 200 : (i == 0 ? 160 : 100));
+                int circleRadius = Scale(i == 0 ? 20 : 16);
+                canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
+                
+                // 步数标签
+                suggestPaint.setColor(Color.WHITE);
+                suggestPaint.setTextSize(Scale(i == 0 ? 38 : 30));
+                suggestPaint.setAlpha(255);
+                suggestPaint.setFakeBoldText(true);
+                canvas.drawText(label, fromCenterX, fromCenterY + Scale(i == 0 ? 11 : 9), suggestPaint);
             }
         }
 

@@ -43,6 +43,7 @@ public class RoundView extends View {
     private String suggestMoveText = ""; // 支招走法文本
     private List<String> suggestMoveTexts = null; // 彩色支招文本列表
     private List<Boolean> suggestMoveIsRed = null; // 彩色支招是否红方
+    private List<Boolean> suggestMoveIsPlayed = null; // 彩色支招是否已走（置灰）
     private String moveInfoText = ""; // 步数信息文本
     private String bestMoveText = ""; // 最优一步（支招结果核心着法，显示在回合信息条）
     private boolean isAILoading = false; // AI 是否正在加载
@@ -299,6 +300,16 @@ public class RoundView extends View {
     public void setSuggestMoveTextWithColor(List<String> texts, List<Boolean> isRedList) {
         this.suggestMoveTexts = texts;
         this.suggestMoveIsRed = isRedList;
+        this.suggestMoveIsPlayed = null; // 默认不置灰
+        this.suggestMoveText = ""; // 清空普通文本
+        invalidate();
+    }
+
+    // 设置带颜色的支招走法文本（含已走置灰标记）
+    public void setSuggestMoveTextWithColor(List<String> texts, List<Boolean> isRedList, List<Boolean> isPlayedList) {
+        this.suggestMoveTexts = texts;
+        this.suggestMoveIsRed = isRedList;
+        this.suggestMoveIsPlayed = isPlayedList;
         this.suggestMoveText = ""; // 清空普通文本
         invalidate();
     }
@@ -724,15 +735,15 @@ public class RoundView extends View {
             float originalTextSize = infoTextPaint.getTextSize();
             boolean originalFakeBold = infoTextPaint.isFakeBoldText();
             float normalSize = convertDpToPixel(13, getContext());
-            float firstSize = convertDpToPixel(15, getContext());
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
+            float gap = convertDpToPixel(3, getContext());
             float totalWidth = 0;
             for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
-                infoTextPaint.setTextSize(i == 0 ? firstSize : normalSize);
+                infoTextPaint.setTextSize(normalSize);
                 totalWidth += infoTextPaint.measureText(suggestMoveTexts.get(i));
                 if (i < suggestMoveTexts.size() - 1) {
-                    totalWidth += infoTextPaint.measureText(" ");
+                    totalWidth += gap;
                 }
             }
             float startX = (width - totalWidth) / 2;
@@ -741,17 +752,22 @@ public class RoundView extends View {
             for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
                 String text = suggestMoveTexts.get(i);
                 boolean isRed = suggestMoveIsRed.get(i);
+                boolean isPlayed = (suggestMoveIsPlayed != null && i < suggestMoveIsPlayed.size())
+                        ? suggestMoveIsPlayed.get(i) : false;
                 
-                if (isRed) {
+                if (isPlayed) {
+                    // 已走步骤：与棕底协调的柔和暖灰，弱化但不刺眼
+                    infoTextPaint.setColor(Color.rgb(206, 190, 168));
+                } else if (isRed) {
                     infoTextPaint.setColor(Color.RED);
                 } else {
                     infoTextPaint.setColor(Color.BLACK);
                 }
                 
-                infoTextPaint.setTextSize(i == 0 ? firstSize : normalSize);
-                infoTextPaint.setFakeBoldText(i == 0);
+                infoTextPaint.setTextSize(normalSize);
+                infoTextPaint.setFakeBoldText(false);
                 canvas.drawText(text, x, currentY, infoTextPaint);
-                x += infoTextPaint.measureText(text) + (i == 0 ? infoTextPaint.measureText(" ") : convertDpToPixel(3, getContext()));
+                x += infoTextPaint.measureText(text) + gap;
             }
             
             currentY += lineHeight;
