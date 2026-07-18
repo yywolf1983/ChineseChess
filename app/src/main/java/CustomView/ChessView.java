@@ -315,6 +315,19 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             int redColor = Color.rgb(220, 50, 50);
             int blackColor = Color.rgb(50, 80, 200);
             
+            // 选中棋子对应的支招着法下标（用于把「下一步」及其「后续一步」用虚线提示）
+            int selectedStepIdx = -1;
+            if (chessInfo.Select != null && chessInfo.Select.length >= 2) {
+                for (int k = 0; k < chessInfo.suggestMoves.size(); k++) {
+                    ChessMove.Move m = chessInfo.suggestMoves.get(k);
+                    if (m != null && m.fromPos != null
+                            && m.fromPos.x == chessInfo.Select[0] && m.fromPos.y == chessInfo.Select[1]) {
+                        selectedStepIdx = k;
+                        break;
+                    }
+                }
+            }
+
             for (int i = 0; i < chessInfo.suggestMoves.size() && i < chessInfo.suggestMoveLabels.size(); i++) {
                 ChessMove.Move move = chessInfo.suggestMoves.get(i);
                 if (move == null || move.fromPos == null || move.toPos == null) continue;
@@ -338,16 +351,15 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
-                // 选中某个棋子后，该棋子对应的着法即为「下一步」，用虚线提示；
+                // 选中某个棋子后，该棋子对应的着法即为「下一步」；其紧随的「后续一步」用虚线进一步提示；
                 // 其余支招一律使用实线红/黑提示，不使用虚线
-                boolean isNextMove = chessInfo.Select != null && chessInfo.Select.length >= 2
-                        && move.fromPos.x == chessInfo.Select[0] && move.fromPos.y == chessInfo.Select[1];
+                boolean isDashed = selectedStepIdx >= 0 && (i == selectedStepIdx || i == selectedStepIdx + 1);
                 
                 // 连线（箭头）
                 suggestPaint.setColor(stepColor);
                 suggestPaint.setStyle(Paint.Style.STROKE);
                 suggestPaint.setStrokeWidth(5);
-                if (isNextMove) {
+                if (isDashed) {
                     suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{12, 8}, 0));
                     suggestPaint.setAlpha(210);
                 } else {
@@ -359,7 +371,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 // 起点圆圈
                 suggestPaint.setColor(stepColor);
                 suggestPaint.setStyle(Paint.Style.FILL);
-                suggestPaint.setAlpha(isNextMove ? 200 : (i == 0 ? 160 : 100));
+                suggestPaint.setAlpha(isDashed ? 200 : (i == 0 ? 160 : 100));
                 int circleRadius = Scale(i == 0 ? 20 : 16);
                 canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                 
