@@ -1366,7 +1366,7 @@ public class PvMActivityAI {
                 final float density = this.activity.getResources().getDisplayMetrics().density;
                 final int SCORE_COL_W = (int) (44 * density);
                 final int MOVE_COL_W = (int) (60 * density);
-                final float TEXT_SP = 15;
+                final float TEXT_SP = 13;
 
                 android.widget.HorizontalScrollView hsv = new android.widget.HorizontalScrollView(this.activity);
                 hsv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -1390,6 +1390,7 @@ public class PvMActivityAI {
                         SCORE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
                 scoreTv.setGravity(android.view.Gravity.CENTER);
                 scoreTv.setSingleLine(true);
+                scoreTv.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 scoreTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
                 scoreTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                 scoreTv.setIncludeFontPadding(false);
@@ -1416,6 +1417,7 @@ public class PvMActivityAI {
                             MOVE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
                     mvTv.setGravity(android.view.Gravity.CENTER);
                     mvTv.setSingleLine(true);
+                    mvTv.setEllipsize(android.text.TextUtils.TruncateAt.END);
                     mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
                     mvTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                     mvTv.setPadding(0, 0, 0, 0);
