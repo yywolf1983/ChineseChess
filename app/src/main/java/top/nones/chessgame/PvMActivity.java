@@ -212,6 +212,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 先标记进入模拟：后续被中断 AI 线程的收尾回调中的清空
         // 会被 isSimulating 守卫跳过，避免刚设置的模拟支招被清掉
         isSimulating = true;
+        if (chessView != null) {
+            chessView.isSimulating = true;
+            chessView.requestDraw();
+        }
 
         // 停止任何正在进行的 AI 分析，避免干扰
         if (aiManager != null) aiManager.stopAIAnalysis();
@@ -241,6 +245,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
         // 支招按钮变为"返回"
         if (controlsManager != null) controlsManager.updateReturnButton(true);
+        // 模拟演示期间，除"返回"外其余按钮置灰禁用
+        if (controlsManager != null) controlsManager.setButtonsDisabledExceptReturn(true);
         if (roundView != null) roundView.setSimulating(true);
         highlightSimLine(lineIndex);
 
@@ -313,8 +319,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         simMoves = null;
         simStepIndex = 0;
         isSimulating = false;
+        if (chessView != null) {
+            chessView.isSimulating = false;
+            chessView.requestDraw();
+        }
 
         if (controlsManager != null) controlsManager.updateReturnButton(false);
+        // 退出模拟演示：恢复其余按钮可用
+        if (controlsManager != null) controlsManager.setButtonsDisabledExceptReturn(false);
         if (roundView != null) roundView.setSimulating(false);
         clearSimLineHighlight();
 
@@ -353,6 +365,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 原本就因「非加载棋局/无历史」而置灰的（如上一步/下一步）保持禁用
     private final java.util.Map<Integer, Boolean> setupButtonEnabledState = new java.util.HashMap<>();
     private Boolean flipButtonOriginalEnabled = null;
+    // 模式按钮是内嵌图标-文字容器(非直接Button)，特记其进入摆棋前的可用状态
+    private Boolean modeButtonOriginalEnabled = null;
 
     // 按钮组ID（在 PvMActivityInit 中给按钮组根布局设置该 ID 并赋值此字段）
     public int buttonGroupId = 10001;
@@ -533,18 +547,22 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 // 退出摆棋：仅当确实存在进入时保存的状态才恢复按钮。
                 // 若为空（如新局时点此，并非从摆棋退出），不改动其它按钮，
                 // 避免把原本就因「非加载棋局/无历史」而置灰的上一步/下一步错误启用。
-                if (!setupButtonEnabledState.isEmpty() || flipButtonOriginalEnabled != null) {
+                if (!setupButtonEnabledState.isEmpty() || flipButtonOriginalEnabled != null
+                    || modeButtonOriginalEnabled != null) {
                     View bg = findViewById(buttonGroupId);
                     if (bg instanceof ViewGroup) {
                         restoreButtonsRecursively((ViewGroup) bg, R.id.btn_setup);
                     }
-                    if (flipButton != null) {
-                        boolean orig = flipButtonOriginalEnabled != null ? flipButtonOriginalEnabled : true;
-                        flipButton.setEnabled(orig);
-                        flipButton.setAlpha(orig ? 1f : 0.4f);
-                    }
                     setupButtonEnabledState.clear();
                     flipButtonOriginalEnabled = null;
+                }
+                // 退出摆棋：恢复模式按钮（仅恢复原本可用的，原本禁用的保持灰）
+                View modeBtn = findViewById(R.id.btn_mode);
+                if (modeBtn != null && modeButtonOriginalEnabled != null) {
+                    boolean orig = modeButtonOriginalEnabled;
+                    modeBtn.setEnabled(orig);
+                    modeBtn.setAlpha(orig ? 1f : 0.4f);
+                    modeButtonOriginalEnabled = null;
                 }
             } else {
                 // 进入摆棋：先记录原始状态，再全部禁用
@@ -552,11 +570,21 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
                 if (bg instanceof ViewGroup) {
                     saveAndDisableRecursively((ViewGroup) bg, R.id.btn_setup);
                 }
-                if (flipButton != null) {
-                    flipButtonOriginalEnabled = flipButton.isEnabled();
-                    flipButton.setEnabled(false);
-                    flipButton.setAlpha(0.4f);
+                // 模式按钮是容器(内嵌图标-文字)，递归不会禁用；摆棋时切换模式会破坏局面，显式置灰禁用
+                View modeBtn = findViewById(R.id.btn_mode);
+                if (modeBtn != null) {
+                    modeButtonOriginalEnabled = modeBtn.isEnabled();
+                    modeBtn.setEnabled(false);
+                    modeBtn.setAlpha(0.4f);
                 }
+            }
+            // 翻转按钮在摆棋模式下始终可用（仅翻转换看，不影响摆棋），保持高亮
+            // 注意：当前翻转按钮已并入按钮组(R.id.btn_flip)，PvMActivity.flipButton 字段为 null，
+            // 须直接按 id 取按钮，不能用 flipButton 字段（否则永远走不进此分支）
+            View flipBtn = findViewById(R.id.btn_flip);
+            if (flipBtn != null) {
+                flipBtn.setEnabled(true);
+                flipBtn.setAlpha(1f);
             }
             // 摆棋面板（SetupModeView：清空棋盘 / 拍照 / 图片）
             // 属于摆棋功能本身，无论进入还是退出摆棋都必须保持可用，绝不能禁用。
@@ -653,7 +681,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             LogUtils.d("PvMActivity", "Button clicked: " + viewId);
 
             // 模拟行棋演示中：点击支招/返回按钮以外的任何按钮，先退出模拟、恢复正常局面
-            if (isSimulating && viewId != R.id.btn_statistics) {
+            // 翻转按钮( btn_flip )在模拟中仍可使用，仅翻转显示、不退出模拟
+            if (isSimulating && viewId != R.id.btn_statistics && viewId != R.id.btn_flip) {
                 stopSimulation();
             }
 

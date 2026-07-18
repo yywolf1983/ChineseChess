@@ -6,39 +6,39 @@
     android:orientation="vertical"
     tools:ignore="DuplicateIds"
     android:background="@drawable/bg_bottom_sheet"
-    android:paddingLeft="16dp"
-    android:paddingRight="16dp"
-    android:paddingTop="10dp"
-    android:paddingBottom="16dp">
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="12dp">
 
     <!-- 顶部把手 -->
     <View
-        android:layout_width="36dp"
+        android:layout_width="32dp"
         android:layout_height="4dp"
         android:layout_gravity="center_horizontal"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="8dp"
         android:background="#DDDDDD" />
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="选择对战模式"
-        android:textSize="16sp"
+        android:textSize="15sp"
         android:textColor="#1A1A1A"
         android:textStyle="bold"
         android:gravity="center"
-        android:layout_marginBottom="14dp" />
+        android:layout_marginBottom="10dp" />
 
     <!-- 双人对战 -->
     <LinearLayout
         android:id="@+id/mode_card_0"
         android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:layout_marginBottom="10dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="8dp"
         android:background="@drawable/bg_mode_card"
         android:gravity="center_vertical"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
         android:clickable="true"
         android:focusable="true"
         android:orientation="horizontal">
@@ -47,13 +47,13 @@
             android:id="@+id/mode_card_accent"
             android:layout_width="4dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="10dp"
             android:background="#CCCCCC" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -62,19 +62,19 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="双人对战"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textColor="#222222" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_right"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <ImageView
             android:id="@+id/mode_card_check"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="6dp"
             android:src="@drawable/ic_check"
             android:visibility="gone" />
     </LinearLayout>
@@ -83,12 +83,12 @@
     <LinearLayout
         android:id="@+id/mode_card_1"
         android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:layout_marginBottom="10dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="8dp"
         android:background="@drawable/bg_mode_card"
         android:gravity="center_vertical"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
         android:clickable="true"
         android:focusable="true"
         android:orientation="horizontal">
@@ -97,13 +97,13 @@
             android:id="@+id/mode_card_accent"
             android:layout_width="4dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="10dp"
             android:background="#CCCCCC" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -112,19 +112,19 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="玩家执红"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textColor="#222222" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_right"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <ImageView
             android:id="@+id/mode_card_check"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="6dp"
             android:src="@drawable/ic_check"
             android:visibility="gone" />
     </LinearLayout>
@@ -133,12 +133,12 @@
     <LinearLayout
         android:id="@+id/mode_card_2"
         android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:layout_marginBottom="10dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="8dp"
         android:background="@drawable/bg_mode_card"
         android:gravity="center_vertical"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
         android:clickable="true"
         android:focusable="true"
         android:orientation="horizontal">
@@ -147,13 +147,13 @@
             android:id="@+id/mode_card_accent"
             android:layout_width="4dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="10dp"
             android:background="#CCCCCC" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -162,19 +162,19 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="玩家执黑"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textColor="#222222" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_right"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <ImageView
             android:id="@+id/mode_card_check"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="6dp"
             android:src="@drawable/ic_check"
             android:visibility="gone" />
     </LinearLayout>
@@ -183,12 +183,12 @@
     <LinearLayout
         android:id="@+id/mode_card_3"
         android:layout_width="match_parent"
-        android:layout_height="76dp"
-        android:layout_marginBottom="14dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="10dp"
         android:background="@drawable/bg_mode_card"
         android:gravity="center_vertical"
-        android:paddingLeft="16dp"
-        android:paddingRight="16dp"
+        android:paddingLeft="14dp"
+        android:paddingRight="14dp"
         android:clickable="true"
         android:focusable="true"
         android:orientation="horizontal">
@@ -197,13 +197,13 @@
             android:id="@+id/mode_card_accent"
             android:layout_width="4dp"
             android:layout_height="match_parent"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="10dp"
             android:background="#CCCCCC" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <TextView
             android:id="@+id/mode_card_name"
@@ -212,19 +212,19 @@
             android:layout_weight="1"
             android:gravity="center"
             android:text="双机对战"
-            android:textSize="16sp"
+            android:textSize="15sp"
             android:textColor="#222222" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_right"
-            android:layout_width="68dp"
-            android:layout_height="68dp" />
+            android:layout_width="46dp"
+            android:layout_height="46dp" />
 
         <ImageView
             android:id="@+id/mode_card_check"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
-            android:layout_marginStart="8dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="6dp"
             android:src="@drawable/ic_check"
             android:visibility="gone" />
     </LinearLayout>
@@ -233,7 +233,7 @@
     <Button
         android:id="@+id/mode_cancel"
         android:layout_width="match_parent"
-        android:layout_height="46dp"
+        android:layout_height="42dp"
         android:background="@drawable/bg_mode_cancel_btn"
         android:text="取  消"
         android:textSize="15sp"

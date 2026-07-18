@@ -359,6 +359,26 @@ public class PvMActivityControls {
             LogUtils.e("PvMActivityControls", "Error updating return button", e);
         }
     }
+
+    // 模拟行棋演示中，除"返回"(btn_statistics)与"翻转"(btn_flip)外，其余按钮一律置灰禁用
+    private static final int[] SIM_DISABLED_BTN_IDS = {
+            R.id.btn_retry, R.id.btn_settings, R.id.btn_save, R.id.btn_load,
+            R.id.btn_prev, R.id.btn_next, R.id.btn_mode,
+            R.id.btn_setup, R.id.btn_recall
+    };
+
+    public void setButtonsDisabledExceptReturn(boolean disabled) {
+        try {
+            for (int id : SIM_DISABLED_BTN_IDS) {
+                android.view.View v = activity.findViewById(id);
+                if (v == null) continue;
+                v.setEnabled(!disabled);
+                v.setAlpha(disabled ? 0.4f : 1f);
+            }
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityControls", "Error disabling buttons", e);
+        }
+    }
     
     // 处理上一步按钮
     public void handlePrevButton() {

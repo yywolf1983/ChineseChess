@@ -3,10 +3,10 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:minWidth="320dp"
+    android:minWidth="300dp"
     android:background="@drawable/shape_dialog"
     android:paddingTop="0dp"
-    android:paddingBottom="12dp">
+    android:paddingBottom="10dp">
 
     <!-- 顶部彩色条 -->
     <View
@@ -19,9 +19,9 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="6dp"
-        android:textSize="18sp"
+        android:layout_marginTop="12dp"
+        android:layout_marginBottom="4dp"
+        android:textSize="16sp"
         android:textColor="#333333"
         android:textStyle="bold"
         android:text="⚙ 设  置" />
@@ -34,7 +34,7 @@
         android:fillViewport="false"
         android:scrollbars="vertical"
         android:fadeScrollbars="false"
-        android:minHeight="320dp">
+        android:minHeight="300dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -48,9 +48,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_setting_card"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="10dp">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
 
         <TextView
             android:layout_width="match_parent"
@@ -58,7 +58,7 @@
             android:text="声音"
             android:textSize="10sp"
             android:textColor="#999999"
-            android:layout_marginBottom="8dp"
+            android:layout_marginBottom="6dp"
             android:letterSpacing="0.15" />
 
         <RadioGroup
@@ -83,7 +83,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="#000000"
-                android:buttonTint="#4CAF50"
+                android:button="@drawable/radio_green_small"
                 android:text="开" />
 
             <RadioButton
@@ -93,7 +93,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="#000000"
-                android:buttonTint="#4CAF50"
+                android:button="@drawable/radio_green_small"
                 android:text="关"
                 android:layout_marginLeft="8dp" />
         </RadioGroup>
@@ -104,7 +104,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:gravity="center_vertical"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="3dp">
 
             <TextView
                 android:layout_width="0dp"
@@ -121,7 +121,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="#000000"
-                android:buttonTint="#4CAF50"
+                android:button="@drawable/radio_green_small"
                 android:text="开" />
 
             <RadioButton
@@ -131,7 +131,7 @@
                 android:layout_height="wrap_content"
                 android:textSize="12sp"
                 android:textColor="#000000"
-                android:buttonTint="#4CAF50"
+                android:button="@drawable/radio_green_small"
                 android:text="关"
                 android:layout_marginLeft="8dp" />
         </RadioGroup>
@@ -144,9 +144,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_setting_card"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="10dp">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -175,12 +175,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical">
             <Button
                 android:id="@+id/timeMinusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="−"
                 android:textSize="14sp"
                 android:textColor="#666666"
@@ -202,8 +202,8 @@
                 android:progressBackgroundTint="#E0E0E0" />
             <Button
                 android:id="@+id/timePlusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="+"
                 android:textSize="14sp"
                 android:textColor="#4CAF50"
@@ -216,7 +216,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="3dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -241,9 +241,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_setting_card"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="10dp">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -272,12 +272,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical">
             <Button
                 android:id="@+id/depthMinusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="−"
                 android:textSize="14sp"
                 android:textColor="#666666"
@@ -299,8 +299,8 @@
                 android:progressBackgroundTint="#E0E0E0" />
             <Button
                 android:id="@+id/depthPlusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="+"
                 android:textSize="14sp"
                 android:textColor="#2196F3"
@@ -313,7 +313,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="3dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -338,9 +338,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_setting_card"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="10dp">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -369,7 +369,7 @@
                     android:text="开"
                     android:textSize="12sp"
                     android:textColor="#000000"
-                    android:buttonTint="#4CAF50" />
+                    android:button="@drawable/radio_green_small" />
 
                 <RadioButton
                     android:id="@+id/forceVariationFalse"
@@ -378,7 +378,7 @@
                     android:text="关"
                     android:textSize="12sp"
                     android:textColor="#000000"
-                    android:buttonTint="#4CAF50"
+                    android:button="@drawable/radio_green_small"
                     android:layout_marginLeft="8dp" />
             </RadioGroup>
         </LinearLayout>
@@ -387,8 +387,8 @@
             android:layout_width="match_parent"
             android:layout_height="0.5dp"
             android:background="#1A000000"
-            android:layout_marginTop="8dp"
-            android:layout_marginBottom="8dp" />
+            android:layout_marginTop="6dp"
+            android:layout_marginBottom="6dp" />
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -420,9 +420,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_setting_card"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="10dp">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -451,12 +451,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical">
             <Button
                 android:id="@+id/skillLevelMinusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="−"
                 android:textSize="14sp"
                 android:textColor="#666666"
@@ -478,8 +478,8 @@
                 android:progressBackgroundTint="#E0E0E0" />
             <Button
                 android:id="@+id/skillLevelPlusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="+"
                 android:textSize="14sp"
                 android:textColor="#FF9800"
@@ -492,7 +492,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="3dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -515,7 +515,7 @@
             android:layout_height="wrap_content"
             android:textSize="10sp"
             android:textColor="#999999"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:text="技能级别影响AI的走棋风格和强度，20级为最高水平" />
     </LinearLayout>
 
@@ -525,9 +525,9 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_setting_card"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="10dp">
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -556,12 +556,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="6dp"
             android:gravity="center_vertical">
             <Button
                 android:id="@+id/multiPVMinusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="−"
                 android:textSize="14sp"
                 android:textColor="#666666"
@@ -583,8 +583,8 @@
                 android:progressBackgroundTint="#E0E0E0" />
             <Button
                 android:id="@+id/multiPVPlusBtn"
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
                 android:text="+"
                 android:textSize="14sp"
                 android:textColor="#9C27B0"
@@ -597,7 +597,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="4dp">
+            android:layout_marginTop="3dp">
             <TextView
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -620,7 +620,7 @@
             android:layout_height="wrap_content"
             android:textSize="10sp"
             android:textColor="#999999"
-            android:layout_marginTop="6dp"
+            android:layout_marginTop="4dp"
             android:text="MultiPV影响AI考虑的走法多样性，值越大计算负担越重" />
 
         <TextView
@@ -629,7 +629,7 @@
             android:layout_height="wrap_content"
             android:textSize="11sp"
             android:textColor="#E53935"
-            android:layout_marginTop="4dp"
+            android:layout_marginTop="3dp"
             android:text="⚠ 落子并非最优解。慎重增大。" />
     </LinearLayout>
 
@@ -641,16 +641,16 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginLeft="16dp"
-        android:layout_marginRight="16dp"
-        android:layout_marginTop="16dp"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="12dp"
         android:gravity="center">
 
         <Button
             android:id="@+id/negBtn"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="42dp"
+            android:layout_height="40dp"
             android:layout_weight="1"
             android:layout_marginRight="8dp"
             android:background="@drawable/bg_dialog_cancel"
@@ -663,7 +663,7 @@
             android:id="@+id/posBtn"
             android:soundEffectsEnabled="false"
             android:layout_width="0dp"
-            android:layout_height="42dp"
+            android:layout_height="40dp"
             android:layout_weight="1"
             android:layout_marginLeft="8dp"
             android:background="@drawable/bg_dialog_confirm"
