@@ -112,8 +112,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private int simStepIndex = 0;                    // 当前已演示到第几步
     private static final long SIM_START_DELAY_MS = 800;  // 进入模拟行棋前的初始停顿
     private static final long SIM_STEP_INTERVAL_MS = 600; // 模拟行棋每步间隔
-    /** 模拟行棋跟随的步数 = 候选变线框中展示的步数（显示几步行棋就行几步） */
-    public static final int SIM_DISPLAY_STEPS = 5;
+    /** 模拟行棋跟随的步数 = 候选变线框中展示的步数（显示几步行棋就行几步），上限 12 步 */
+    public static final int SIM_DISPLAY_STEPS = 12;
     // 进入模拟行棋前备份的真实支招线（含每条变线的箭头/记谱），返回时恢复
     private java.util.List<ChessMove.Move> simSuggestBackupMoves;
     private java.util.List<String> simSuggestBackupLabels;
