@@ -738,8 +738,8 @@ public class RoundView extends View {
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
             float gap = convertDpToPixel(3, getContext());
-            float padX = convertDpToPixel(8, getContext());
-            float availWidth = Math.max(0, width - 2 * padX);
+            float sidePadX = convertDpToPixel(8, getContext());
+            float availWidth = Math.max(0, width - 2 * sidePadX);
             float drawSize = normalSize;
             // 先按标准字号测量总宽度
             float totalWidth = 0;

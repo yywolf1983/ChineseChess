@@ -249,13 +249,8 @@ public class ChessInfo implements Cloneable, Serializable {
         }
     }
 
-    /** 立即把当前局面计入重复局面历史（供棋谱导航/回放后重建历史调用） */
-    public void recordCurrentPosition() {
-        synchronized (lock) {
-            recordCurrentPositionInternal();
-        }
-    }
-    
+    // 注：recordCurrentPosition() 已在下方定义（见 549 行），此处不再重复。
+
     /** 引擎给出当前局面最终评分时调用：若已落子点数与总步数一致则修正末点，否则仅记录最新值（不新增点数） */
     public void pushOrUpdateEval(int eval) {
         currentEvaluation = eval;

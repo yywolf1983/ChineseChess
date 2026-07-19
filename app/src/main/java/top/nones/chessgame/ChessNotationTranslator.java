@@ -155,7 +155,7 @@ public class ChessNotationTranslator {
         // 二/四/五/六/八 等均不在 [一, 九] 区间内，会漏判。改用 ChessPiece.fromChineseNumber 校验。
         if (moveString.length() > 0) {
             char first = moveString.charAt(0);
-            if (Character.isDigit(first) || Info.ChessPiece.fromChineseNumber(String.valueOf(first)) >= 0) {
+            if (Character.isDigit(first) || Info.ChessPiece.fromChineseNumber(first) >= 0) {
                 return true;
             }
         }

@@ -315,9 +315,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             int redColor = Color.rgb(220, 50, 50);
             int blackColor = Color.rgb(50, 80, 200);
             
-            // 跟随支招时，由 PvMActivityAI 标记「下一步」的下标，棋盘上用虚线提示该步要走的棋子
-            int dashedStepIdx = chessInfo.suggestDashedStepIdx;
-
             for (int i = 0; i < chessInfo.suggestMoves.size() && i < chessInfo.suggestMoveLabels.size(); i++) {
                 ChessMove.Move move = chessInfo.suggestMoves.get(i);
                 if (move == null || move.fromPos == null || move.toPos == null) continue;
@@ -341,27 +338,32 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
-                // 跟随支招（suggestDashedStepIdx >= 0）时全部用虚线，以区分初次支招的实线；
-                // 初次支招 suggestDashedStepIdx < 0，一律实线红/黑提示
-                boolean isDashed = dashedStepIdx >= 0;
+                // 序号1（i==0，即将要走的一步）用粗实线突出；
+                // 序号2 及之后（i>=1）用虚线，弱化后续变化线，形成层次。
+                boolean isDashed = i >= 1;
                 
-                // 连线（箭头）
+                // 连线（美化箭头）
                 suggestPaint.setColor(stepColor);
                 suggestPaint.setStyle(Paint.Style.STROKE);
-                suggestPaint.setStrokeWidth(5);
+                suggestPaint.setStrokeCap(Paint.Cap.ROUND);
+                suggestPaint.setStrokeJoin(Paint.Join.ROUND);
                 if (isDashed) {
-                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(new float[]{12, 8}, 0));
-                    suggestPaint.setAlpha(210);
+                    suggestPaint.setStrokeWidth(Scale(5));
+                    suggestPaint.setPathEffect(new android.graphics.DashPathEffect(
+                            new float[]{Scale(14), Scale(10)}, 0));
+                    suggestPaint.setAlpha(200);
                 } else {
+                    suggestPaint.setStrokeWidth(Scale(8));
                     suggestPaint.setPathEffect(null);
-                    suggestPaint.setAlpha(180);
+                    suggestPaint.setAlpha(235);
                 }
                 drawArrow(canvas, fromCenterX, fromCenterY, toCenterX, toCenterY, suggestPaint);
                 
                 // 起点圆圈
                 suggestPaint.setColor(stepColor);
                 suggestPaint.setStyle(Paint.Style.FILL);
-                suggestPaint.setAlpha(isDashed ? 200 : (i == 0 ? 160 : 100));
+                suggestPaint.setPathEffect(null);
+                suggestPaint.setAlpha(i == 0 ? 235 : 190);
                 int circleRadius = Scale(i == 0 ? 20 : 16);
                 canvas.drawCircle(fromCenterX, fromCenterY, circleRadius, suggestPaint);
                 
@@ -532,27 +534,42 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
     
     // 处理触摸事件，实现摆棋窗口的拖动功能
-    // 绘制带箭头的线段
+    // 绘制带箭头的线段（美化：圆头线帽 + 实心三角形箭头，箭头大小随线宽自适应）
     private void drawArrow(Canvas canvas, float fromX, float fromY, float toX, float toY, Paint paint) {
-        // 绘制直线
-        canvas.drawLine(fromX, fromY, toX, toY, paint);
-        
-        // 计算箭头角度
         double angle = Math.atan2(toY - fromY, toX - fromX);
         
-        // 箭头长度和角度
-        float arrowLength = 40;
-        float arrowAngle = (float) Math.PI / 6; // 30度
+        // 箭头尺寸随线宽变化，粗线（序号1）箭头更大更醒目
+        float strokeW = paint.getStrokeWidth();
+        float arrowLength = strokeW * 3.0f + Scale(16);
+        float arrowAngle = (float) Math.PI / 7f; // 约 25.7 度，更修长美观
         
-        // 计算箭头两个点的坐标
-        float arrowX1 = (float) (toX - arrowLength * Math.cos(angle - arrowAngle));
-        float arrowY1 = (float) (toY - arrowLength * Math.sin(angle - arrowAngle));
-        float arrowX2 = (float) (toX - arrowLength * Math.cos(angle + arrowAngle));
-        float arrowY2 = (float) (toY - arrowLength * Math.sin(angle + arrowAngle));
+        // 线段只画到箭头根部，避免线头穿出三角形形成毛刺
+        float baseX = (float) (toX - arrowLength * 0.72f * Math.cos(angle));
+        float baseY = (float) (toY - arrowLength * 0.72f * Math.sin(angle));
+        canvas.drawLine(fromX, fromY, baseX, baseY, paint);
         
-        // 绘制箭头
-        canvas.drawLine(toX, toY, arrowX1, arrowY1, paint);
-        canvas.drawLine(toX, toY, arrowX2, arrowY2, paint);
+        // 箭头三角形两翼坐标
+        float x1 = (float) (toX - arrowLength * Math.cos(angle - arrowAngle));
+        float y1 = (float) (toY - arrowLength * Math.sin(angle - arrowAngle));
+        float x2 = (float) (toX - arrowLength * Math.cos(angle + arrowAngle));
+        float y2 = (float) (toY - arrowLength * Math.sin(angle + arrowAngle));
+        
+        android.graphics.Path arrowPath = new android.graphics.Path();
+        arrowPath.moveTo(toX, toY);
+        arrowPath.lineTo(x1, y1);
+        arrowPath.lineTo(x2, y2);
+        arrowPath.close();
+        
+        // 保存并临时切换为实心填充（且清除虚线，让箭头始终为实心三角形）
+        Paint.Style oldStyle = paint.getStyle();
+        android.graphics.PathEffect oldEffect = paint.getPathEffect();
+        paint.setStyle(Paint.Style.FILL);
+        paint.setPathEffect(null);
+        canvas.drawPath(arrowPath, paint);
+        
+        // 恢复调用方原有画笔状态
+        paint.setStyle(oldStyle);
+        paint.setPathEffect(oldEffect);
     }
 
     @Override
