@@ -136,39 +136,54 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public void refreshScoreCurve() {
         if (scoreCurveView != null && chessInfo != null) {
             java.util.List<Integer> full = chessInfo.getEvalSnapshot();
-            int displayCount = full.size();
-            // 加载/回放棋谱时，按当前回放步数只显示「已回放到」的前缀，
-            // 上一步/下一步/悔棋会随之回退或延伸。
+            if (full == null) full = new java.util.ArrayList<>();
+            int displayCount;
             if (notationManager != null && notationManager.getCurrentNotation() != null) {
-                int idx = notationManager.getCurrentMoveIndex();
-                if (idx < 0) idx = 0;
-                displayCount = Math.min(idx, full.size());
+                // 棋谱回放/导航：曲线显示到「当前已走步数」——下一步/手动落子增加、上一步/悔棋缩短
+                displayCount = notationManager.getCurrentMoveIndex();
+            } else {
+                // 实时对局：显示全部已记录的曲线点
+                displayCount = full.size();
             }
+            if (displayCount < 0) displayCount = 0;
+            if (displayCount > full.size()) displayCount = full.size();
             scoreCurveView.setScores(full.subList(0, displayCount));
         }
     }
 
     /**
-     * 按当前 round 的评分记录一个曲线点：每走一步（或回放一步）记录一次。
-     * - 实时对局：更新最后一手对应的点（updateAllInfoInternal 已先占位）；
-     * - 棋谱回放/导航：按当前回放步数截断并写入该步的点（上一步回退、下一步延伸）。
+     * 按当前 round 的评分记录一个曲线点：每走一步（或回放/导航一步）记录一次。
+     * - 实时对局：更新最后一手对应的点；
+     * - 棋谱回放/导航：按当前回放步数（currentMoveIndex）用引擎评分写入对应点；
+     *   上一步/悔棋由显示裁剪同步回滚（曲线点索引 = 已走步数 - 1）。
+     *
+     * @param requestMoveIndex 触发本次评估时的回放步数（>=0 时仅在「当前步数一致」时采用，
+     *                         用于丢弃快速回放/回退时乱序返回的旧引擎结果），传 -1 表示不校验。
      */
     public void recordRoundScore(int score) {
+        recordRoundScore(score, -1);
+    }
+
+    public void recordRoundScore(int score, int requestMoveIndex) {
         if (chessInfo == null) return;
         if (notationManager != null && notationManager.getCurrentNotation() != null) {
-            // 回放场景：截断到当前步数，只保留已回放到的部分
-            int steps = notationManager.getCurrentMoveIndex();
-            chessInfo.truncateEvalTo(steps);
-            int idx = steps - 1; // 当前最后一步（0 基）的评分点
-            if (idx >= 0) {
-                chessInfo.setEvalAt(idx, score);
+            int currentIdx = notationManager.getCurrentMoveIndex(); // 已走步数（0=初始局面）
+            // 仅采用与当前步数一致的评分，丢弃快速导航/回退时乱序返回的旧引擎结果
+            if (requestMoveIndex >= 0 && requestMoveIndex != currentIdx) {
+                return;
             }
-        } else {
-            // 实时对局：写入最后一手
-            int idx = chessInfo.totalMoves - 1;
-            if (idx >= 0) {
-                chessInfo.setEvalAt(idx, score);
+            // 每一步都由引擎实时评估：第 k 步（1-based）对应曲线点 index k-1（曲线不含初始局面点）
+            int pointIdx = currentIdx - 1;
+            if (pointIdx >= 0) {
+                chessInfo.setEvalAt(pointIdx, score);
             }
+            refreshScoreCurve();
+            return;
+        }
+        // 实时对局（未加载棋谱）：写入最后一手
+        int idx = chessInfo.totalMoves - 1;
+        if (idx >= 0) {
+            chessInfo.setEvalAt(idx, score);
         }
         refreshScoreCurve();
     }
@@ -373,6 +388,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 上一步/下一步按钮引用，用于在「未加载棋谱」时禁用
     public android.widget.Button btnPrev;
     public android.widget.Button btnNext;
+    // 悔棋按钮引用，加载棋谱时置灰禁用
+    public android.widget.Button btnRecall;
     // 对战模式：0-双人对战, 1-人机对战(玩家红), 2-人机对战(玩家黑), 3-双机对战
     public int gameMode = 0;
 
@@ -752,16 +769,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             snapshotInfo.IsRedGo = chessInfo.IsRedGo;
             snapshotInfo.setting = chessInfo.setting;
             final boolean isRedTurnNow = chessInfo.IsRedGo;
+            // 记录触发评估时的回放步数，用于回放乱序校验（仅加载/回放棋谱时有意义）
+            final int requestMoveIndex = (notationManager != null && notationManager.getCurrentNotation() != null)
+                    ? notationManager.getCurrentMoveIndex() : -1;
             evaluationExecutor.submit(() -> {
                 int score = pikafishAI.evaluatePositionQuickly(snapshotInfo);
                 score = normalizeScore(score, isRedTurnNow);
                 final int finalScore = score;
+                final int reqIdx = requestMoveIndex;
                 runOnUiThread(() -> {
                     if (roundView != null) {
                         roundView.setMoveScore(finalScore);
                     }
-                    // 按 round 的评分记录当前步的曲线点（每走一步记录一次）
-                    recordRoundScore(finalScore);
+                    // 按当前局面记录曲线点（每走一步记录一次；回退时随之回滚）
+                    recordRoundScore(finalScore, reqIdx);
                 });
             });
         }

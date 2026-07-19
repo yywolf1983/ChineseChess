@@ -477,6 +477,11 @@ public class PvPActivityControls {
                 }
             }
             
+            // 将当前对局真实评分序列写入棋谱，便于回放时直接显示评分曲线
+            if (chessInfo != null) {
+                notation.embeddedEvalSeries = chessInfo.getEvalSnapshot();
+            }
+            
             // 生成棋谱内容
             String content = notation.toSaveContent();
             

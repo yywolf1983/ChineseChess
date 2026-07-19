@@ -224,17 +224,21 @@ public class ScoreCurveView extends View {
             ys[i] = midY - norm * (plotH / 2f);
         }
 
-        // 竖线网格：每步（每个数据点）一根，与曲线点对齐。
-        // 过长对局点过密时自动降低透明度；每约 24dp 选一根「主竖线」略加强，避免糊成一片。
-        float stepSpacing = (n > 1) ? (plotW / (n - 1)) : plotW;
-        int majorEvery = Math.max(1, (int) Math.ceil((24f * density) / Math.max(stepSpacing, 1f)));
-        int gridBaseAlpha = gridPaint.getAlpha();
+        // 竖线：每一步（每个数据点）一根，与曲线点对齐，并用该步优势方着色
+        // （红优暖色 / 黑优冷色），使「每步一格」清晰可读；末步加重高亮。
+        Paint vLinePaint = new Paint();
+        vLinePaint.setStyle(Paint.Style.STROKE);
+        vLinePaint.setAntiAlias(true);
         for (int i = 0; i < n; i++) {
-            boolean major = (i % majorEvery == 0) || (i == n - 1);
-            gridPaint.setAlpha(major ? 90 : 40);
-            canvas.drawLine(xs[i], padTop, xs[i], h - padBottom, gridPaint);
+            int sc = scores.get(i);
+            boolean isLast = (i == n - 1);
+            vLinePaint.setColor(sc >= 0 ? Color.argb(70, 244, 102, 96) : Color.argb(70, 86, 156, 214));
+            vLinePaint.setStrokeWidth(isLast ? 1.6f * density : 1f * density);
+            if (isLast) {
+                vLinePaint.setColor(sc >= 0 ? RED_ADV : BLACK_ADV);
+            }
+            canvas.drawLine(xs[i], padTop, xs[i], h - padBottom, vLinePaint);
         }
-        gridPaint.setAlpha(gridBaseAlpha);
 
         // 1) 渐变填充：沿平滑曲线闭合到底边，颜色随当前优势方变化
         int top = (scores.get(n - 1) >= 0) ? RED_ADV : BLACK_ADV;

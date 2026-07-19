@@ -277,6 +277,19 @@ public class ChessInfo implements Cloneable, Serializable {
         }
     }
 
+    /** 将曲线长度规整为 n：不足补 0（占位），超出截断（回滚）。用于回放同步补齐曲线点 */
+    public void ensureEvalLength(int n) {
+        synchronized (lock) {
+            if (n < 0) n = 0;
+            while (evalHistory.size() < n) {
+                evalHistory.add(0);
+            }
+            if (evalHistory.size() > n) {
+                evalHistory.subList(n, evalHistory.size()).clear();
+            }
+        }
+    }
+
     /** 返回曲线历史的线程安全快照（用于绘制时拷贝） */
     public java.util.List<Integer> getEvalSnapshot() {
         synchronized (lock) {

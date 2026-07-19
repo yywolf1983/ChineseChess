@@ -16,6 +16,8 @@ public class ChessNotation implements Serializable {
     private String fileName;
     private Date date;
     private List<MoveRecord> moveRecords;
+    /** 内嵌评分序列（每步落子后的评分，红优为正，centipawns），来自棋谱 {#score,depth#} 注释；保存时据此回写 */
+    public java.util.List<Integer> embeddedEvalSeries = null;
     private String playerRed;
     private String playerBlack;
     private String matchDate;
@@ -35,6 +37,9 @@ public class ChessNotation implements Serializable {
         private static final long serialVersionUID = 1L;
         public String redMove;
         public String blackMove;
+        /** 内嵌评分（红优为正，centipawns），来自棋谱 {#score,depth#} 注释；为 null 表示无评分 */
+        public Integer redScore = null;
+        public Integer blackScore = null;
 
         public MoveRecord(String redMove, String blackMove) {
             this.redMove = redMove;
@@ -329,45 +334,86 @@ public class ChessNotation implements Serializable {
                 }
             }
             
-            // 解析走法
+            // 解析走法（保留内嵌评分 {#score,depth#}，在去除注释前按 token 提取）
+            Pattern scorePattern = Pattern.compile("\\{#(-?\\d+),\\d+#\\}");
+            java.util.List<Integer> parsedSeries = new java.util.ArrayList<>();
             int moveIndex = 0;
+            int lastMovePly = -1; // 最近一步在 parsedSeries 中的下标，用于回填其后的评分
+            boolean foundAnyScore = false; // 是否解析到至少一个真实内嵌评分
             for (String line : lines) {
-                line = line.trim();
+                String rawLine = line.trim();
                 // 跳过空行、注释行和PGN表头行
-                if (line.isEmpty() || line.startsWith("%") || line.startsWith("[")) {
+                if (rawLine.isEmpty() || rawLine.startsWith("%") || rawLine.startsWith("[")) {
                     continue;
                 }
-                // 处理行内注释
-                line = removeInlineComments(line);
-                // 移除行号
-                line = line.replaceAll("\\d+\\.", "");
-                
-                // 分割红黑走法
-                String[] moves = line.split("\\s+");
-                for (String move : moves) {
-                    move = move.trim();
-                    if (move.isEmpty() || move.equals("1-0") || move.equals("0-1") || move.equals("1/2-1/2") || move.equals("*")) {
+                // 按空白切分 token（不去注释，以便提取每步评分）
+                String[] tokens = rawLine.split("\\s+");
+                for (String rawTok : tokens) {
+                    String tok = rawTok.trim();
+                    if (tok.isEmpty()) {
                         continue;
                     }
-                    
-                    // 移除括号内的注释
-                    move = move.replaceAll("\\([^)]*\\)", "");
-                    move = move.trim();
-                    
-                    if (!move.isEmpty()) {
-                        if (moveIndex % 2 == 0) {
-                            // 红方走法
-                            notation.moveRecords.add(new MoveRecord(move, ""));
-                        } else {
-                            // 黑方走法
-                            if (!notation.moveRecords.isEmpty()) {
-                                MoveRecord lastRecord = notation.moveRecords.get(notation.moveRecords.size() - 1);
-                                lastRecord.blackMove = move;
+                    // 从 token 中分离走法文本与内嵌评分（形如 炮二平四{#0,0#}）
+                    String moveText = tok;
+                    Integer tokScore = null;
+                    int braceIdx = tok.indexOf("{#");
+                    if (braceIdx >= 0) {
+                        moveText = tok.substring(0, braceIdx).trim();
+                        Matcher sm = scorePattern.matcher(tok.substring(braceIdx));
+                        if (sm.lookingAt()) {
+                            try {
+                                tokScore = Integer.parseInt(sm.group(1));
+                            } catch (NumberFormatException ignore) {
+                                tokScore = null;
                             }
                         }
-                        moveIndex++;
                     }
+                    // 纯评分 token（无走法文本）：挂到上一步
+                    if (moveText.isEmpty()) {
+                        if (tokScore != null && lastMovePly >= 0) {
+                            parsedSeries.set(lastMovePly, tokScore);
+                            applyScoreToMoveRecord(notation, lastMovePly, tokScore);
+                            foundAnyScore = true;
+                        }
+                        continue;
+                    }
+                    // 跳过行号（含 . ）、结果、括号注释
+                    if (tok.matches("^\\d+\\.?$")) {
+                        continue;
+                    }
+                    if (tok.equals("1-0") || tok.equals("0-1") || tok.equals("1/2-1/2") || tok.equals("*")) {
+                        continue;
+                    }
+                    if (tok.startsWith("(")) {
+                        continue;
+                    }
+                    if (tok.startsWith("{")) {
+                        // 其它非评分开注释块（如头部 {#1,1#} 已在上一分支处理），跳过
+                        continue;
+                    }
+                    // 记录为一个走法
+                    parsedSeries.add(0);
+                    if (moveIndex % 2 == 0) {
+                        // 红方走法
+                        notation.moveRecords.add(new MoveRecord(moveText, ""));
+                    } else {
+                        // 黑方走法
+                        if (!notation.moveRecords.isEmpty()) {
+                            MoveRecord lastRecord = notation.moveRecords.get(notation.moveRecords.size() - 1);
+                            lastRecord.blackMove = moveText;
+                        }
+                    }
+                    lastMovePly = parsedSeries.size() - 1;
+                    if (tokScore != null) {
+                        parsedSeries.set(lastMovePly, tokScore);
+                        applyScoreToMoveRecord(notation, lastMovePly, tokScore);
+                        foundAnyScore = true;
+                    }
+                    moveIndex++;
                 }
+            }
+            if (foundAnyScore && !parsedSeries.isEmpty()) {
+                notation.embeddedEvalSeries = parsedSeries;
             }
             
             return notation;
@@ -377,6 +423,29 @@ public class ChessNotation implements Serializable {
         }
     }
     
+    /** 将某步（ply，从 0 开始）的内嵌评分写回对应走法记录 */
+    private static void applyScoreToMoveRecord(ChessNotation notation, int ply, Integer score) {
+        int recIdx = ply / 2;
+        if (recIdx >= 0 && recIdx < notation.moveRecords.size()) {
+            MoveRecord rec = notation.moveRecords.get(recIdx);
+            if (ply % 2 == 0) {
+                rec.redScore = score;
+            } else {
+                rec.blackScore = score;
+            }
+        }
+    }
+
+    /** 棋谱是否内嵌了每步评分（可用于直接绘制评分曲线，无需逐步走子触发引擎评估） */
+    public boolean hasEmbeddedScores() {
+        return embeddedEvalSeries != null && !embeddedEvalSeries.isEmpty();
+    }
+
+    /** 获取内嵌评分序列（红优为正，centipawns），无则返回空列表 */
+    public java.util.List<Integer> getEmbeddedEvalSeries() {
+        return embeddedEvalSeries != null ? embeddedEvalSeries : new java.util.ArrayList<Integer>();
+    }
+
     private static String extractPGNValue(String line) {
         int start = line.indexOf("\"");
         int end = line.lastIndexOf("\"");
@@ -421,6 +490,14 @@ public class ChessNotation implements Serializable {
         return value.replace("\"", "\\\"");
     }
     
+    private int getSeriesScore(int ply) {
+        if (embeddedEvalSeries != null && ply >= 0 && ply < embeddedEvalSeries.size()) {
+            Integer v = embeddedEvalSeries.get(ply);
+            return v != null ? v : 0;
+        }
+        return 0;
+    }
+
     public String toSaveContent() {
         StringBuilder sb = new StringBuilder();
         
@@ -447,14 +524,19 @@ public class ChessNotation implements Serializable {
         
         // 写入注释行
         sb.append("{#1,1#}\n\n");
-        
-        // 写入走法（按照标准格式）
+
+        // 写入走法（按内嵌评分序列回写 {#score,0#}，无序列时回退默认）
+        int ply = 0;
         int moveNumber = 1;
         for (MoveRecord record : moveRecords) {
             if (record.redMove != null && !record.redMove.isEmpty()) {
-                sb.append("  ").append(moveNumber).append(". ").append(record.redMove).append(" {#0,0#} ");
+                int redScore = getSeriesScore(ply);
+                ply++;
+                sb.append("  ").append(moveNumber).append(". ").append(record.redMove).append(" {#").append(redScore).append(",0#} ");
                 if (record.blackMove != null && !record.blackMove.isEmpty()) {
-                    sb.append(" " + record.blackMove).append(" {#50,0#}");
+                    int blackScore = getSeriesScore(ply);
+                    ply++;
+                    sb.append(" " + record.blackMove).append(" {#").append(blackScore).append(",0#}");
                 }
                 sb.append("\n");
                 moveNumber++;

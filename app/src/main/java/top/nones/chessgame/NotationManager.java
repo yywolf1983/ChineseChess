@@ -16,6 +16,19 @@ public class NotationManager {
     private PvMActivity activity;
     private ChessNotation currentNotation;
     private int currentMoveIndex = 0;
+    // 回放模式：true=纯棋谱回放（点下一步/上一步，未手动落子）；
+    // false=玩家已在加载的棋谱基础上手动落子，接管为实时对局
+    private boolean replayMode = true;
+    // 棋谱原始总步数（不随手动接管改写），用于「下一步」边界判断
+    private int originalTotalMoves = 0;
+    // 分歧点：手动接管时所处的已走步数（分歧前最后一步），-1 表示未分歧
+    private int divergeAt = -1;
+    // 是否已偏离棋谱主线（手动落子后偏离则下一步置灰）
+    private boolean diverged = false;
+    // 加载棋谱的不可变副本：用于导航重建与「是否与原谱重合」判定（不被接管改写）
+    private ChessNotation originalNotation = null;
+    // 分歧后的手动接管走法（按落子先后），仅用于偏离主线时的局面重建
+    private java.util.List<String> manualMoves = new java.util.ArrayList<>();
     private String setupFEN;
     
     // 保存棋谱相关的临时变量
@@ -37,12 +50,27 @@ public class NotationManager {
     
     public void setCurrentNotation(ChessNotation notation) {
         this.currentNotation = notation;
+        // 加载/切换棋谱：进入纯回放模式（玩家手动落子前）
+        this.replayMode = true;
+        // 保留一份不可变原谱副本（用于导航重建与重合判定），并清除分歧状态
+        this.manualMoves.clear();
+        this.divergeAt = -1;
+        this.diverged = false;
+        copyOriginalNotation(notation);
         // 重置当前步数为0
         this.currentMoveIndex = 0;
+        // 不使用棋谱内嵌评分：加载后清空曲线，每一步由引擎实时评估累积
+        if (activity.chessInfo != null) {
+            activity.chessInfo.evalHistory.clear();
+            activity.chessInfo.currentEvaluation = 0;
+        }
         // 显示初始棋谱信息
         updateMoveInfoDisplay();
         // 同步上一步/下一步按钮的可用状态
         updateNavButtonsEnabled();
+        if (activity.chessInfo != null) {
+            activity.refreshScoreCurve();
+        }
     }
     
     public int getCurrentMoveIndex() {
@@ -53,6 +81,100 @@ public class NotationManager {
         this.currentMoveIndex = index;
         // 同步上一步/下一步按钮的可用状态
         updateNavButtonsEnabled();
+    }
+
+    /** 是否处于纯棋谱回放模式（玩家尚未手动接管） */
+    public boolean isReplayMode() {
+        return replayMode;
+    }
+
+    /** 设置回放模式（玩家手动落子接管后设为 false） */
+    public void setReplayMode(boolean replay) {
+        this.replayMode = replay;
+    }
+
+    /**
+     * 玩家在加载的棋谱基础上手动落子（接管）：把这一手追加进棋谱走法，
+     * 并推进回放指针，使后续「上一步/下一步」能在接管后的范围内正确导航，
+     * 评分曲线也能继续延伸。
+     *
+     * @param move  本手记谱串（如 "炮二平五"）
+     * @param isRed 本手是否红方走子（用于红黑配对）
+     */
+    public void appendManualMove(String move, boolean isRed) {
+        if (currentNotation == null || move == null || move.isEmpty()) return;
+
+        if (!diverged) {
+            // 判断本手是否与原谱下一步「重合」：重合则视为继续棋谱主线（不接管）
+            boolean coincide = false;
+            String notationNext = getNotationMoveAtPly(currentMoveIndex + 1);
+            if (notationNext != null) {
+                // 注意：此刻 activity.chessInfo 已是「手动落子后」的真实局面（落子在调用本方法前已生效）。
+                // 因此不要再重新解析/模拟手动走法（易因记谱歧义或解析差异导致误判），
+                // 而是：从「落子前」局面出发，仅模拟“原谱下一步”，再与真实落子后局面对比棋子分布。
+                ChessInfo preBoard = buildPreMoveBoard();
+                if (preBoard != null) {
+                    MoveSimulator sim = new MoveSimulator(activity);
+                    boolean isRedNext = isRedForPly(currentMoveIndex + 1);
+                    ChessInfo notatedNext = sim.simulateMove(preBoard, notationNext, isRedNext);
+                    if (notatedNext != null && piecesEqual(notatedNext, activity.chessInfo)) {
+                        coincide = true;
+                    }
+                }
+            }
+            if (coincide) {
+                // 手动走子与原谱一致：仍属棋谱主线，直接前进，不接管、不改写棋谱
+                currentMoveIndex++;
+                updateMoveInfoDisplay();
+                updateNavButtonsEnabled();
+                return;
+            }
+            // 与棋谱不符：首次接管。截断原棋谱到当前位置（供保存），记录分歧点。
+            if (replayMode) {
+                java.util.List<ChessNotation.MoveRecord> records = currentNotation.getMoveRecords();
+                int keepRecords = (currentMoveIndex + 1) / 2; // 当前步数对应的记录条数（每条含红黑两步）
+                while (records.size() > keepRecords) {
+                    records.remove(records.size() - 1);
+                }
+                // 原内嵌评分序列已与截断后的棋谱不一致，清空以免保存/重建时错位
+                currentNotation.embeddedEvalSeries = null;
+                replayMode = false;
+            }
+            divergeAt = currentMoveIndex;
+            diverged = true;
+            manualMoves.add(move);
+            appendMoveToCurrentNotation(move, isRed);
+            currentMoveIndex++;
+            updateNavButtonsEnabled();
+            return;
+        }
+
+        // 已分歧（接管中）：棋局继续，记录手动走法，下一步保持置灰
+        manualMoves.add(move);
+        appendMoveToCurrentNotation(move, isRed);
+        currentMoveIndex++;
+        updateNavButtonsEnabled();
+    }
+
+    // 把一手走法并入当前棋谱（供保存/显示使用），红黑配对写入记录
+    private void appendMoveToCurrentNotation(String move, boolean isRed) {
+        java.util.List<ChessNotation.MoveRecord> records = currentNotation.getMoveRecords();
+        if (isRed) {
+            // 红方走法：新建一条走法记录
+            currentNotation.addMoveRecord(move, "");
+        } else {
+            // 黑方走法：优先填入上一条记录的黑方位，否则单独新建
+            if (!records.isEmpty()) {
+                ChessNotation.MoveRecord last = records.get(records.size() - 1);
+                if (last.blackMove == null || last.blackMove.isEmpty()) {
+                    last.blackMove = move;
+                } else {
+                    currentNotation.addMoveRecord("", move);
+                }
+            } else {
+                currentNotation.addMoveRecord("", move);
+            }
+        }
     }
     
     public String getSetupFEN() {
@@ -124,10 +246,19 @@ public class NotationManager {
                 ChessNotation notation = ChessNotation.parseFromContent(fileName, fileContent);
                 if (notation != null) {
                     currentNotation = notation;
+                    // 加载/切换棋谱：进入纯回放模式（玩家手动落子前）
+                    this.replayMode = true;
+                    // 保留一份不可变原谱副本，并清除分歧状态
+                    this.manualMoves.clear();
+                    this.divergeAt = -1;
+                    this.diverged = false;
+                    copyOriginalNotation(notation);
                     // 初始化棋盘状态为初始状态
                     activity.chessInfo = new ChessInfo();
                     activity.infoSet = new Info.InfoSet();
-                    // 加载棋谱：新 ChessInfo 的评分曲线历史初始为空，稍后在成功分支统一计算
+                    // 不使用棋谱内嵌评分：加载后清空曲线，每一步由引擎实时评估累积
+                    activity.chessInfo.evalHistory.clear();
+                    activity.chessInfo.currentEvaluation = 0;
                     if (activity.setting != null) {
                         activity.chessInfo.setting = activity.setting;
                     }
@@ -215,6 +346,10 @@ public class NotationManager {
             // 提取走法记录
             if (activity.chessInfo != null && activity.infoSet != null && activity.infoSet.preInfo != null) {
                 extractMoveRecords(notation);
+            }
+            // 将当前对局真实评分序列写入棋谱，便于回放时直接显示评分曲线
+            if (activity.chessInfo != null) {
+                notation.embeddedEvalSeries = activity.chessInfo.getEvalSnapshot();
             }
             
             // 生成棋谱内容
@@ -410,14 +545,30 @@ public class NotationManager {
             Utils.LogUtils.d("NotationManager", "当前步数: " + currentMoveIndex);
             if (currentMoveIndex > 0) {
                 currentMoveIndex--;
+                // 偏离主线时：逐步回退手动接管走法；回到分歧点（最后与原谱相符的位置）即清除分歧
+                if (diverged) {
+                    if (currentMoveIndex <= divergeAt) {
+                        // 回到分歧点（最后与原谱相符的位置）：清除分歧，棋谱重置回原谱线（界面/保存同步）
+                        diverged = false;
+                        divergeAt = -1;
+                        manualMoves.clear();
+                        copyOriginalNotation(originalNotation);
+                        replayMode = true;
+                    } else if (!manualMoves.isEmpty()) {
+                        manualMoves.remove(manualMoves.size() - 1);
+                    }
+                }
                 Utils.LogUtils.d("NotationManager", "执行上一步，新步数: " + currentMoveIndex);
                 // 重新生成棋盘状态
                 BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
-                boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
+                boardStateGenerator.generateBoardStateFromNotation(buildNavNotation(), currentMoveIndex);
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
                 // 同步导航按钮状态
                 updateNavButtonsEnabled();
+                // 评估回退后的当前局面，刷新评分显示；曲线随显示裁剪自动缩短
+                activity.refreshScoreCurve();
+                activity.triggerPositionEvaluation();
             } else {
                 Utils.LogUtils.d("NotationManager", "已经是第一步");
             }
@@ -431,19 +582,20 @@ public class NotationManager {
         Utils.LogUtils.d("NotationManager", "点击下一步按钮");
         if (currentNotation != null) {
             java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
-            int moveRecordsSize = moveRecords != null ? moveRecords.size() : 0;
-            int totalMoves = moveRecordsSize * 2;
-            Utils.LogUtils.d("NotationManager", "当前步数: " + currentMoveIndex + ", 总步数: " + totalMoves);
-            if (moveRecords != null && !moveRecords.isEmpty() && currentMoveIndex < totalMoves) {
+            Utils.LogUtils.d("NotationManager", "当前步数: " + currentMoveIndex + ", 总步数: " + originalTotalMoves);
+            if (moveRecords != null && !moveRecords.isEmpty() && canGoNext()) {
                 currentMoveIndex++;
                 Utils.LogUtils.d("NotationManager", "执行下一步，新步数: " + currentMoveIndex);
                 // 重新生成棋盘状态
                 BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
-                boardStateGenerator.generateBoardStateFromNotation(currentNotation, currentMoveIndex);
+                boardStateGenerator.generateBoardStateFromNotation(buildNavNotation(), currentMoveIndex);
                 // 显示当前步数信息
                 updateMoveInfoDisplay();
                 // 同步导航按钮状态
                 updateNavButtonsEnabled();
+                // 评估前进后的当前局面，引擎评分追加一个曲线点
+                activity.refreshScoreCurve();
+                activity.triggerPositionEvaluation();
             } else {
                 Utils.LogUtils.d("NotationManager", "已经是最后一步");
             }
@@ -452,32 +604,191 @@ public class NotationManager {
         }
     }
     
-    // 根据棋谱加载状态与回放进度，更新「上一步/下一步」按钮的可用性
+    // 根据棋谱加载状态与回放进度，更新「上一步/下一步/悔棋」按钮的可用性
     public void updateNavButtonsEnabled() {
         if (activity == null) {
             return;
         }
         android.widget.Button prev = activity.btnPrev;
         android.widget.Button next = activity.btnNext;
+        android.widget.Button recall = activity.btnRecall;
+
+        // 加载棋谱（含接管）时禁用悔棋：此时用「上一步」回退 / 撤销，悔棋按钮置灰
+        if (recall != null) {
+            boolean recallEnabled = (currentNotation == null);
+            recall.setEnabled(recallEnabled);
+            recall.setAlpha(recallEnabled ? 1f : 0.4f);
+        }
+
         if (prev == null || next == null) {
             return;
         }
         if (currentNotation == null) {
-            // 未加载棋谱：两个按钮都不可用
+            // 未加载棋谱：上一步/下一步不可用（悔棋可用，见上方）
             prev.setEnabled(false);
             prev.setAlpha(0.4f);
             next.setEnabled(false);
             next.setAlpha(0.4f);
             return;
         }
-        java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
-        int totalMoves = moveRecords != null ? moveRecords.size() * 2 : 0;
         boolean prevEnabled = currentMoveIndex > 0;
-        boolean nextEnabled = currentMoveIndex < totalMoves;
+        boolean nextEnabled = canGoNext();
         prev.setEnabled(prevEnabled);
         prev.setAlpha(prevEnabled ? 1f : 0.4f);
         next.setEnabled(nextEnabled);
         next.setAlpha(nextEnabled ? 1f : 0.4f);
+    }
+
+    // 是否可前进到「下一步」：
+    // - 已偏离棋谱主线（手动落子后分歧）则无下一步，置灰；
+    // - 在棋谱主线上则可继续，直至原谱总步数。
+    public boolean canGoNext() {
+        if (currentNotation == null) return false;
+        if (diverged) return false;
+        return currentMoveIndex < originalTotalMoves;
+    }
+
+    // 第 ply 手（1-based）是否红方走子：红先，奇数手为红
+    private boolean isRedForPly(int ply) {
+        return (ply % 2 == 1);
+    }
+
+    // 取原谱第 ply 手（1-based）的记谱串（用于判断手动落子是否与原谱重合，不受接管改写影响）
+    private String getNotationMoveAtPly(int targetPly) {
+        if (originalNotation == null) return null;
+        java.util.List<ChessNotation.MoveRecord> recs = originalNotation.getMoveRecords();
+        if (recs == null) return null;
+        int ply = 0;
+        for (ChessNotation.MoveRecord r : recs) {
+            if (r == null) continue;
+            if (r.redMove != null && !r.redMove.isEmpty()) {
+                ply++;
+                if (ply == targetPly) return r.redMove;
+            }
+            if (r.blackMove != null && !r.blackMove.isEmpty()) {
+                ply++;
+                if (ply == targetPly) return r.blackMove;
+            }
+        }
+        return null;
+    }
+
+    // 重建「当前步数对应」的棋盘（即手动落子前的局面）：从导航棋谱 FEN 起回放前 currentMoveIndex 手。
+    // 由于 appendManualMove 被调用时 activity.chessInfo 已是落子后的局面，若要判断本手是否与原谱重合，
+    // 必须先回到落子前的局面，再分别模拟「原谱下一步」与「手动走法」对比其结果。
+    private ChessInfo buildPreMoveBoard() {
+        ChessNotation nav = buildNavNotation();
+        if (nav == null) return null;
+        ChessInfo board;
+        String fen = nav.getFen();
+        if (fen != null && !fen.isEmpty()) {
+            FENHandler fenHandler = new FENHandler();
+            board = fenHandler.fenToChessInfo(fen);
+        } else {
+            board = new ChessInfo();
+        }
+        if (board == null) return null;
+        java.util.List<ChessNotation.MoveRecord> recs = nav.getMoveRecords();
+        if (recs != null) {
+            MoveSimulator sim = new MoveSimulator(activity);
+            int count = 0;
+            for (ChessNotation.MoveRecord r : recs) {
+                if (r == null) continue;
+                if (count >= currentMoveIndex) break;
+                if (r.redMove != null && !r.redMove.isEmpty() && count < currentMoveIndex) {
+                    ChessInfo t = sim.simulateMove(board, r.redMove, true);
+                    if (t != null) { board = t; count++; }
+                }
+                if (r.blackMove != null && !r.blackMove.isEmpty() && count < currentMoveIndex) {
+                    ChessInfo t = sim.simulateMove(board, r.blackMove, false);
+                    if (t != null) { board = t; count++; }
+                }
+            }
+        }
+        return board;
+    }
+
+    // 构建用于导航重建的棋谱：未分歧时返回不可变原谱；分歧后返回「原谱前 divergeAt 手 + 手动接管走法」
+    public ChessNotation buildNavNotation() {
+        if (!diverged || originalNotation == null) {
+            return originalNotation;
+        }
+        ChessNotation nav = new ChessNotation();
+        nav.setFen(originalNotation.getFen());
+        // 复制原谱前 divergeAt 手
+        int ply = 0;
+        java.util.List<ChessNotation.MoveRecord> orig = originalNotation.getMoveRecords();
+        if (orig != null) {
+            for (ChessNotation.MoveRecord r : orig) {
+                if (ply >= divergeAt) break;
+                if (r.redMove != null && !r.redMove.isEmpty() && ply < divergeAt) {
+                    nav.addMoveRecord(r.redMove, "");
+                    ply++;
+                }
+                if (r.blackMove != null && !r.blackMove.isEmpty() && ply < divergeAt) {
+                    java.util.List<ChessNotation.MoveRecord> nrecs = nav.getMoveRecords();
+                    if (!nrecs.isEmpty()) {
+                        nrecs.get(nrecs.size() - 1).blackMove = r.blackMove;
+                    }
+                    ply++;
+                }
+            }
+        }
+        // 追加手动接管走法（按落子顺序红黑配对）
+        for (int i = 0; i < manualMoves.size(); i++) {
+            int p = divergeAt + 1 + i;
+            boolean isRed = isRedForPly(p);
+            String m = manualMoves.get(i);
+            if (isRed) {
+                nav.addMoveRecord(m, "");
+            } else {
+                java.util.List<ChessNotation.MoveRecord> nrecs = nav.getMoveRecords();
+                if (!nrecs.isEmpty()) {
+                    ChessNotation.MoveRecord last = nrecs.get(nrecs.size() - 1);
+                    if (last.blackMove == null || last.blackMove.isEmpty()) {
+                        last.blackMove = m;
+                    } else {
+                        nav.addMoveRecord("", m);
+                    }
+                } else {
+                    nav.addMoveRecord("", m);
+                }
+            }
+        }
+        return nav;
+    }
+
+    // 复制一份不可变原谱（仅保留 FEN 与走法记录），供导航重建与重合判定使用
+    private void copyOriginalNotation(ChessNotation src) {
+        originalNotation = new ChessNotation();
+        if (src != null) {
+            originalNotation.setFen(src.getFen());
+            java.util.List<ChessNotation.MoveRecord> recs = src.getMoveRecords();
+            if (recs != null) {
+                for (ChessNotation.MoveRecord r : recs) {
+                    if (r == null) continue;
+                    originalNotation.addMoveRecord(
+                            (r.redMove != null) ? r.redMove : "",
+                            (r.blackMove != null) ? r.blackMove : "");
+                }
+            }
+        }
+        java.util.List<ChessNotation.MoveRecord> orecs = (originalNotation != null) ? originalNotation.getMoveRecords() : null;
+        originalTotalMoves = (orecs != null) ? orecs.size() * 2 : 0;
+    }
+
+    // 仅比较两个局面的棋子分布是否一致（不比较行棋方标志）。
+    // 用于判定手动落子结果是否与原谱下一步一致：此刻真实局面的行棋方尚未切换，
+    // 而模拟结果已切换，故不能比较 IsRedGo，仅比对棋子摆放。
+    private boolean piecesEqual(ChessInfo a, ChessInfo b) {
+        if (a == null || b == null) return false;
+        if (a.piece == null || b.piece == null) return false;
+        for (int r = 0; r < 10; r++) {
+            for (int c = 0; c < 9; c++) {
+                if (a.piece[r][c] != b.piece[r][c]) return false;
+            }
+        }
+        return true;
     }
 
     // 更新步数信息显示

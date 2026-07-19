@@ -288,6 +288,7 @@ public class PvMActivityInit {
                             // （未加载棋谱时应禁用）
                             activity.btnPrev = buttonGroup.findViewById(R.id.btn_prev);
                             activity.btnNext = buttonGroup.findViewById(R.id.btn_next);
+                            activity.btnRecall = buttonGroup.findViewById(R.id.btn_recall);
                             if (activity.notationManager != null) {
                                 activity.notationManager.updateNavButtonsEnabled();
                             }

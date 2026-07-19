@@ -155,6 +155,11 @@ public class PvMActivityControls {
     
     // 处理悔棋按钮
     public void handleRecallButton() {
+        // 加载棋谱时禁止悔棋：用「上一步」回退 / 撤销，悔棋按钮已置灰
+        if (activity.notationManager != null && activity.notationManager.getCurrentNotation() != null) {
+            LogUtils.d("PvMActivityControls", "handleRecallButton ignored: notation loaded");
+            return;
+        }
         try {
             LogUtils.d("PvMActivityControls", "handleRecallButton called");
             if (activity.aiManager != null) {
@@ -196,8 +201,20 @@ public class PvMActivityControls {
             if (activity.roundView != null) {
                 activity.roundView.requestDraw();
             }
-            // 悔棋：将评分曲线回退到本步之前的步数（丢弃最后一点）
-            activity.chessInfo.truncateEvalTo(activity.chessInfo.totalMoves);
+            // 悔棋（回退）同步削减曲线
+            if (activity.notationManager != null && activity.notationManager.getCurrentNotation() != null) {
+                // 棋谱上下文：悔棋视为回退一步（接管后回退一步；纯回放回到基准局面），曲线减少
+                if (activity.notationManager.isReplayMode()) {
+                    activity.notationManager.setCurrentMoveIndex(0);
+                } else {
+                    int idx = activity.notationManager.getCurrentMoveIndex() - 1;
+                    activity.notationManager.setCurrentMoveIndex(Math.max(0, idx));
+                }
+            }
+            int keepCount = (activity.notationManager != null && activity.notationManager.getCurrentNotation() != null)
+                    ? activity.notationManager.getCurrentMoveIndex()
+                    : activity.chessInfo.totalMoves;
+            activity.chessInfo.truncateEvalTo(keepCount);
             activity.refreshScoreCurve();
             activity.triggerPositionEvaluation();
         } catch (CloneNotSupportedException e) {
@@ -612,6 +629,13 @@ public class PvMActivityControls {
             Utils.LogUtils.i("Move", "用户走棋: " + moveString);
         }
 
+        // 加载棋谱后每次手动落子都视为前进：把这一手并入棋谱走法并推进回放指针，
+        // 评分曲线随之增加；首手接管时由 appendManualMove 内部退出纯回放模式。
+        if (moveString != null && activity.notationManager != null
+                && activity.notationManager.getCurrentNotation() != null) {
+            activity.notationManager.appendManualMove(moveString, isRed);
+        }
+
         activity.stopTurnTimer();
 
         boolean isCheck = Rule.isKingDanger(activity.chessInfo.piece, !isRed);
@@ -654,7 +678,9 @@ public class PvMActivityControls {
         if (activity.chessView != null) activity.chessView.requestDraw();
         if (activity.roundView != null) activity.roundView.requestDraw();
 
-        if (activity.gameManager != null) {
+        // 加载棋谱（研究/接管）时不触发 AI 自动行棋：由用户手动落子推进，保证「下一步/上一步」分支一致
+        if (activity.gameManager != null
+                && (activity.notationManager == null || activity.notationManager.getCurrentNotation() == null)) {
             // 跟随模式下：若本步与候选变线一致则保留并高亮揭示后续，否则清除支招
             if (activity.suggestFollowActive) {
                 ChessMove.Move played = new ChessMove.Move(

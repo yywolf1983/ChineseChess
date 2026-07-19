@@ -29,6 +29,21 @@ public class PvMActivityNotation {
         notationManager.setCurrentMoveIndex(index);
     }
     
+    // 是否处于纯棋谱回放模式（玩家尚未手动接管）
+    public boolean isReplayMode() {
+        return notationManager.isReplayMode();
+    }
+    
+    // 设置回放模式（玩家手动落子接管后设为 false）
+    public void setReplayMode(boolean replay) {
+        notationManager.setReplayMode(replay);
+    }
+    
+    // 玩家在加载的棋谱基础上手动落子（接管）：追加走法并推进回放指针
+    public void appendManualMove(String move, boolean isRed) {
+        notationManager.appendManualMove(move, isRed);
+    }
+    
     public String getSetupFEN() {
         return notationManager.getSetupFEN();
     }
@@ -75,7 +90,7 @@ public class PvMActivityNotation {
     // 生成棋盘状态
     public void generateBoardStateFromNotation() {
         BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
-        boardStateGenerator.generateBoardStateFromNotation(notationManager.getCurrentNotation(), notationManager.getCurrentMoveIndex());
+        boardStateGenerator.generateBoardStateFromNotation(notationManager.buildNavNotation(), notationManager.getCurrentMoveIndex());
     }
     
     // 生成FEN
