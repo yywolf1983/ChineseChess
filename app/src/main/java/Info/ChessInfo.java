@@ -248,6 +248,13 @@ public class ChessInfo implements Cloneable, Serializable {
             updateAllInfoInternal(prePos, curPos, piece, capturedPiece, isCheck);
         }
     }
+
+    /** 立即把当前局面计入重复局面历史（供棋谱导航/回放后重建历史调用） */
+    public void recordCurrentPosition() {
+        synchronized (lock) {
+            recordCurrentPositionInternal();
+        }
+    }
     
     /** 引擎给出当前局面最终评分时调用：若已落子点数与总步数一致则修正末点，否则仅记录最新值（不新增点数） */
     public void pushOrUpdateEval(int eval) {
@@ -349,7 +356,10 @@ public class ChessInfo implements Cloneable, Serializable {
         updateConsecutiveCheckInternal(isCheck);
         
         // 只有当移动的是攻击性棋子时才更新长捉检测
-        int movingPieceType = this.piece[prePos.y][prePos.x];
+        // 注意：必须使用传入的 piece 参数（调用方提供的移动棋子类型）。
+        // 棋盘已在本方法调用前完成落子，prePos 处已为空，从 this.piece[prePos.y][prePos.x]
+        // 读取恒为 0，会让 isAttackingPiece 始终返回 false，导致长捉计数永远被重置、长捉检测失效。
+        int movingPieceType = piece;
         if (isAttackingPiece(movingPieceType)) {
             // 更新长捉检测
             updateConsecutiveAttackInternal(prePos, curPos, movingPieceType, capturedPiece);

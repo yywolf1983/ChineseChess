@@ -29,4 +29,10 @@ public class Pos implements Cloneable, Serializable {
         Pos pos = (Pos) obj;
         return this.x == pos.x && this.y == pos.y;
     }
+
+    @Override
+    public int hashCode() {
+        // 必须与 equals 保持一致：以 x、y 计算哈希，否则作为 HashMap/HashSet 键时会失效。
+        return 31 * x + y;
+    }
 }

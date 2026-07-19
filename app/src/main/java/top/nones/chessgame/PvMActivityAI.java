@@ -1551,8 +1551,12 @@ public class PvMActivityAI {
             if (chosen == null) return;
 
             int total = chosen.pvSequence.size();
-            int revealed = Math.min(total, Math.max(PvMActivity.SIM_DISPLAY_STEPS, consumed + 1));
-            int windowStart = Math.max(0, revealed - PvMActivity.SIM_DISPLAY_STEPS);
+            // 头部支招展示完整变线：取消 SIM_DISPLAY_STEPS 步数上限与滑窗，
+            // 从第一步起显示全部着法；已走的前缀步通过 isPlayedStep 置灰。
+            // （原先的滑窗 windowStart = revealed - SIM_DISPLAY_STEPS 会丢弃更早的步，
+            //  表现为「只显示几步、其余逐步向后滚走」，现移除。）
+            int revealed = total;
+            int windowStart = 0;
 
             // 从基准局面推演该变线，生成窗口内每步的中文记谱、所属阵营与是否已走（置灰用）
             java.util.List<String> notations = new java.util.ArrayList<>();

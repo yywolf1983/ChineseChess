@@ -15,8 +15,8 @@ import Info.Pos;
  * 
  * 棋盘坐标说明：
  * - 棋盘横向（列）坐标：0-8，从左到右
- * - 棋盘纵向（行）坐标：0-9，从下到上
- * - 红方底线在 y=9，黑方底线在 y=0
+ * - 棋盘纵向（行）坐标：0-9，从下到上（y 越大越靠上）
+ * - 红方底线在 y=0，黑方底线在 y=9
  * 
  * 记谱规则说明：
  * - 红方使用中文数字（一、二、三...九），从右到左计数
@@ -67,8 +67,9 @@ public class ChessNotationTranslator {
      * @return          中文数字（一、二、三...九）
      */
     public static String getColChar(int column) {
-        String result = Info.ChessPiece.toChineseNumber(column);
-        return result.equals(String.valueOf(column)) ? "五" : result;
+        // 列号非法（toChineseNumber 返回其数字字符串表示）时直接返回该结果，
+        // 不再静默替换为“五”，避免掩盖调用方的逻辑错误并产生错误记谱。
+        return Info.ChessPiece.toChineseNumber(column);
     }
 
     /**
@@ -146,9 +147,19 @@ public class ChessNotationTranslator {
         if (moveString == null) {
             return false;
         }
-        return moveString.contains("前") || moveString.contains("后") || moveString.contains("中") ||
-                (moveString.length() > 2 && (Character.isDigit(moveString.charAt(0)) ||
-                        (moveString.charAt(0) >= '一' && moveString.charAt(0) <= '九')));
+        if (moveString.contains("前") || moveString.contains("后") || moveString.contains("中")) {
+            return true;
+        }
+        // 以中文数字（一~九）或阿拉伯数字开头的多同列棋子记谱（如"一兵进一"）也视为特殊走法。
+        // 不能用 moveString.charAt(0) >= '一' && <= '九' 判断：中文数字在 Unicode 中并不连续，
+        // 二/四/五/六/八 等均不在 [一, 九] 区间内，会漏判。改用 ChessPiece.fromChineseNumber 校验。
+        if (moveString.length() > 0) {
+            char first = moveString.charAt(0);
+            if (Character.isDigit(first) || Info.ChessPiece.fromChineseNumber(String.valueOf(first)) >= 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

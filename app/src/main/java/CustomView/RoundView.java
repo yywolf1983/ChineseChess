@@ -738,6 +738,10 @@ public class RoundView extends View {
             infoTextPaint.setTextAlign(Paint.Align.LEFT);
             
             float gap = convertDpToPixel(3, getContext());
+            float padX = convertDpToPixel(8, getContext());
+            float availWidth = Math.max(0, width - 2 * padX);
+            float drawSize = normalSize;
+            // 先按标准字号测量总宽度
             float totalWidth = 0;
             for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
                 infoTextPaint.setTextSize(normalSize);
@@ -746,15 +750,29 @@ public class RoundView extends View {
                     totalWidth += gap;
                 }
             }
+            // 若整条支招超出可用宽度，等比缩小字号（设下限，保证可读），
+            // 使完整变线在一行内全部可见，避免被画布裁掉。
+            if (totalWidth > availWidth && totalWidth > 0) {
+                drawSize = Math.max(convertDpToPixel(9, getContext()), normalSize * availWidth / totalWidth);
+                infoTextPaint.setTextSize(drawSize);
+                float measured = 0;
+                for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
+                    measured += infoTextPaint.measureText(suggestMoveTexts.get(i));
+                    if (i < suggestMoveTexts.size() - 1) {
+                        measured += gap;
+                    }
+                }
+                totalWidth = measured;
+            }
             float startX = (width - totalWidth) / 2;
-            
+
             float x = startX;
             for (int i = 0; i < suggestMoveTexts.size() && i < suggestMoveIsRed.size(); i++) {
                 String text = suggestMoveTexts.get(i);
                 boolean isRed = suggestMoveIsRed.get(i);
                 boolean isPlayed = (suggestMoveIsPlayed != null && i < suggestMoveIsPlayed.size())
                         ? suggestMoveIsPlayed.get(i) : false;
-                
+
                 if (isPlayed) {
                     // 已走步骤：与棕底协调的柔和暖灰，弱化但不刺眼
                     infoTextPaint.setColor(Color.rgb(206, 190, 168));
@@ -763,8 +781,8 @@ public class RoundView extends View {
                 } else {
                     infoTextPaint.setColor(Color.BLACK);
                 }
-                
-                infoTextPaint.setTextSize(normalSize);
+
+                infoTextPaint.setTextSize(drawSize);
                 infoTextPaint.setFakeBoldText(false);
                 canvas.drawText(text, x, currentY, infoTextPaint);
                 x += infoTextPaint.measureText(text) + gap;

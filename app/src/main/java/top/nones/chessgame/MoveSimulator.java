@@ -37,9 +37,9 @@ public class MoveSimulator {
             Utils.LogUtils.d("MoveSimulator", "最终标准化走法: " + normalizedMoveString);
             
             // 检查是否是特殊走法（如"前卒"、"后马"、"中兵"、"一兵"等）
-            boolean isSpecialMove = normalizedMoveString.contains("前") || normalizedMoveString.contains("后") || normalizedMoveString.contains("中") || 
-                                   (normalizedMoveString.length() > 2 && (Character.isDigit(normalizedMoveString.charAt(0)) || 
-                                    (normalizedMoveString.charAt(0) >= '一' && normalizedMoveString.charAt(0) <= '九')));
+            // 复用 ChessNotationTranslator.isSpecialMove 判断特殊走法（含正确的中文数字识别，
+            // 避免 '一'<=c<='九' 这种基于 Unicode 连续区间的错误判断，二/四/五/六/八 等会被漏判）。
+            boolean isSpecialMove = ChessNotationTranslator.isSpecialMove(normalizedMoveString);
             
             if (isSpecialMove) {
                 // 处理特殊走法
@@ -194,27 +194,18 @@ public class MoveSimulator {
                                     }
                                 }
                                 
-                                // 特殊处理：如果是前卒，直接选择位置 (5,1) 的卒子
-                                if (specialMark.equals("前") && basePieceName.equals("卒")) {
-                                    Utils.LogUtils.d("MoveSimulator", "特殊处理前卒，尝试选择位置 (5,1) 的卒子");
-                                    boolean found = false;
-                                    for (Pos pos : piecePositions) {
-                                        Utils.LogUtils.d("MoveSimulator", "检查卒子位置: " + pos.x + "," + pos.y);
-                                        if (pos.x == 5 && pos.y == 1) {
-                                            targetPiecePos = pos;
-                                            Utils.LogUtils.d("MoveSimulator", "成功选择前卒: " + targetPiecePos.x + "," + targetPiecePos.y);
-                                            found = true;
-                                            break;
-                                        }
-                                    }
-                                    if (!found) {
-                                        Utils.LogUtils.d("MoveSimulator", "没有找到位置 (5,1) 的卒子");
-                                    }
+                                // 优先按 前/中/后 标记从“同类型全部棋子”（可跨列）中挑选，
+                                // 解决不同列的同类型棋子（如七星聚会中红方两卒）前/中/后 失效的问题。
+                                if (targetPiecePos == null && (specialMark.equals("前") || specialMark.equals("中") || specialMark.equals("后"))) {
+                                    targetPiecePos = selectByFrontMiddleBack(piecePositions, specialMark, targetX, newInfo, isRed);
+                                    Utils.LogUtils.d("MoveSimulator",
+                                            targetPiecePos != null ? "按前中后选中子: " + targetPiecePos.x + "," + targetPiecePos.y
+                                                    : "按前中后未找到可走到目标列的棋子");
                                 }
-                                
-                                // 如果已经找到前卒，跳过后续处理
+
+                                // 如果已经按前中后找到棋子，跳过后续处理
                                 if (targetPiecePos != null) {
-                                    Utils.LogUtils.d("MoveSimulator", "已找到前卒，跳过后续处理");
+                                    Utils.LogUtils.d("MoveSimulator", "已按前中后找到棋子，跳过后续处理");
                                 } else {
                                     // 如果有任何一列有多个相同的棋子，优先处理这些列
                                     if (hasAnyColumnWithMultiplePieces) {
@@ -1064,6 +1055,70 @@ public class MoveSimulator {
     // 根据棋子名称获取棋子类型
     private int getPieceTypeByName(String pieceName, boolean isRed) {
         return Info.ChessPiece.getTypeByName(pieceName, isRed);
+    }
+
+    /**
+     * 按 前/中/后 标记从同类型棋子中挑选出目标棋子。
+     * 注意：前/中/后 是相对“同一类型所有棋子”（可能分布在不同列）而言的，
+     * 而不是仅限同一列。旧实现只在“同列多棋子”时才生效，导致不同列的同类型
+     * 棋子（如七星聚会中红方两卒）前/中/后 选择失效。
+     *
+     * @param candidates 同类型且同色的全部棋子位置
+     * @param mark       前 / 中 / 后
+     * @param targetX    目标列（可为 null，仅用于校验能否走到该列）
+     * @param newInfo    当前棋局，用于校验可行着法
+     * @param isRed      是否为红方
+     * @return 选中的棋子位置；若无法选出能走到目标列的棋子则返回 null
+     */
+    private Pos selectByFrontMiddleBack(java.util.List<Pos> candidates, String mark, Integer targetX,
+                                        ChessInfo newInfo, boolean isRed) {
+        if (candidates == null || candidates.isEmpty() || mark == null) {
+            return null;
+        }
+        // 单一棋子（如只有一匹马），前/中/后 无意义，直接返回该棋子
+        if (candidates.size() == 1) {
+            Pos only = candidates.get(0);
+            if (targetX == null || canMoveToColumn(newInfo, only, targetX)) {
+                return only;
+            }
+            return null;
+        }
+        // 按 y 坐标排序：红方前=大 y（靠近黑方），黑方前=小 y（靠近红方）
+        java.util.List<Pos> sorted = new java.util.ArrayList<>(candidates);
+        java.util.Collections.sort(sorted, (p1, p2) -> {
+            if (isRed) {
+                return Integer.compare(p2.y, p1.y);
+            }
+            return Integer.compare(p1.y, p2.y);
+        });
+        int index;
+        if (mark.equals("前")) {
+            index = 0;
+        } else if (mark.equals("后")) {
+            index = sorted.size() - 1;
+        } else { // 中
+            index = sorted.size() / 2;
+        }
+        Pos selected = sorted.get(index);
+        if (targetX == null || canMoveToColumn(newInfo, selected, targetX)) {
+            return selected;
+        }
+        return null;
+    }
+
+    /** 判断 (pos) 处的棋子是否存在能走到 targetX 列的着法 */
+    private boolean canMoveToColumn(ChessInfo info, Pos pos, int targetX) {
+        int piece = info.piece[pos.y][pos.x];
+        java.util.List<Pos> moves = Rule.PossibleMoves(info.piece, pos.x, pos.y, piece);
+        if (moves == null) {
+            return false;
+        }
+        for (Pos m : moves) {
+            if (m.x == targetX) {
+                return true;
+            }
+        }
+        return false;
     }
     
     // 获取棋子名称

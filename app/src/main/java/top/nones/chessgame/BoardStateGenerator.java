@@ -80,6 +80,8 @@ public class BoardStateGenerator {
                         if (tempInfo != null) {
                             currentInfo = tempInfo;
                             moveCount++;
+                            // 记录每一步产生的新局面，供三次重复局面判定使用
+                            currentInfo.recordCurrentPosition();
                             Utils.LogUtils.d("BoardStateGenerator", "红方走法执行完成，当前步数: " + moveCount);
                         }
                     }
@@ -92,6 +94,8 @@ public class BoardStateGenerator {
                         if (tempInfo != null) {
                             currentInfo = tempInfo;
                             moveCount++;
+                            // 记录每一步产生的新局面，供三次重复局面判定使用
+                            currentInfo.recordCurrentPosition();
                             Utils.LogUtils.d("BoardStateGenerator", "黑方走法执行完成，当前步数: " + moveCount);
                         }
                     }
@@ -113,9 +117,10 @@ public class BoardStateGenerator {
                         if (activity.chessInfo.positionHistory == null) {
                             activity.chessInfo.positionHistory = new java.util.HashMap<>();
                         }
-                        // 生成当前局面的哈希并添加到历史记录
-                        String currentHash = activity.chessInfo.generatePositionHash();
-                        activity.chessInfo.positionHistory.put(currentHash, 1);
+                        // 把当前（回放到 moveIndex 步后的）局面计入重复局面历史。
+                        // 其间各步局面已在上方回放循环中通过 recordCurrentPosition() 累计，
+                        // 此处保证最终局面也被记录，使三次重复判定在导航后仍然有效。
+                        activity.chessInfo.recordCurrentPosition();
                         // 重置连续将军计数
                         activity.chessInfo.consecutiveCheckRed = 0;
                         activity.chessInfo.consecutiveCheckBlack = 0;
@@ -192,9 +197,8 @@ public class BoardStateGenerator {
                         if (activity.chessInfo.positionHistory == null) {
                             activity.chessInfo.positionHistory = new java.util.HashMap<>();
                         }
-                        // 生成当前局面的哈希并添加到历史记录
-                        String currentHash = activity.chessInfo.generatePositionHash();
-                        activity.chessInfo.positionHistory.put(currentHash, 1);
+                        // 记录初始局面到重复局面历史，使三次重复判定在加载后即有效
+                        activity.chessInfo.recordCurrentPosition();
                         // 重置连续将军计数
                         activity.chessInfo.consecutiveCheckRed = 0;
                         activity.chessInfo.consecutiveCheckBlack = 0;
