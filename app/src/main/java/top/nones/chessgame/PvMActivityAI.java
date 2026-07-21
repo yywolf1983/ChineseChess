@@ -1367,31 +1367,37 @@ public class PvMActivityAI {
                 if (notations.isEmpty()) continue;
 
                 final float density = this.activity.getResources().getDisplayMetrics().density;
-                final int SCORE_COL_W = (int) (40 * density);
-                final int MOVE_COL_W = (int) (56 * density);
+                final int SCORE_COL_W = (int) (44 * density);
+                final int MOVE_COL_W = (int) (62 * density);
                 // 第一行（综合评分最高的变线）字号 +1，突出首选着法
                 final float TEXT_SP = (added == 0) ? 14 : 13;
 
-                android.widget.LinearLayout.LayoutParams flowLp = new android.widget.LinearLayout.LayoutParams(
+                // 外层：评分列（独立左列）+ 着法流（右侧）。分数不混入着法流，
+                // 故着法流左边缘即“第一步”位置，折行时永远对齐第一步、绝不与分数对齐。
+                android.widget.LinearLayout lineOuter = new android.widget.LinearLayout(this.activity);
+                android.widget.LinearLayout.LayoutParams outerLp = new android.widget.LinearLayout.LayoutParams(
                         android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                         android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-                flowLp.bottomMargin = (int) (4 * density); // 候选变线（其他行）之间稍留距离
-                top.nones.chessgame.FlowLayout flow = new top.nones.chessgame.FlowLayout(this.activity);
-                flow.setLayoutParams(flowLp);
-                flow.setSpacingDp(0, 1); // 折行紧凑：列间无水平间距，行间仅 1dp
-                flow.setPadding(0, 0, 0, 0);
+                outerLp.bottomMargin = (int) (4 * density); // 候选变线（其他行）之间稍留距离
+                lineOuter.setLayoutParams(outerLp);
+                lineOuter.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                lineOuter.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                lineOuter.setPadding(0, 0, 0, 0);
                 if (followMode) {
-                    flow.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
+                    lineOuter.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
                 } else {
-                    flow.setBackgroundColor((added % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
+                    lineOuter.setBackgroundColor((added % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
                 }
-                rowViews.add(flow);
+                rowViews.add(lineOuter);
 
-                // 评分列
+                // 评分列（固定宽，独占左列）
                 android.widget.TextView scoreTv = new android.widget.TextView(this.activity);
-                scoreTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                        SCORE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                android.widget.LinearLayout.LayoutParams scoreLp = new android.widget.LinearLayout.LayoutParams(
+                        SCORE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+                scoreLp.rightMargin = (int) (2 * density); // 与着法流留微小间距
+                scoreTv.setLayoutParams(scoreLp);
                 scoreTv.setGravity(android.view.Gravity.CENTER);
+                scoreTv.setSingleLine(true); // 评分单行
                 scoreTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
                 scoreTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                 scoreTv.setIncludeFontPadding(false);
@@ -1409,7 +1415,16 @@ public class PvMActivityAI {
                     scoreStr = normScore > 0 ? "+" + normScore : String.valueOf(normScore);
                 }
                 scoreTv.setText(scoreStr);
-                flow.addView(scoreTv);
+                lineOuter.addView(scoreTv);
+
+                // 着法流：从评分列右侧起，折行时自然对齐第一步（起点=第一步位置）
+                top.nones.chessgame.FlowLayout movesFlow = new top.nones.chessgame.FlowLayout(this.activity);
+                android.widget.LinearLayout.LayoutParams movesLp = new android.widget.LinearLayout.LayoutParams(
+                        0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                movesFlow.setLayoutParams(movesLp);
+                movesFlow.setSpacingDp(0, 1); // 列间无水平间距，折行行距仅 1dp
+                movesFlow.setPadding(0, 0, 0, 0);
+                lineOuter.addView(movesFlow);
 
                 // 每一步一列（固定宽度、居中、按阵营着色；已走且一致的步用灰色）
                 for (int i = 0; i < notations.size(); i++) {
@@ -1417,6 +1432,7 @@ public class PvMActivityAI {
                     mvTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
                             MOVE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
                     mvTv.setGravity(android.view.Gravity.CENTER);
+                    mvTv.setSingleLine(true); // 单个着法强制单行，不在列内折行
                     mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
                     mvTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                     mvTv.setPadding(0, 0, 0, 0);
@@ -1430,17 +1446,17 @@ public class PvMActivityAI {
                         color = isRedStep.get(i) ? RED_MOVE_COLOR : BLACK_MOVE_COLOR;
                     }
                     mvTv.setTextColor(color);
-                    flow.addView(mvTv);
+                    movesFlow.addView(mvTv);
                 }
 
-                flow.setTag(lineIndex);
+                lineOuter.setTag(lineIndex);
                 android.view.View.OnClickListener simClick = v -> {
                     if (this.activity != null) {
                         this.activity.startSimulation(lineIndex);
                     }
                 };
-                flow.setOnClickListener(simClick);
-                container.addView(flow);
+                lineOuter.setOnClickListener(simClick);
+                container.addView(lineOuter);
                 added++;
             }
 
