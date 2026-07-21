@@ -1301,7 +1301,7 @@ public class PvMActivityAI {
             final int RED_MOVE_COLOR = 0xFFFF8A80;
             final int BLACK_MOVE_COLOR = 0xFF80D8FF;
             final int PLAYED_COLOR = 0xFF9AA7B4;
-            final int HIGHLIGHT_BG = 0xFF8A6A45;
+            final int HIGHLIGHT_BG = 0xFF9C774C;
 
             int added = 0;
             for (int li = 0; li < lines.size() && added < 8; li++) {
@@ -1384,7 +1384,7 @@ public class PvMActivityAI {
                 if (followMode) {
                     colRow.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
                 } else {
-                    colRow.setBackgroundColor((added % 2 == 0) ? 0xFF322619 : 0xFF4C3A29);
+                    colRow.setBackgroundColor((added % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
                 }
                 rowViews.add(colRow);
 

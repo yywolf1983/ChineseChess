@@ -348,7 +348,7 @@ public class PvMActivityControls {
             } else {
                 btn.setText("支招");
                 btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_suggest, 0, 0);
-                btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_teal);
+                btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_green);
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivityControls", "Error updating suggest button", e);
@@ -370,7 +370,7 @@ public class PvMActivityControls {
                 btn.setText("支招");
                 btn.setTextColor(0xFFFFFFFF);
                 btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_suggest, 0, 0);
-                btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_teal);
+                btn.setBackgroundResource(R.drawable.bg_board_btn_suggest_green);
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivityControls", "Error updating return button", e);

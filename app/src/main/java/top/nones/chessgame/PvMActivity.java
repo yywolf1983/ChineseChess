@@ -359,9 +359,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
                     ? ((android.view.ViewGroup) v).getChildAt(0) : v;
             if (tag != null && tag == lineIndex) {
-                rowView.setBackgroundColor(0xFF8A6A45); // 高亮：棕金（与暖木斑马纹、面板描边同色系）
+                rowView.setBackgroundColor(0xFF9C774C); // 高亮：亮棕金（与暖木斑马纹、面板描边同色系，更醒目）
             } else {
-                rowView.setBackgroundColor((i % 2 == 0) ? 0xFF322619 : 0xFF4C3A29);
+                rowView.setBackgroundColor((i % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
             }
         }
     }
@@ -373,7 +373,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             android.view.View v = engineResultContainer.getChildAt(i);
             android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
                     ? ((android.view.ViewGroup) v).getChildAt(0) : v;
-            rowView.setBackgroundColor((i % 2 == 0) ? 0xFF322619 : 0xFF4C3A29);
+            rowView.setBackgroundColor((i % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
         }
     }
     // 进入摆棋前保存各按钮原始可用状态；退出时只恢复原本可用的，
@@ -399,10 +399,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 模式按钮背景渐变（随当前模式变化，呼应 ModePickerDialog 的主题色）
     // 每项为 {渐变起始, 渐变中间, 渐变末尾, 描边}
     private static final int[][] MODE_BTN_BG = {
-            {0xFF3E8E41, 0xFF347A38, 0xFF2C6430, 0xFF7BC67E}, // 0 双人：绿
-            {0xFFC82626, 0xFFA81E1E, 0xFF8E1818, 0xFFE88080}, // 1 玩家红：红
-            {0xFF3A3A3A, 0xFF2E2E2E, 0xFF222222, 0xFF7A7A7A}, // 2 玩家黑：黑
-            {0xFF4F8FE0, 0xFF3F76C4, 0xFF2E5FA8, 0xFF9AC2F0}, // 3 双机：蓝
+            {0xFF74D4C2, 0xFF52A899, 0xFF378C7D, 0xFFAAF0E2}, // 0 双人：teal（与支招原色互换）
+            {0xFFD83434, 0xFFB82828, 0xFF9C2020, 0xFFF08A8A}, // 1 玩家红：红（提亮活泼）
+            {0xFF4A4A4A, 0xFF3A3A3A, 0xFF2C2C2C, 0xFF8C8C8C}, // 2 玩家黑：黑灰（提亮避免死黑）
+            {0xFF5C9CEC, 0xFF4A82D2, 0xFF386BB8, 0xFFA8CCF5}, // 3 双机：蓝（提亮活泼）
     };
 
     /** 根据背景色亮度返回对比图标色（背景亮用深色，背景暗用白色） */

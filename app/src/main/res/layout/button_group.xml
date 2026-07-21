@@ -14,7 +14,7 @@
         android:padding="8dp"
         android:orientation="vertical">
 
-    <!-- 第1行：常用操作（新局/设置/保存/加载 文字，上一步/下一步/翻转 图标） -->
+    <!-- 第1行：常用操作（前四个纯文字，后三个纯图标，恢复原始排版） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -30,7 +30,8 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_primary"
-            android:textSize="14sp"
+            android:paddingVertical="3dp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="新局"
             android:textColor="#2E2018"
@@ -45,7 +46,8 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_settings"
-            android:textSize="14sp"
+            android:paddingVertical="3dp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="设置"
             android:textColor="#FFFFFF"
@@ -60,7 +62,8 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_save"
-            android:textSize="14sp"
+            android:paddingVertical="3dp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="保存"
             android:textColor="#FFFFFF"
@@ -75,7 +78,8 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_primary"
-            android:textSize="14sp"
+            android:paddingVertical="3dp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="加载"
             android:textColor="#2E2018"
@@ -90,7 +94,11 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_nav_prev"
-            android:gravity="center" />
+            android:textSize="13sp"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btn_next"
@@ -101,7 +109,11 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_nav_next"
-            android:gravity="center" />
+            android:textSize="13sp"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
 
         <Button
             android:id="@+id/btn_flip"
@@ -112,10 +124,14 @@
             android:layout_weight="1"
             android:layout_marginHorizontal="2dp"
             android:background="@drawable/bg_board_btn_nav_flip"
-            android:gravity="center" />
+            android:textSize="13sp"
+            android:gravity="center"
+            android:text=""
+            android:textColor="#FFFFFF"
+            android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 第2行：功能工具（保持原样式：图标 + 文字，与第1行保留微距） -->
+    <!-- 第2行：功能工具（图标 + 文字，与第1行统一排版） -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -148,7 +164,7 @@
                 android:id="@+id/mode_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="12sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:textColor="#FFFFFF"
                 android:text="模式" />
@@ -172,9 +188,9 @@
             android:background="@drawable/bg_board_btn_setup"
             android:drawableTop="@drawable/ic_setup"
             android:drawableTint="#FFFFFF"
-            android:drawablePadding="0dp"
+            android:drawablePadding="2dp"
             android:paddingVertical="3dp"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="摆棋"
             android:textColor="#FFFFFF"
@@ -191,9 +207,9 @@
             android:background="@drawable/bg_board_btn_recall"
             android:drawableTop="@drawable/ic_recall"
             android:drawableTint="#FFFFFF"
-            android:drawablePadding="0dp"
+            android:drawablePadding="2dp"
             android:paddingVertical="3dp"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="悔棋"
             android:textColor="#FFFFFF"
@@ -207,21 +223,19 @@
             android:minHeight="0dp"
             android:layout_weight="1.15"
             android:layout_marginHorizontal="2dp"
-            android:background="@drawable/bg_board_btn_suggest_teal"
+            android:background="@drawable/bg_board_btn_suggest_green"
             android:drawableTop="@drawable/ic_suggest"
             android:drawableTint="#FFFFFF"
-            android:drawablePadding="0dp"
+            android:drawablePadding="2dp"
             android:paddingVertical="3dp"
-            android:textSize="12sp"
+            android:textSize="13sp"
             android:gravity="center"
             android:text="支招"
             android:textColor="#FFFFFF"
             android:textStyle="bold" />
     </LinearLayout>
 
-    <!-- 底部区域：评分曲线（背景层） + 引擎结果提示盒（浮于其上）。
-         与按钮同处一个控制面板内，材质统一、无割裂；提示盒默认隐藏，
-         显示时覆盖曲线（半透明背景使曲线透出在后面）；提示消失后曲线重新露出。 -->
+    <!-- 底部区域：评分曲线（背景层） + 引擎结果提示盒（浮于其上）。 -->
     <FrameLayout
         android:id="@+id/score_curve_frame"
         android:layout_width="match_parent"
@@ -234,8 +248,7 @@
             android:layout_width="match_parent"
             android:layout_height="100dp" />
 
-        <!-- 引擎计算结果展示框：默认隐藏，支招结果到达时显示；
-             每行一条独立候选变线（单行、可横向滑动、不折行），整体可竖向滚动 -->
+        <!-- 引擎计算结果展示框：默认隐藏，支招结果到达时显示 -->
         <ScrollView
             android:id="@+id/engine_result_scroll"
             android:layout_width="match_parent"
