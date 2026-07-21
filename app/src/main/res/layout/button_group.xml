@@ -33,7 +33,7 @@
             android:textSize="14sp"
             android:gravity="center"
             android:text="新局"
-            android:textColor="#FFFFFF"
+            android:textColor="#2E2018"
             android:textStyle="bold" />
 
         <Button
@@ -78,7 +78,7 @@
             android:textSize="14sp"
             android:gravity="center"
             android:text="加载"
-            android:textColor="#FFFFFF"
+            android:textColor="#2E2018"
             android:textStyle="bold" />
 
         <Button

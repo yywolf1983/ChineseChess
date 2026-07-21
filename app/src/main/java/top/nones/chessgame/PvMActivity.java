@@ -373,7 +373,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             android.view.View v = engineResultContainer.getChildAt(i);
             android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
                     ? ((android.view.ViewGroup) v).getChildAt(0) : v;
-            rowView.setBackgroundColor((i % 2 == 0) ? 0xFF16222E : 0xFF30485F);
+            rowView.setBackgroundColor((i % 2 == 0) ? 0xFF322619 : 0xFF4C3A29);
         }
     }
     // 进入摆棋前保存各按钮原始可用状态；退出时只恢复原本可用的，

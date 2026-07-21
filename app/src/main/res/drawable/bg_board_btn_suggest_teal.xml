@@ -3,17 +3,18 @@
     android:color="#33FFFFFF">
     <item>
         <shape android:shape="rectangle">
-            <!-- 支招保留识别色，但改为暖绿（去冷调），与木金家族协调 -->
+            <!-- 支招识别色改为偏青的 teal 绿：保留"辅助/提示"绿家族语义，
+                 但与模式按钮（双人=纯绿 #3E8E41 等）的色相明显区分，避免撞色 -->
             <gradient
                 android:type="linear"
                 android:angle="135"
-                android:startColor="#6E9A78"
-                android:centerColor="#52805F"
-                android:endColor="#3F6E50" />
+                android:startColor="#5CC0B0"
+                android:centerColor="#3F9A8C"
+                android:endColor="#2C766C" />
             <corners android:radius="10dp" />
             <stroke
                 android:width="1dp"
-                android:color="#9AC8A8" />
+                android:color="#8FE0D2" />
         </shape>
     </item>
 </ripple>
