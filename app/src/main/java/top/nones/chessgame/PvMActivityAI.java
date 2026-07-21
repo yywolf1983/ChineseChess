@@ -1263,7 +1263,7 @@ public class PvMActivityAI {
             final android.widget.LinearLayout container = this.activity.engineResultContainer;
             container.removeAllViews();
             // 记录每行内容视图，填充后统一把 minWidth 撑满整行宽度（斑马纹以行为准）
-            final java.util.List<android.widget.LinearLayout> rowViews = new java.util.ArrayList<>();
+            final java.util.List<android.view.View> rowViews = new java.util.ArrayList<>();
 
             java.util.List<PikafishAI.PvSequenceWithScore> lines = this.activity.pikafishAI.getLastMultiPvLines();
             // 防御性排序：确保综合评分最高（含速胜“杀N”）的变线排在最前展示
@@ -1304,7 +1304,7 @@ public class PvMActivityAI {
             final int HIGHLIGHT_BG = 0xFF9C774C;
 
             int added = 0;
-            for (int li = 0; li < lines.size() && added < 8; li++) {
+            for (int li = 0; li < lines.size(); li++) {
                 final int lineIndex = li;
                 PikafishAI.PvSequenceWithScore line = lines.get(li);
                 if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) {
@@ -1367,34 +1367,31 @@ public class PvMActivityAI {
                 if (notations.isEmpty()) continue;
 
                 final float density = this.activity.getResources().getDisplayMetrics().density;
-                final int SCORE_COL_W = (int) (44 * density);
-                final int MOVE_COL_W = (int) (60 * density);
+                final int SCORE_COL_W = (int) (40 * density);
+                final int MOVE_COL_W = (int) (56 * density);
                 // 第一行（综合评分最高的变线）字号 +1，突出首选着法
                 final float TEXT_SP = (added == 0) ? 14 : 13;
 
-                android.widget.HorizontalScrollView hsv = new android.widget.HorizontalScrollView(this.activity);
-                hsv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams flowLp = new android.widget.LinearLayout.LayoutParams(
                         android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
-                hsv.setHorizontalScrollBarEnabled(true);
-
-                android.widget.LinearLayout colRow = new android.widget.LinearLayout(this.activity);
-                colRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
-                colRow.setPadding(0, 0, 0, 0);
+                        android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+                flowLp.bottomMargin = (int) (4 * density); // 候选变线（其他行）之间稍留距离
+                top.nones.chessgame.FlowLayout flow = new top.nones.chessgame.FlowLayout(this.activity);
+                flow.setLayoutParams(flowLp);
+                flow.setSpacingDp(0, 1); // 折行紧凑：列间无水平间距，行间仅 1dp
+                flow.setPadding(0, 0, 0, 0);
                 if (followMode) {
-                    colRow.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
+                    flow.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
                 } else {
-                    colRow.setBackgroundColor((added % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
+                    flow.setBackgroundColor((added % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
                 }
-                rowViews.add(colRow);
+                rowViews.add(flow);
 
                 // 评分列
                 android.widget.TextView scoreTv = new android.widget.TextView(this.activity);
                 scoreTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
                         SCORE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
                 scoreTv.setGravity(android.view.Gravity.CENTER);
-                scoreTv.setSingleLine(true);
-                scoreTv.setEllipsize(android.text.TextUtils.TruncateAt.END);
                 scoreTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
                 scoreTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                 scoreTv.setIncludeFontPadding(false);
@@ -1412,7 +1409,7 @@ public class PvMActivityAI {
                     scoreStr = normScore > 0 ? "+" + normScore : String.valueOf(normScore);
                 }
                 scoreTv.setText(scoreStr);
-                colRow.addView(scoreTv);
+                flow.addView(scoreTv);
 
                 // 每一步一列（固定宽度、居中、按阵营着色；已走且一致的步用灰色）
                 for (int i = 0; i < notations.size(); i++) {
@@ -1420,8 +1417,6 @@ public class PvMActivityAI {
                     mvTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
                             MOVE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
                     mvTv.setGravity(android.view.Gravity.CENTER);
-                    mvTv.setSingleLine(true);
-                    mvTv.setEllipsize(android.text.TextUtils.TruncateAt.END);
                     mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
                     mvTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                     mvTv.setPadding(0, 0, 0, 0);
@@ -1435,20 +1430,17 @@ public class PvMActivityAI {
                         color = isRedStep.get(i) ? RED_MOVE_COLOR : BLACK_MOVE_COLOR;
                     }
                     mvTv.setTextColor(color);
-                    colRow.addView(mvTv);
+                    flow.addView(mvTv);
                 }
 
-                hsv.setTag(lineIndex);
-                colRow.setTag(lineIndex);
+                flow.setTag(lineIndex);
                 android.view.View.OnClickListener simClick = v -> {
                     if (this.activity != null) {
                         this.activity.startSimulation(lineIndex);
                     }
                 };
-                colRow.setOnClickListener(simClick);
-                hsv.setOnClickListener(simClick);
-                hsv.addView(colRow);
-                container.addView(hsv);
+                flow.setOnClickListener(simClick);
+                container.addView(flow);
                 added++;
             }
 
@@ -1464,7 +1456,7 @@ public class PvMActivityAI {
                 try {
                     int fullW = container.getWidth();
                     if (fullW <= 0) return;
-                    for (android.widget.LinearLayout row : rowViews) {
+                    for (android.view.View row : rowViews) {
                         row.setMinimumWidth(fullW);
                     }
                 } catch (Exception ignored) {}
