@@ -359,9 +359,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
                     ? ((android.view.ViewGroup) v).getChildAt(0) : v;
             if (tag != null && tag == lineIndex) {
-                rowView.setBackgroundColor(0xFF5C8AC0); // 高亮蓝
+                rowView.setBackgroundColor(0xFF8A6A45); // 高亮：棕金（与暖木斑马纹、面板描边同色系）
             } else {
-                rowView.setBackgroundColor((i % 2 == 0) ? 0xFF16222E : 0xFF30485F);
+                rowView.setBackgroundColor((i % 2 == 0) ? 0xFF322619 : 0xFF4C3A29);
             }
         }
     }
@@ -396,21 +396,58 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     // 模式按钮短名（与 ModePickerDialog.MODE_NAMES 对应，用于按钮文字）
     private static final String[] MODE_SHORT_NAMES = {"双人", "执红", "执黑", "双机"};
 
+    // 模式按钮背景渐变（随当前模式变化，呼应 ModePickerDialog 的主题色）
+    // 每项为 {渐变起始, 渐变中间, 渐变末尾, 描边}
+    private static final int[][] MODE_BTN_BG = {
+            {0xFF3E8E41, 0xFF347A38, 0xFF2C6430, 0xFF7BC67E}, // 0 双人：绿
+            {0xFFC82626, 0xFFA81E1E, 0xFF8E1818, 0xFFE88080}, // 1 玩家红：红
+            {0xFF3A3A3A, 0xFF2E2E2E, 0xFF222222, 0xFF7A7A7A}, // 2 玩家黑：黑
+            {0xFF4F8FE0, 0xFF3F76C4, 0xFF2E5FA8, 0xFF9AC2F0}, // 3 双机：蓝
+    };
+
+    /** 根据背景色亮度返回对比图标色（背景亮用深色，背景暗用白色） */
+    private static int contrastColor(int base) {
+        int r = android.graphics.Color.red(base);
+        int g = android.graphics.Color.green(base);
+        int b = android.graphics.Color.blue(base);
+        double lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        return lum > 150 ? 0xFF222222 : 0xFFFFFFFF;
+    }
+
     /** 更新「模式」按钮：左、右各一个 glyph 表示对战双方，文字居中显示短模式名 */
     public void updateModeButton() {
         try {
             View btn = findViewById(R.id.btn_mode);
             if (btn == null) return;
             float density = getResources().getDisplayMetrics().density;
-            ModeIconDrawable leftD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_LEFT);
-            ModeIconDrawable rightD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_RIGHT);
             ImageView iconLeft = btn.findViewById(R.id.mode_icon_left);
             ImageView iconRight = btn.findViewById(R.id.mode_icon_right);
             TextView modeText = btn.findViewById(R.id.mode_text);
-            if (iconLeft != null) iconLeft.setImageDrawable(leftD);
-            if (iconRight != null) iconRight.setImageDrawable(rightD);
+
             int m = Math.max(0, Math.min(MODE_SHORT_NAMES.length - 1, gameMode));
             if (modeText != null) modeText.setText(MODE_SHORT_NAMES[m]);
+
+            // 模式按钮背景与图标均随当前模式变化：背景用主题渐变，图标用对比色保证可见
+            int iconColor = 0xFFFFFFFF;
+            if (m < MODE_BTN_BG.length) {
+                int[] c = MODE_BTN_BG[m];
+                iconColor = contrastColor(c[1]);
+                android.graphics.drawable.GradientDrawable shape =
+                        new android.graphics.drawable.GradientDrawable();
+                shape.setOrientation(android.graphics.drawable.GradientDrawable.Orientation.TL_BR);
+                shape.setColors(new int[]{c[0], c[1], c[2]});
+                shape.setCornerRadius(10 * density);
+                shape.setStroke((int) (1 * density), c[3]);
+                android.graphics.drawable.RippleDrawable ripple =
+                        new android.graphics.drawable.RippleDrawable(
+                                android.content.res.ColorStateList.valueOf(0x33FFFFFF), shape, null);
+                btn.setBackground(ripple);
+            }
+
+            ModeIconDrawable leftD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_LEFT, iconColor);
+            ModeIconDrawable rightD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_RIGHT, iconColor);
+            if (iconLeft != null) iconLeft.setImageDrawable(leftD);
+            if (iconRight != null) iconRight.setImageDrawable(rightD);
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "updateModeButton failed", e);
         }

@@ -12,7 +12,8 @@ import top.nones.chessgame.R;
 
 /**
  * 「模式」按钮图标：以「红方侧 vs 黑方侧」的双 glyph 组合表示当前对战模式。
- * - 形状区分 人(ic_player) / 电脑(ic_ai)；颜色区分阵营（红/黑）与电脑（蓝）。
+ * - 形状区分 人(ic_player) / 电脑(ic_ai)；玩家(ic_player)图标按 iconColor（按钮背景对比色）着色以保证可见，
+ *   机器人(ic_ai)图标保持原有颜色不变。
  * - 与 ModePickerDialog 的卡片图标逻辑保持一致：
  *     leftAI  = (mode==2 或 3)  // 红方为电脑
  *     rightAI = (mode==1 或 3)  // 黑方为电脑
@@ -27,30 +28,30 @@ public class ModeIconDrawable extends Drawable {
     public static final int SIDE_LEFT = 1;
     public static final int SIDE_RIGHT = 2;
 
-    // 与 ModePickerDialog 保持一致的阵营色
-    private static final int RED = Color.rgb(200, 40, 40);
-    private static final int BLACK = Color.rgb(45, 45, 45);
-    private static final int BLUE = Color.rgb(90, 150, 235);
-
     private final Context context;
     private final int mode;
     private final int side;
+    private final int iconColor;
     private final int intrinsicW;
     private final int intrinsicH;
 
     public ModeIconDrawable(Context context, int mode, float density) {
-        this(context, mode, density, SIDE_BOTH);
+        this(context, mode, density, SIDE_BOTH, Color.WHITE);
     }
 
     public ModeIconDrawable(Context context, int mode, float density, int side) {
+        this(context, mode, density, side, Color.WHITE);
+    }
+
+    public ModeIconDrawable(Context context, int mode, float density, int side, int iconColor) {
         this.context = context;
         this.mode = mode;
         this.side = side;
+        this.iconColor = iconColor;
         if (side == SIDE_BOTH) {
             this.intrinsicW = (int) (52f * density);
             this.intrinsicH = (int) (24f * density);
         } else {
-            // 单侧图标：近似方形，作为按钮左右侧的小图标（18dp，与其他按钮图标一致并贴近文字）
             this.intrinsicW = (int) (18f * density);
             this.intrinsicH = (int) (18f * density);
         }
@@ -76,35 +77,31 @@ public class ModeIconDrawable extends Drawable {
             float g = Math.min(H * 0.94f, W * 0.42f);
             float leftCx = b.left + W * 0.30f;
             float rightCx = b.left + W * 0.70f;
-            drawGlyph(canvas, leftCx, cy, g, leftAI(), leftAI() ? BLUE : RED);
-            drawGlyph(canvas, rightCx, cy, g, rightAI(), rightAI() ? BLUE : BLACK);
+            drawGlyph(canvas, leftCx, cy, g, leftAI());
+            drawGlyph(canvas, rightCx, cy, g, rightAI());
             // 中间极细的连接点，强调「对战双方」对照
             android.graphics.Paint dot = new android.graphics.Paint();
             dot.setAntiAlias(true);
-            dot.setColor(Color.argb(120, 200, 210, 220));
+            dot.setColor(Color.argb(140, Color.red(iconColor), Color.green(iconColor), Color.blue(iconColor)));
             canvas.drawCircle(b.left + W * 0.5f, cy, Math.max(1f, g * 0.05f), dot);
         } else if (side == SIDE_LEFT) {
-            // 仅左方 glyph，居中于本 drawable
             float g = Math.min(H * 0.92f, W * 0.92f);
-            drawGlyph(canvas, b.left + W / 2f, cy, g, leftAI(), leftAI() ? BLUE : RED);
+            drawGlyph(canvas, b.left + W / 2f, cy, g, leftAI());
         } else { // SIDE_RIGHT
             float g = Math.min(H * 0.92f, W * 0.92f);
-            drawGlyph(canvas, b.left + W / 2f, cy, g, rightAI(), rightAI() ? BLUE : BLACK);
+            drawGlyph(canvas, b.left + W / 2f, cy, g, rightAI());
         }
     }
 
-    private void drawGlyph(Canvas canvas, float cx, float cy, float size, boolean isAI, int color) {
-        Drawable d;
-        if (!isAI) {
-            d = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_player);
-            if (d != null) {
-                d = DrawableCompat.wrap(d.mutate());
-                DrawableCompat.setTint(d, color);
-            }
-        } else {
-            d = androidx.core.content.ContextCompat.getDrawable(context, R.drawable.ic_ai);
-        }
+    private void drawGlyph(Canvas canvas, float cx, float cy, float size, boolean isAI) {
+        Drawable d = androidx.core.content.ContextCompat.getDrawable(context,
+                isAI ? R.drawable.ic_ai : R.drawable.ic_player);
         if (d == null) return;
+        if (!isAI) {
+            // 玩家图标按按钮背景对比色着色以保证可见；机器人（AI）图标保持原有颜色不变
+            d = DrawableCompat.wrap(d.mutate());
+            DrawableCompat.setTint(d, iconColor);
+        }
         int s = Math.round(size);
         d.setBounds(Math.round(cx - s / 2f), Math.round(cy - s / 2f),
                 Math.round(cx + s / 2f), Math.round(cy + s / 2f));
@@ -128,7 +125,7 @@ public class ModeIconDrawable extends Drawable {
 
     @Override
     public void setColorFilter(android.graphics.ColorFilter colorFilter) {
-        // 颜色由各 glyph 自带/着色，忽略外部滤镜
+        // 颜色由各 glyph 按 iconColor 着色，忽略外部滤镜
     }
 
     @Override

@@ -1301,7 +1301,7 @@ public class PvMActivityAI {
             final int RED_MOVE_COLOR = 0xFFFF8A80;
             final int BLACK_MOVE_COLOR = 0xFF80D8FF;
             final int PLAYED_COLOR = 0xFF9AA7B4;
-            final int HIGHLIGHT_BG = 0xFF244A34;
+            final int HIGHLIGHT_BG = 0xFF8A6A45;
 
             int added = 0;
             for (int li = 0; li < lines.size() && added < 8; li++) {
@@ -1369,7 +1369,8 @@ public class PvMActivityAI {
                 final float density = this.activity.getResources().getDisplayMetrics().density;
                 final int SCORE_COL_W = (int) (44 * density);
                 final int MOVE_COL_W = (int) (60 * density);
-                final float TEXT_SP = 13;
+                // 第一行（综合评分最高的变线）字号 +1，突出首选着法
+                final float TEXT_SP = (added == 0) ? 14 : 13;
 
                 android.widget.HorizontalScrollView hsv = new android.widget.HorizontalScrollView(this.activity);
                 hsv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
@@ -1383,7 +1384,7 @@ public class PvMActivityAI {
                 if (followMode) {
                     colRow.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
                 } else {
-                    colRow.setBackgroundColor((added % 2 == 0) ? 0xFF16222E : 0xFF30485F);
+                    colRow.setBackgroundColor((added % 2 == 0) ? 0xFF322619 : 0xFF4C3A29);
                 }
                 rowViews.add(colRow);
 
