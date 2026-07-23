@@ -90,6 +90,11 @@ public class NotationManager {
         return replayMode;
     }
 
+    /** 是否已脱离棋谱主线（玩家手动走子与原谱不符，进入接管状态） */
+    public boolean isDiverged() {
+        return diverged;
+    }
+
     /** 设置回放模式（玩家手动落子接管后设为 false） */
     public void setReplayMode(boolean replay) {
         this.replayMode = replay;
@@ -681,9 +686,11 @@ public class NotationManager {
         android.widget.Button next = activity.btnNext;
         android.widget.Button recall = activity.btnRecall;
 
-        // 加载棋谱（含接管）时禁用悔棋：此时用「上一步」回退 / 撤销，悔棋按钮置灰
+        // 悔棋可用条件：① 未加载棋谱（正常对局，用史实栈撤销）；
+        // ② 已加载棋谱但「脱离主线」接管走子——此时用悔棋逐步回退接管走法，
+        //    回到脱离点前即恢复回放；仍处纯回放主线时悔棋置灰（由「上一步/下一步」导航）。
         if (recall != null) {
-            boolean recallEnabled = (currentNotation == null);
+            boolean recallEnabled = (currentNotation == null) || diverged;
             recall.setEnabled(recallEnabled);
             recall.setAlpha(recallEnabled ? 1f : 0.4f);
         }
@@ -693,6 +700,14 @@ public class NotationManager {
         }
         if (currentNotation == null) {
             // 未加载棋谱：上一步/下一步不可用（悔棋可用，见上方）
+            prev.setEnabled(false);
+            prev.setAlpha(0.4f);
+            next.setEnabled(false);
+            next.setAlpha(0.4f);
+            return;
+        }
+        // 已脱离主线：上一步/下一步均置灰（回退交由「悔棋」按钮），避免两套回退机制并存
+        if (diverged) {
             prev.setEnabled(false);
             prev.setAlpha(0.4f);
             next.setEnabled(false);
@@ -716,9 +731,10 @@ public class NotationManager {
         return currentMoveIndex < originalTotalMoves;
     }
 
-    // 第 ply 手（1-based）是否红方走子：红先，奇数手为红
+    // 第 ply 手（1-based）是否红方走子：红先奇数手为红，黑先奇数手为黑
     private boolean isRedForPly(int ply) {
-        return (ply % 2 == 1);
+        boolean redFirst = (currentNotation != null) ? currentNotation.isRedFirst() : true;
+        return redFirst ? (ply % 2 == 1) : (ply % 2 == 0);
     }
 
     // 取原谱第 ply 手（1-based）的记谱串（用于判断手动落子是否与原谱重合，不受接管改写影响）

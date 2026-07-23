@@ -33,6 +33,11 @@ public class PvMActivityNotation {
     public boolean isReplayMode() {
         return notationManager.isReplayMode();
     }
+
+    // 是否已脱离棋谱主线（玩家手动走子与原谱不符，进入接管状态）
+    public boolean isDiverged() {
+        return notationManager.isDiverged();
+    }
     
     // 设置回放模式（玩家手动落子接管后设为 false）
     public void setReplayMode(boolean replay) {

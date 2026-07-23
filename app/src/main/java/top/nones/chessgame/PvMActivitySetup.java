@@ -548,7 +548,10 @@ public class PvMActivitySetup {
     // 摆棋真正完成后还原界面：隐藏摆棋面板、恢复回合视图、完成按钮还原、其它按钮恢复可用
     private void restoreAfterSetup() {
         if (activity == null) return;
-        // 摆棋按钮还原为"摆棋"：恢复原色原图标，并重新启用其它按钮
+        // 摆棋按钮先还原为"摆棋"：恢复原色原图标，并重新启用其它按钮。
+        // 注意：applySetupModeButtonUI(false) 内部会把上一步/下一步/悔棋等按钮
+        // 恢复到「进入摆棋前」保存的原始状态，会覆盖「新开一局」应有的置灰/启用，
+        // 因此下面再调用 setCurrentNotation(null) 强制刷新一次，让正确状态最后生效。
         activity.applySetupModeButtonUI(false);
         // 隐藏摆棋模式视图
         if (activity.setupModeView != null) {
@@ -573,6 +576,12 @@ public class PvMActivitySetup {
         }
         // 更新「模式」按钮图标（摆棋退出后回到双人模式）
         activity.updateModeButton();
+        // 摆棋视为新开一局：清理之前可能加载的棋谱 / 回放 / 分歧 / 接管走法等状态，
+        // 并刷新上一步/下一步/悔棋按钮状态（置于最后，确保覆盖上面 applySetupModeButtonUI
+        // 还原出的「进入摆棋前」原始按钮状态）。结果：上一步/下一步置灰、悔棋启用。
+        if (activity.notationManager != null) {
+            activity.notationManager.setCurrentNotation(null);
+        }
     }
 
     // 处理摆棋模式的触摸事件

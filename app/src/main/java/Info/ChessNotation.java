@@ -434,8 +434,9 @@ public class ChessNotation implements Serializable {
                     }
                     // 记录为一个走法
                     parsedSeries.add(0);
-                    // 依据「红先/黑先」与步序，将该步配对到记录的红槽或黑槽（先手方填首槽，后手方填次槽）
-                    boolean isFirstMoverStep = redFirst ? (moveIndex % 2 == 0) : (moveIndex % 2 == 1);
+                    // 依据步序判定该步是否为「一个回合的首步」。无论红先还是黑先，回合首步始终位于
+                    // moveIndex 为偶数（0,2,4…）的位置；至于首步填入红槽还是黑槽，由下面 redFirst 决定。
+                    boolean isFirstMoverStep = (moveIndex % 2 == 0);
                     if (isFirstMoverStep) {
                         if (redFirst) {
                             notation.moveRecords.add(new MoveRecord(moveText, ""));
@@ -477,7 +478,10 @@ public class ChessNotation implements Serializable {
         int recIdx = ply / 2;
         if (recIdx >= 0 && recIdx < notation.moveRecords.size()) {
             MoveRecord rec = notation.moveRecords.get(recIdx);
-            if (ply % 2 == 0) {
+            // ply 的偶数/奇数分别填入红槽/黑槽仅在「红先」成立；黑先时偶数步为黑、奇数步为红
+            boolean redFirst = notation.isRedFirst();
+            boolean assignRed = redFirst ? (ply % 2 == 0) : (ply % 2 == 1);
+            if (assignRed) {
                 rec.redScore = score;
             } else {
                 rec.blackScore = score;
@@ -609,31 +613,33 @@ public class ChessNotation implements Serializable {
         int moveNumber = 1;
         for (MoveRecord record : moveRecords) {
             if (redFirst) {
-                // 红先：每回合「红 黑」
+                // 红先：先手红带编号浅缩进，后手黑换行深缩进（一步一折行，参照七星聚会/征西）
                 if (record.redMove != null && !record.redMove.isEmpty()) {
                     int redScore = getSeriesScore(ply);
                     ply++;
-                    sb.append("  ").append(moveNumber).append(". ").append(record.redMove).append(" {#").append(redScore).append(",0#} ");
+                    sb.append("  ").append(moveNumber).append(". ").append(record.redMove).append(" {#").append(redScore).append(",0#}");
+                    sb.append("\n");
                     if (record.blackMove != null && !record.blackMove.isEmpty()) {
                         int blackScore = getSeriesScore(ply);
                         ply++;
-                        sb.append(" " + record.blackMove).append(" {#").append(blackScore).append(",0#}");
+                        sb.append("      ").append(record.blackMove).append(" {#").append(blackScore).append(",0#}");
+                        sb.append("\n");
                     }
-                    sb.append("\n");
                     moveNumber++;
                 }
             } else {
-                // 黑先：每回合「黑 红」（先手黑在前）
+                // 黑先：先手黑带编号浅缩进，后手红换行深缩进（一步一折行，参照七星聚会/征西）
                 if (record.blackMove != null && !record.blackMove.isEmpty()) {
                     int blackScore = getSeriesScore(ply);
                     ply++;
-                    sb.append("  ").append(moveNumber).append(". ").append(record.blackMove).append(" {#").append(blackScore).append(",0#} ");
+                    sb.append("  ").append(moveNumber).append(". ").append(record.blackMove).append(" {#").append(blackScore).append(",0#}");
+                    sb.append("\n");
                     if (record.redMove != null && !record.redMove.isEmpty()) {
                         int redScore = getSeriesScore(ply);
                         ply++;
-                        sb.append(" " + record.redMove).append(" {#").append(redScore).append(",0#}");
+                        sb.append("      ").append(record.redMove).append(" {#").append(redScore).append(",0#}");
+                        sb.append("\n");
                     }
-                    sb.append("\n");
                     moveNumber++;
                 }
             }

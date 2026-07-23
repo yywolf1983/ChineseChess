@@ -106,8 +106,12 @@ public class ChessRecognitionService {
             initialized = true;
             Log.d(TAG, "All ONNX models initialized successfully");
 
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to initialize ONNX models: " + e.getMessage(), e);
+        } catch (Throwable t) {
+            // 注意：必须捕获 Throwable 而非 Exception。native 库加载失败抛出的是
+            // UnsatisfiedLinkError（继承自 Error 而非 Exception），原 catch(Exception)
+            // 无法捕获，会一路冒泡到线程顶层导致整个 PvMActivity 崩溃（Force Finish）。
+            // 图像识别只是辅助功能，加载失败时优雅降级，保证主对局功能不受影响。
+            Log.e(TAG, "Failed to initialize ONNX models: " + t.getMessage(), t);
             initialized = false;
         }
     }

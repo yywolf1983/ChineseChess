@@ -155,9 +155,14 @@ public class PvMActivityControls {
     
     // 处理悔棋按钮
     public void handleRecallButton() {
-        // 加载棋谱时禁止悔棋：用「上一步」回退 / 撤销，悔棋按钮已置灰
         if (activity.notationManager != null && activity.notationManager.getCurrentNotation() != null) {
-            LogUtils.d("PvMActivityControls", "handleRecallButton ignored: notation loaded");
+            // 加载棋谱时：
+            // - 若已脱离棋谱主线（接管走子），悔棋生效：逐步回退接管走法，
+            //   回到脱离点前即清除分歧、恢复「上一步/下一步」回放，悔棋重新置灰；
+            // - 若仍在纯回放主线，悔棋本就置灰不会触发，这里安全忽略。
+            if (activity.notationManager.isDiverged()) {
+                activity.notationManager.handlePrevButton();
+            }
             return;
         }
         try {
