@@ -1,6 +1,7 @@
 package top.nones.chessgame;
 
 import Info.ChessInfo;
+import Info.ChessPiece;
 import Info.Pos;
 import ChessMove.Rule;
 import Utils.LogUtils;
@@ -59,8 +60,10 @@ public class MoveSimulator {
                 } else if (normalizedMoveString.contains("中")) {
                     specialCharIndex = normalizedMoveString.indexOf("中");
                     specialMark = "中";
-                } else if (normalizedMoveString.length() > 2 && Character.isDigit(normalizedMoveString.charAt(0))) {
-                    // 处理数字标记，如"一兵"、"二兵"等
+                } else if (normalizedMoveString.length() > 2
+                        && (Character.isDigit(normalizedMoveString.charAt(0))
+                            || Info.ChessPiece.fromChineseNumber(normalizedMoveString.charAt(0)) >= 0)) {
+                    // 处理数字标记，如"一兵"、"二兵"等（中文数字与阿拉伯数字均兼容）
                     specialCharIndex = 0;
                     specialMark = normalizedMoveString.substring(0, 1);
                 }
@@ -216,8 +219,8 @@ public class MoveSimulator {
                                             java.util.List<Pos> colPieces = entry.getValue();
                                             if (colPieces.size() > 1) {
                                                 Utils.LogUtils.d("MoveSimulator", "处理列 " + col + "，棋子数量: " + colPieces.size());
-                                                // 同一列有多个棋子，使用前中后标记
-                                                // 先对棋子按y坐标排序
+                                                // 同一列有多个棋子，使用前中后标记。
+                                                // 按"前->后"排序（红方前=大y，黑方前=小y），排序后 index 0 即"前"。
                                                 sortPiecesByY(colPieces, isRed);
                                                 
                                                 // 打印排序后的棋子位置
@@ -293,50 +296,47 @@ public class MoveSimulator {
                                         Utils.LogUtils.d("MoveSimulator", "仍然没有找到棋子，直接选择第一个棋子: " + targetPiecePos.x + "," + targetPiecePos.y);
                                     }
                                 }
-                            } else if (Character.isDigit(specialMark.charAt(0))) {
-                                // 数字标记：按位置顺序选择棋子
-                                // 确定目标列
-                                int targetColumn = selectedColumn != null ? selectedColumn : (targetX != null ? targetX : -1);
-                                
-                                // 选择包含目标列的棋子列表
-                                java.util.List<Pos> targetPieces = null;
-                                if (targetColumn != -1 && columnPieces.containsKey(targetColumn)) {
-                                    targetPieces = columnPieces.get(targetColumn);
-                                } else {
-                                    // 如果没有找到目标列，使用所有棋子
-                                    targetPieces = piecePositions;
-                                }
-                                
-                                // 将中文数字转换为阿拉伯数字
+                            } else if (Character.isDigit(specialMark.charAt(0))
+                                    || Info.ChessPiece.fromChineseNumber(specialMark.charAt(0)) >= 0) {
+                                // 数字标记（如"一兵""二炮"）：同列多个同名棋子时按从前往后编号。
+                                // 与 generateMoveString 一致：红方 前=大y（靠黑方），黑方 前=小y（靠红方），
+                                // 数字序号从"前"起算（二=第2个、三=第3个…）。
                                 int index = 0;
                                 switch (specialMark) {
-                                    case "一": index = 0; break;
-                                    case "二": index = 1; break;
-                                    case "三": index = 2; break;
-                                    case "四": index = 3; break;
-                                    case "五": index = 4; break;
-                                    case "六": index = 5; break;
-                                    case "七": index = 6; break;
-                                    case "八": index = 7; break;
-                                    case "九": index = 8; break;
+                                    case "一": case "1": index = 0; break;
+                                    case "二": case "2": index = 1; break;
+                                    case "三": case "3": index = 2; break;
+                                    case "四": case "4": index = 3; break;
+                                    case "五": case "5": index = 4; break;
+                                    case "六": case "6": index = 5; break;
+                                    case "七": case "7": index = 6; break;
+                                    case "八": case "8": index = 7; break;
+                                    case "九": case "9": index = 8; break;
                                 }
-                                
-                                // 按y坐标排序（相对己方）
-                                if (isRed) {
-                                    // 红方：从己方底线开始排序（y值大的在前，红方底线是y=9）
-                                    sortPiecesByY(targetPieces, isRed);
-                                    // 反转列表，使y值大的在前
-                                    java.util.Collections.reverse(targetPieces);
+
+                                // 优先在“列内多个同名棋子”的列中按编号选择（与生成端同列语义一致）；
+                                // 横向移动能用 selectedColumn 精确定位来源列。
+                                java.util.List<Pos> useColumn = null;
+                                if (selectedColumn != null && columnPieces.containsKey(selectedColumn)) {
+                                    useColumn = columnPieces.get(selectedColumn);
                                 } else {
-                                    // 黑方：从己方底线开始排序（y值小的在前，黑方底线是y=0）
-                                    sortPiecesByY(targetPieces, isRed);
+                                    for (java.util.Map.Entry<Integer, java.util.List<Pos>> e : columnPieces.entrySet()) {
+                                        if (e.getValue().size() > 1) {
+                                            useColumn = e.getValue();
+                                            break;
+                                        }
+                                    }
+                                    if (useColumn == null) useColumn = piecePositions;
                                 }
-                                
-                                // 选择对应索引的棋子
-                                if (index < targetPieces.size()) {
-                                    targetPiecePos = targetPieces.get(index);
+
+                                // 按"前->后"排序（红方前=大y，黑方前=小y），index 0 为"前"，
+                                // 数字序号从"前"起算（二=第2个、三=第3个…），与生成端一致。
+                                sortPiecesByY(useColumn, isRed);
+
+                                if (index < useColumn.size()) {
+                                    targetPiecePos = useColumn.get(index);
                                 } else {
-                                    targetPiecePos = targetPieces.get(0);
+                                    targetPiecePos = useColumn.get(0);
                                 }
                             }
                             
@@ -882,51 +882,26 @@ public class MoveSimulator {
         
         // 如果同一列有多个相同的棋子，添加前缀
         if (samePieces.size() > 1) {
-            // 对棋子按y坐标排序
-            samePieces.sort((p1, p2) -> Integer.compare(p1.y, p2.y));
+            // 按"前->后"排序（红方前=大 y，黑方前=小 y），排序后 index 0 即"前"
+            sortPiecesByY(samePieces, isRed);
             
             if (isPawn) {
-                // 兵/卒使用数字前缀：一兵、二兵、三兵、四兵、五兵
-                // 按照从前往后的顺序编号
-                int index = samePieces.indexOf(new Pos(fromPos.x, fromPos.y)) + 1;
-                prefix = getChineseNumber(index);
-            } else {
-                // 其他棋子使用前后前缀
-                if (samePieces.size() == 2) {
-                    // 两个棋子：前、后
-                    // samePieces 按 y 从小到大排序
-                    // 对于红方，前是离黑方底线近的棋子（y 较小），后是离红方底线近的棋子（y 较大）
-                    // 对于黑方，前是离红方底线近的棋子（y 较大），后是离黑方底线近的棋子（y 较小）
-                    Pos frontPiece = isRed ? samePieces.get(0) : samePieces.get(1);
-                    prefix = (fromPos.y == frontPiece.y) ? "前" : "后";
-                } else if (samePieces.size() == 3) {
-                    // 三个棋子：前、中、后
-                    // samePieces 按 y 从小到大排序
-                    // 对于红方，前是离黑方底线近的棋子（y 最小），后是离红方底线近的棋子（y 最大）
-                    // 对于黑方，前是离红方底线近的棋子（y 最大），后是离黑方底线近的棋子（y 最小）
-                    Pos frontPiece = isRed ? samePieces.get(0) : samePieces.get(2);
-                    Pos middlePiece = samePieces.get(1);
-                    if (fromPos.y == frontPiece.y) {
-                        prefix = "前";
-                    } else if (fromPos.y == middlePiece.y) {
-                        prefix = "中";
-                    } else {
-                        prefix = "后";
-                    }
-                } else if (samePieces.size() > 3) {
-                    // 四个或五个棋子：前、二、三、四、五
-                    // samePieces 按 y 从小到大排序
-                    // 对于红方，前是离黑方底线近的棋子（y 最小）
-                    // 对于黑方，前是离红方底线近的棋子（y 最大）
-                    int index = samePieces.indexOf(new Pos(fromPos.x, fromPos.y)) + 1;
-                    if (isRed) {
-                        // 红方：y 最小的是前
-                        prefix = (index == 1) ? "前" : getChineseNumber(index);
-                    } else {
-                        // 黑方：y 最大的是前
-                        prefix = (index == samePieces.size()) ? "前" : getChineseNumber(index);
-                    }
+                // 兵/卒记谱：2 个用 前/后，3 个用 前/中/后，4~5 个用 一/二/三/四/五
+                int idx = samePieces.indexOf(new Pos(fromPos.x, fromPos.y));
+                int n = samePieces.size();
+                if (n == 2) {
+                    // 两个兵/卒：前、后
+                    prefix = (idx == 0) ? "前" : "后";
+                } else if (n == 3) {
+                    // 三个兵/卒：前、中、后
+                    prefix = (idx == 0) ? "前" : (idx == 1) ? "中" : "后";
+                } else {
+                    // 四个或五个兵/卒：从前往后编号 一、二、三、四、五
+                    prefix = getChineseNumber(idx + 1);
                 }
+            } else {
+                // 其他有战力的棋子（车马炮相士等）每方最多两个，同列最多两个，只需 前/后
+                prefix = (samePieces.indexOf(new Pos(fromPos.x, fromPos.y)) == 0) ? "前" : "后";
             }
         }
         
@@ -1084,19 +1059,16 @@ public class MoveSimulator {
             }
             return null;
         }
-        // 按 y 坐标排序：红方前=大 y（靠近黑方），黑方前=小 y（靠近红方）
+        // 按"前->后"排序（红方前=大y，黑方前=小y），排序后 index 0 即"前"、最后一个即"后"。
         java.util.List<Pos> sorted = new java.util.ArrayList<>(candidates);
-        java.util.Collections.sort(sorted, (p1, p2) -> {
-            if (isRed) {
-                return Integer.compare(p2.y, p1.y);
-            }
-            return Integer.compare(p1.y, p2.y);
-        });
+        sortPiecesByY(sorted, isRed);
+        int frontIdx = 0;
+        int backIdx = sorted.size() - 1;
         int index;
         if (mark.equals("前")) {
-            index = 0;
+            index = frontIdx;
         } else if (mark.equals("后")) {
-            index = sorted.size() - 1;
+            index = backIdx;
         } else { // 中
             index = sorted.size() / 2;
         }
