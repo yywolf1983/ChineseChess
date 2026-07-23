@@ -384,6 +384,7 @@ public class PvPActivityControls {
             notation.setRound(round);
             
             // 添加FEN信息
+            boolean redFirst = true; // 整盘先手方：true=红先（默认），false=黑先（FEN turn=b）
             if (chessInfo != null) {
                 String fen;
                 // 在非摆棋模式下，使用infoSet中的初始状态生成FEN，确保保存的是摆棋完成时的局面
@@ -418,6 +419,14 @@ public class PvPActivityControls {
                     fen = generateFEN(chessInfo);
                 }
                 notation.setFen(fen);
+                // 依据初始局面 FEN 的 turn 字段判定红先/黑先（b=黑先）
+                if (fen != null && !fen.trim().isEmpty()) {
+                    String[] fenParts = fen.trim().split("\\s+");
+                    if (fenParts.length >= 2) {
+                        redFirst = !"b".equalsIgnoreCase(fenParts[1].trim());
+                    }
+                }
+                notation.setRedFirst(redFirst);
             }
             
             // 只有在非摆棋模式下才提取走法记录
@@ -457,17 +466,36 @@ public class PvPActivityControls {
                         
                         if (piece != 0) {
                             String move = gameModule.generateMoveString(piece, info.prePos, info.curPos, isRed);
-                            
+
                             if (move != null) {
-                                if (isRed) {
-                                    // 红方走法，添加新记录
-                                    notation.addMoveRecord(move, "");
+                                // 先手方（红先=红，黑先=黑）开新记录；后手方填入上一条记录对应槽位
+                                boolean firstMoverIsRed = redFirst;
+                                if (isRed == firstMoverIsRed) {
+                                    // 先手方走法：新开一条记录
+                                    if (redFirst) {
+                                        notation.addMoveRecord(move, "");
+                                    } else {
+                                        notation.addMoveRecord("", move);
+                                    }
                                 } else {
-                                    // 黑方走法，更新最后一条记录
+                                    // 后手方走法：填入上一条记录的后手槽
                                     if (!notation.getMoveRecords().isEmpty()) {
                                         Info.ChessNotation.MoveRecord lastRecord = notation.getMoveRecords().get(notation.getMoveRecords().size() - 1);
-                                        if (lastRecord.blackMove.isEmpty()) {
-                                            lastRecord.blackMove = move;
+                                        if (redFirst) {
+                                            if (lastRecord.blackMove.isEmpty()) {
+                                                lastRecord.blackMove = move;
+                                            }
+                                        } else {
+                                            if (lastRecord.redMove.isEmpty()) {
+                                                lastRecord.redMove = move;
+                                            }
+                                        }
+                                    } else {
+                                        // 异常情况：无先手记录，单独建一条
+                                        if (redFirst) {
+                                            notation.addMoveRecord("", move);
+                                        } else {
+                                            notation.addMoveRecord(move, "");
                                         }
                                     }
                                 }

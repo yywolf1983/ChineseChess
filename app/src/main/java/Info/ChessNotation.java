@@ -123,6 +123,18 @@ public class ChessNotation implements Serializable {
         this.fen = fen;
     }
 
+    /** 整盘第一步是谁走：true=红先（默认，符合绝大多数棋谱），false=黑先（如残局排局 FEN 中 turn=b）。
+     *  解析与保存、显示均依此正确配对（红先→每回合「红 黑」，黑先→每回合「黑 红」）。 */
+    private boolean redFirst = true;
+
+    public boolean isRedFirst() {
+        return redFirst;
+    }
+
+    public void setRedFirst(boolean redFirst) {
+        this.redFirst = redFirst;
+    }
+
     public String getGame() {
         return game;
     }
@@ -341,6 +353,17 @@ public class ChessNotation implements Serializable {
             // 解析走法（保留内嵌评分 {#score,depth#}，在去除注释前按 token 提取）
             Pattern scorePattern = Pattern.compile("\\{#(-?\\d+),\\d+#\\}");
             java.util.List<Integer> parsedSeries = new java.util.ArrayList<>();
+            // 根据开局 FEN 的 turn 字段判定整盘第一步是谁：红先 w 或 黑先 b；无 FEN 默认红先
+            boolean redFirst = true;
+            String fenStr = notation.getFen();
+            if (fenStr != null && !fenStr.trim().isEmpty()) {
+                String[] fenParts = fenStr.trim().split("\\s+");
+                if (fenParts.length >= 2) {
+                    redFirst = !"b".equalsIgnoreCase(fenParts[1].trim());
+                }
+            }
+            notation.setRedFirst(redFirst);
+
             int moveIndex = 0;
             int lastMovePly = -1; // 最近一步在 parsedSeries 中的下标，用于回填其后的评分
             boolean foundAnyScore = false; // 是否解析到至少一个真实内嵌评分
@@ -411,14 +434,22 @@ public class ChessNotation implements Serializable {
                     }
                     // 记录为一个走法
                     parsedSeries.add(0);
-                    if (moveIndex % 2 == 0) {
-                        // 红方走法
-                        notation.moveRecords.add(new MoveRecord(moveText, ""));
+                    // 依据「红先/黑先」与步序，将该步配对到记录的红槽或黑槽（先手方填首槽，后手方填次槽）
+                    boolean isFirstMoverStep = redFirst ? (moveIndex % 2 == 0) : (moveIndex % 2 == 1);
+                    if (isFirstMoverStep) {
+                        if (redFirst) {
+                            notation.moveRecords.add(new MoveRecord(moveText, ""));
+                        } else {
+                            notation.moveRecords.add(new MoveRecord("", moveText));
+                        }
                     } else {
-                        // 黑方走法
                         if (!notation.moveRecords.isEmpty()) {
                             MoveRecord lastRecord = notation.moveRecords.get(notation.moveRecords.size() - 1);
-                            lastRecord.blackMove = moveText;
+                            if (redFirst) {
+                                lastRecord.blackMove = moveText;
+                            } else {
+                                lastRecord.redMove = moveText;
+                            }
                         }
                     }
                     lastMovePly = parsedSeries.size() - 1;
@@ -577,17 +608,34 @@ public class ChessNotation implements Serializable {
         int ply = 0;
         int moveNumber = 1;
         for (MoveRecord record : moveRecords) {
-            if (record.redMove != null && !record.redMove.isEmpty()) {
-                int redScore = getSeriesScore(ply);
-                ply++;
-                sb.append("  ").append(moveNumber).append(". ").append(record.redMove).append(" {#").append(redScore).append(",0#} ");
+            if (redFirst) {
+                // 红先：每回合「红 黑」
+                if (record.redMove != null && !record.redMove.isEmpty()) {
+                    int redScore = getSeriesScore(ply);
+                    ply++;
+                    sb.append("  ").append(moveNumber).append(". ").append(record.redMove).append(" {#").append(redScore).append(",0#} ");
+                    if (record.blackMove != null && !record.blackMove.isEmpty()) {
+                        int blackScore = getSeriesScore(ply);
+                        ply++;
+                        sb.append(" " + record.blackMove).append(" {#").append(blackScore).append(",0#}");
+                    }
+                    sb.append("\n");
+                    moveNumber++;
+                }
+            } else {
+                // 黑先：每回合「黑 红」（先手黑在前）
                 if (record.blackMove != null && !record.blackMove.isEmpty()) {
                     int blackScore = getSeriesScore(ply);
                     ply++;
-                    sb.append(" " + record.blackMove).append(" {#").append(blackScore).append(",0#}");
+                    sb.append("  ").append(moveNumber).append(". ").append(record.blackMove).append(" {#").append(blackScore).append(",0#} ");
+                    if (record.redMove != null && !record.redMove.isEmpty()) {
+                        int redScore = getSeriesScore(ply);
+                        ply++;
+                        sb.append(" " + record.redMove).append(" {#").append(redScore).append(",0#}");
+                    }
+                    sb.append("\n");
+                    moveNumber++;
                 }
-                sb.append("\n");
-                moveNumber++;
             }
         }
         

@@ -29,6 +29,7 @@ public class NotationManager {
     private ChessNotation originalNotation = null;
     // 分歧后的手动接管走法（按落子先后），仅用于偏离主线时的局面重建
     private java.util.List<String> manualMoves = new java.util.ArrayList<>();
+    private java.util.List<Boolean> manualMoveIsRed = new java.util.ArrayList<>();
     private String setupFEN;
     
     // 保存棋谱相关的临时变量
@@ -54,6 +55,7 @@ public class NotationManager {
         this.replayMode = true;
         // 保留一份不可变原谱副本（用于导航重建与重合判定），并清除分歧状态
         this.manualMoves.clear();
+        this.manualMoveIsRed.clear();
         this.divergeAt = -1;
         this.diverged = false;
         copyOriginalNotation(notation);
@@ -143,6 +145,7 @@ public class NotationManager {
             divergeAt = currentMoveIndex;
             diverged = true;
             manualMoves.add(move);
+            manualMoveIsRed.add(isRed);
             appendMoveToCurrentNotation(move, isRed);
             currentMoveIndex++;
             updateNavButtonsEnabled();
@@ -151,6 +154,7 @@ public class NotationManager {
 
         // 已分歧（接管中）：棋局继续，记录手动走法，下一步保持置灰
         manualMoves.add(move);
+        manualMoveIsRed.add(isRed);
         appendMoveToCurrentNotation(move, isRed);
         currentMoveIndex++;
         updateNavButtonsEnabled();
@@ -250,6 +254,7 @@ public class NotationManager {
                     this.replayMode = true;
                     // 保留一份不可变原谱副本，并清除分歧状态
                     this.manualMoves.clear();
+                    this.manualMoveIsRed.clear();
                     this.divergeAt = -1;
                     this.diverged = false;
                     copyOriginalNotation(notation);
@@ -341,6 +346,15 @@ public class NotationManager {
                 FENHandler fenHandler = new FENHandler();
                 String fen = fenHandler.generateFENForSave(activity.chessInfo, setupFEN, currentNotation);
                 notation.setFen(fen);
+                // 依据开局 FEN 的 turn 字段判定红先/黑先（b=黑先），确保黑先棋谱保存为「黑 红」顺序，与解析逻辑一致
+                boolean saveRedFirst = true;
+                if (fen != null && !fen.trim().isEmpty()) {
+                    String[] fenParts = fen.trim().split("\\s+");
+                    if (fenParts.length >= 2) {
+                        saveRedFirst = !"b".equalsIgnoreCase(fenParts[1].trim());
+                    }
+                }
+                notation.setRedFirst(saveRedFirst);
             }
             
             // 提取走法记录
@@ -361,9 +375,15 @@ public class NotationManager {
             if (pfd != null) {
                 try (java.io.FileOutputStream fos = new java.io.FileOutputStream(pfd.getFileDescriptor());
                      OutputStreamWriter writer = new OutputStreamWriter(fos, "UTF-8")) {
+                    // 先截断为 0，确保完全清空旧内容（部分文档提供方 "w" 模式不会自动截断）
+                    fos.getChannel().truncate(0);
                     // 写入新内容
                     writer.write(content);
                     writer.flush();
+                    // 再次按当前写入位置截断，确保没有残留原有信息
+                    fos.getChannel().truncate(fos.getChannel().position());
+                    // 强制刷新文件系统缓存
+                    fos.getFD().sync();
                     // 移除Toast提示，通过界面显示保存成功信息
                 } catch (Exception e) {
                     LogUtils.e("NotationManager", "保存棋谱写入失败", e);
@@ -423,7 +443,11 @@ public class NotationManager {
             if (moveRecords != null) {
                 for (int i = 0; i < moveRecords.size(); i++) {
                     ChessNotation.MoveRecord record = moveRecords.get(i);
-                    content.append((i + 1) + ". " + record.redMove + " " + record.blackMove + "\n");
+                    if (currentNotation.isRedFirst()) {
+                        content.append((i + 1) + ". " + record.redMove + " " + record.blackMove + "\n");
+                    } else {
+                        content.append((i + 1) + ". " + record.blackMove + " " + record.redMove + "\n");
+                    }
                 }
             }
         }
@@ -433,65 +457,88 @@ public class NotationManager {
     }
     
     // 提取走法记录
+    // 设计：始终保存为「单线」棋谱。
+    //   - 已加载棋谱（currentNotation != null）：单线 = 行棋位置以前的步子（原谱前 currentMoveIndex 手）
+    //       + 以后重新行棋的步子（分歧后手动接管走法）。该单线由 buildNavNotation() 按「上一步/悔棋」回退后的
+    //       currentMoveIndex / divergeAt / manualMoves 正确组合，无需再从 preInfo 重复追加
+    //       （preInfo 不做回退裁剪，直接追加会造成重复或遗漏）。
+    //   - 未加载棋谱（currentNotation == null，全新对局）：所有走法仅存于 infoSet.preInfo，按时间顺序追加。
     private void extractMoveRecords(ChessNotation notation) {
         if (activity.chessInfo == null || activity.infoSet == null || activity.infoSet.preInfo == null) {
             return;
         }
-        
-        // 首先添加原始棋谱中到currentMoveIndex的走法
+
         if (currentNotation != null) {
-            java.util.List<ChessNotation.MoveRecord> originalMoves = currentNotation.getMoveRecords();
-            if (originalMoves != null && !originalMoves.isEmpty()) {
-                int moveCount = 0;
-                for (ChessNotation.MoveRecord record : originalMoves) {
-                    if (moveCount >= currentMoveIndex) {
-                        break;
-                    }
-                    
-                    // 处理红方走法
-                    if (!record.redMove.isEmpty() && moveCount < currentMoveIndex) {
-                        notation.addMoveRecord(record.redMove, "");
-                        moveCount++;
-                    }
-                    
-                    // 处理黑方走法
-                    if (!record.blackMove.isEmpty() && moveCount < currentMoveIndex) {
-                        if (!notation.getMoveRecords().isEmpty()) {
-                            ChessNotation.MoveRecord lastRecord = notation.getMoveRecords().get(notation.getMoveRecords().size() - 1);
-                            lastRecord.blackMove = record.blackMove;
-                        } else {
-                            notation.addMoveRecord("", record.blackMove);
-                        }
-                        moveCount++;
-                    }
+            // 已加载棋谱：构造单线棋谱（行棋位置以前的步子 + 以后重新行棋的步子）
+            ChessNotation nav = buildNavNotation();
+            if (nav == null) {
+                nav = new ChessNotation();
+            }
+            if (!diverged && originalNotation != null && currentMoveIndex < originalTotalMoves) {
+                // 与原谱主线重合且未到谱尾：仅保留「行棋位置以前的步子」（前 currentMoveIndex 手），单线截断不越界
+                ChessNotation truncated = new ChessNotation();
+                truncated.setFen(nav.getFen());
+                appendFirstPlies(truncated, originalNotation, currentMoveIndex);
+                nav = truncated;
+            }
+            if (nav != null) {
+                for (ChessNotation.MoveRecord r : nav.getMoveRecords()) {
+                    if (r == null) continue;
+                    notation.addMoveRecord(
+                            r.redMove != null ? r.redMove : "",
+                            r.blackMove != null ? r.blackMove : "");
                 }
             }
+            return;
         }
-        
-        // 创建一个临时列表来存储所有ChessInfo对象，而不修改原栈
+
+        // 未加载棋谱（全新对局）：所有走法仅存于 infoSet.preInfo，按时间顺序追加（悔棋已相应裁剪 preInfo）
         java.util.List<ChessInfo> tempList = new java.util.ArrayList<>();
         java.util.Stack<ChessInfo> originalStack = new java.util.Stack<>();
-        
-        // 先将所有ChessInfo对象弹出到临时列表，同时保存到原始栈
         while (!activity.infoSet.preInfo.empty()) {
             ChessInfo info = activity.infoSet.preInfo.pop();
             tempList.add(info);
             originalStack.push(info);
         }
-        
-        // 恢复原栈
         while (!originalStack.empty()) {
             activity.infoSet.preInfo.push(originalStack.pop());
         }
-        
-        // 按照临时列表的顺序处理，添加用户后续的走法
-        // 摆棋后如果用户有行棋，按当前行棋保存
-        // 如果没有行棋，就不要有任何棋步记录
         for (int i = tempList.size() - 1; i >= 0; i--) {
             ChessInfo info = tempList.get(i);
-            // 只有当prePos和curPos都不为null时，才添加到走法记录
             if (info.prePos != null && info.curPos != null) {
                 addMoveToNotation(notation, info);
+            }
+        }
+    }
+
+    // 将 src 的前 plies 手（红黑各计一手）复制到 dst（用于「行棋位置以前的步子」单线截断）
+    private void appendFirstPlies(ChessNotation dst, ChessNotation src, int plies) {
+        java.util.List<ChessNotation.MoveRecord> recs = src.getMoveRecords();
+        if (recs == null || plies <= 0) return;
+        int count = 0;
+        for (ChessNotation.MoveRecord r : recs) {
+            if (r == null) continue;
+            if (count >= plies) break;
+            boolean redFirst = src.isRedFirst();
+            dst.setRedFirst(redFirst);
+            String firstMove = redFirst ? r.redMove : r.blackMove;
+            String secondMove = redFirst ? r.blackMove : r.redMove;
+            if (firstMove != null && !firstMove.isEmpty() && count < plies) {
+                if (redFirst) dst.addMoveRecord(firstMove, "");
+                else dst.addMoveRecord("", firstMove);
+                count++;
+            }
+            if (secondMove != null && !secondMove.isEmpty() && count < plies) {
+                java.util.List<ChessNotation.MoveRecord> drecs = dst.getMoveRecords();
+                if (!drecs.isEmpty()) {
+                    ChessNotation.MoveRecord last = drecs.get(drecs.size() - 1);
+                    if (redFirst) last.blackMove = secondMove;
+                    else last.redMove = secondMove;
+                } else {
+                    if (redFirst) dst.addMoveRecord("", secondMove);
+                    else dst.addMoveRecord(secondMove, "");
+                }
+                count++;
             }
         }
     }
@@ -518,19 +565,38 @@ public class NotationManager {
             String move = moveSimulator.generateMoveString(info, piece, info.prePos, info.curPos, isRed);
             
             if (move != null) {
-                if (isRed) {
-                    // 红方走法，添加新记录
-                    notation.addMoveRecord(move, "");
+                // 先手方（红先=红 / 黑先=黑）开新记录；后手方填入上一条记录对应槽位。
+                // 修复黑先时第一步黑着法被孤立成 [red="",black=黑1]、第二步红着法又新建
+                // [red=红1,black=""] 导致整盘配对崩坏、第二步被漏记的问题。
+                boolean redFirst = notation.isRedFirst();
+                boolean opener = (isRed == redFirst);
+                if (opener) {
+                    // 先手方走法：新开一条记录
+                    if (redFirst) {
+                        notation.addMoveRecord(move, "");
+                    } else {
+                        notation.addMoveRecord("", move);
+                    }
                 } else {
-                    // 黑方走法，更新最后一条记录
+                    // 后手方走法：填入上一条记录的后手槽
                     if (!notation.getMoveRecords().isEmpty()) {
                         ChessNotation.MoveRecord lastRecord = notation.getMoveRecords().get(notation.getMoveRecords().size() - 1);
-                        if (lastRecord.blackMove.isEmpty()) {
-                            lastRecord.blackMove = move;
+                        if (redFirst) {
+                            if (lastRecord.blackMove.isEmpty()) {
+                                lastRecord.blackMove = move;
+                            }
+                        } else {
+                            if (lastRecord.redMove.isEmpty()) {
+                                lastRecord.redMove = move;
+                            }
                         }
                     } else {
-                        // 如果没有红方走法，单独添加黑方走法
-                        notation.addMoveRecord("", move);
+                        // 异常：无先手记录，先单独建一条（塞进后手槽，等待先手补）
+                        if (redFirst) {
+                            notation.addMoveRecord("", move);
+                        } else {
+                            notation.addMoveRecord(move, "");
+                        }
                     }
                 }
             }
@@ -552,10 +618,12 @@ public class NotationManager {
                         diverged = false;
                         divergeAt = -1;
                         manualMoves.clear();
+                        manualMoveIsRed.clear();
                         copyOriginalNotation(originalNotation);
                         replayMode = true;
                     } else if (!manualMoves.isEmpty()) {
                         manualMoves.remove(manualMoves.size() - 1);
+                        manualMoveIsRed.remove(manualMoveIsRed.size() - 1);
                     }
                 }
                 Utils.LogUtils.d("NotationManager", "执行上一步，新步数: " + currentMoveIndex);
@@ -658,16 +726,19 @@ public class NotationManager {
         if (originalNotation == null) return null;
         java.util.List<ChessNotation.MoveRecord> recs = originalNotation.getMoveRecords();
         if (recs == null) return null;
+        boolean redFirst = (originalNotation != null) ? originalNotation.isRedFirst() : true;
         int ply = 0;
         for (ChessNotation.MoveRecord r : recs) {
             if (r == null) continue;
-            if (r.redMove != null && !r.redMove.isEmpty()) {
+            String firstMove = redFirst ? r.redMove : r.blackMove;
+            String secondMove = redFirst ? r.blackMove : r.redMove;
+            if (firstMove != null && !firstMove.isEmpty()) {
                 ply++;
-                if (ply == targetPly) return r.redMove;
+                if (ply == targetPly) return firstMove;
             }
-            if (r.blackMove != null && !r.blackMove.isEmpty()) {
+            if (secondMove != null && !secondMove.isEmpty()) {
                 ply++;
-                if (ply == targetPly) return r.blackMove;
+                if (ply == targetPly) return secondMove;
             }
         }
         return null;
@@ -695,12 +766,15 @@ public class NotationManager {
             for (ChessNotation.MoveRecord r : recs) {
                 if (r == null) continue;
                 if (count >= currentMoveIndex) break;
-                if (r.redMove != null && !r.redMove.isEmpty() && count < currentMoveIndex) {
-                    ChessInfo t = sim.simulateMove(board, r.redMove, true);
+                boolean redFirst = nav.isRedFirst();
+                String firstMove = redFirst ? r.redMove : r.blackMove;
+                String secondMove = redFirst ? r.blackMove : r.redMove;
+                if (firstMove != null && !firstMove.isEmpty() && count < currentMoveIndex) {
+                    ChessInfo t = sim.simulateMove(board, firstMove, redFirst);
                     if (t != null) { board = t; count++; }
                 }
-                if (r.blackMove != null && !r.blackMove.isEmpty() && count < currentMoveIndex) {
-                    ChessInfo t = sim.simulateMove(board, r.blackMove, false);
+                if (secondMove != null && !secondMove.isEmpty() && count < currentMoveIndex) {
+                    ChessInfo t = sim.simulateMove(board, secondMove, !redFirst);
                     if (t != null) { board = t; count++; }
                 }
             }
@@ -715,43 +789,61 @@ public class NotationManager {
         }
         ChessNotation nav = new ChessNotation();
         nav.setFen(originalNotation.getFen());
+        nav.setRedFirst(originalNotation.isRedFirst());
         // 复制原谱前 divergeAt 手
         int ply = 0;
         java.util.List<ChessNotation.MoveRecord> orig = originalNotation.getMoveRecords();
         if (orig != null) {
             for (ChessNotation.MoveRecord r : orig) {
                 if (ply >= divergeAt) break;
-                if (r.redMove != null && !r.redMove.isEmpty() && ply < divergeAt) {
-                    nav.addMoveRecord(r.redMove, "");
+                boolean redFirst = nav.isRedFirst();
+                String firstMove = redFirst ? r.redMove : r.blackMove;
+                String secondMove = redFirst ? r.blackMove : r.redMove;
+                if (firstMove != null && !firstMove.isEmpty() && ply < divergeAt) {
+                    if (redFirst) nav.addMoveRecord(firstMove, "");
+                    else nav.addMoveRecord("", firstMove);
                     ply++;
                 }
-                if (r.blackMove != null && !r.blackMove.isEmpty() && ply < divergeAt) {
+                if (secondMove != null && !secondMove.isEmpty() && ply < divergeAt) {
                     java.util.List<ChessNotation.MoveRecord> nrecs = nav.getMoveRecords();
                     if (!nrecs.isEmpty()) {
-                        nrecs.get(nrecs.size() - 1).blackMove = r.blackMove;
+                        ChessNotation.MoveRecord last = nrecs.get(nrecs.size() - 1);
+                        if (redFirst) last.blackMove = secondMove;
+                        else last.redMove = secondMove;
                     }
                     ply++;
                 }
             }
         }
-        // 追加手动接管走法（按落子顺序红黑配对）
+        // 追加手动接管走法（按先手方配对：红先=红开 / 黑先=黑开；直接使用记录的真实红黑）
+        boolean redFirst = nav.isRedFirst();
         for (int i = 0; i < manualMoves.size(); i++) {
-            int p = divergeAt + 1 + i;
-            boolean isRed = isRedForPly(p);
+            boolean isRed = manualMoveIsRed.get(i);
             String m = manualMoves.get(i);
-            if (isRed) {
-                nav.addMoveRecord(m, "");
+            boolean opener = (isRed == redFirst);
+            if (opener) {
+                if (redFirst) nav.addMoveRecord(m, "");
+                else nav.addMoveRecord("", m);
             } else {
                 java.util.List<ChessNotation.MoveRecord> nrecs = nav.getMoveRecords();
                 if (!nrecs.isEmpty()) {
                     ChessNotation.MoveRecord last = nrecs.get(nrecs.size() - 1);
-                    if (last.blackMove == null || last.blackMove.isEmpty()) {
-                        last.blackMove = m;
+                    if (redFirst) {
+                        if (last.blackMove == null || last.blackMove.isEmpty()) {
+                            last.blackMove = m;
+                        } else {
+                            nav.addMoveRecord("", m);
+                        }
                     } else {
-                        nav.addMoveRecord("", m);
+                        if (last.redMove == null || last.redMove.isEmpty()) {
+                            last.redMove = m;
+                        } else {
+                            nav.addMoveRecord(m, "");
+                        }
                     }
                 } else {
-                    nav.addMoveRecord("", m);
+                    if (redFirst) nav.addMoveRecord("", m);
+                    else nav.addMoveRecord(m, "");
                 }
             }
         }
@@ -763,6 +855,7 @@ public class NotationManager {
         originalNotation = new ChessNotation();
         if (src != null) {
             originalNotation.setFen(src.getFen());
+            originalNotation.setRedFirst(src.isRedFirst());
             java.util.List<ChessNotation.MoveRecord> recs = src.getMoveRecords();
             if (recs != null) {
                 for (ChessNotation.MoveRecord r : recs) {

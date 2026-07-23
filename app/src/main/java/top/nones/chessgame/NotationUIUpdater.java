@@ -31,9 +31,11 @@ public class NotationUIUpdater {
                 
                 // 如果有当前步的走法，也显示出来
                 if (currentMoveIndex > 0 && moveRecords != null && !moveRecords.isEmpty()) {
+                    boolean redFirst = currentNotation.isRedFirst();
                     int recordIndex = (currentMoveIndex - 1) / 2;
-                    boolean isBlackMove = (currentMoveIndex % 2 == 0);
-                    
+                    // 红先：奇数步=红、偶数步=黑；黑先：奇数步=黑、偶数步=红
+                    boolean isBlackMove = redFirst ? (currentMoveIndex % 2 == 0) : (currentMoveIndex % 2 == 1);
+
                     if (recordIndex < moveRecords.size()) {
                         ChessNotation.MoveRecord record = moveRecords.get(recordIndex);
                         notationInfo.append(" | ");

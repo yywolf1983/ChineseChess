@@ -874,126 +874,179 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 生成走法字符串
     public String generateMoveString(ChessInfo chessInfo, int piece, Pos fromPos, Pos toPos, boolean isRed) {
-        // 实现走法字符串生成逻辑
-        StringBuilder move = new StringBuilder();
-        
         // 参数检查
         if (fromPos == null || toPos == null) {
             return "未知走法";
         }
-        
-        // 获取棋子名称
-        String pieceName = getPieceName(piece, isRed);
-        
-        // 计算列号（红方从右往左数，黑方从左往右数）
-        int fromCol = isRed ? (9 - fromPos.x) : (fromPos.x + 1);
-        int toCol = isRed ? (9 - toPos.x) : (toPos.x + 1);
-        
-        // 检查同一列是否有多个相同棋子
-        boolean hasSamePieceInSameColumn = false;
+
+        // 基本棋子类型（与红黑无关）：0=兵/卒 1=帅/将 2=士 3=象 4=马 5=车 6=炮
+        int baseType = piece % 7;
+        boolean isPawn = (baseType == 0);
+        String prefix = "";
+
+        // 收集同列相同棋子（用于「前/后」或数字前缀）
+        boolean isSameColumn = false;
+        boolean isSameRow = false;
+        java.util.List<Pos> samePieces = new java.util.ArrayList<>();
         if (chessInfo != null && chessInfo.piece != null) {
             for (int y = 0; y < 10; y++) {
-                if (y != fromPos.y && chessInfo.piece[y] != null && chessInfo.piece[y][fromPos.x] == piece) {
-                    hasSamePieceInSameColumn = true;
-                    break;
+                for (int x = 0; x < 9; x++) {
+                    if (x == fromPos.x && chessInfo.piece[y][x] == piece) {
+                        samePieces.add(new Pos(x, y));
+                    }
                 }
             }
         }
-        
-        // 构建走法字符串
-        move.append(pieceName);
-        
-        // 如果是车、马、炮、兵/卒、象/相、士/仕，添加起始列号（或者前/后标识）
-        if (piece == 2 || piece == 3 || piece == 4 || piece == 5 || piece == 6 || piece == 7 || 
-            piece == 9 || piece == 10 || piece == 11 || piece == 12 || piece == 13 || piece == 14) {
-            if (hasSamePieceInSameColumn && chessInfo != null && chessInfo.piece != null) {
-                // 如果同一列有多个相同棋子，使用前/后标识
-                boolean isFront = false;
-                if (isRed) {
-                    // 红方：y越小越靠前
-                    isFront = true;
-                    for (int y = 0; y < fromPos.y; y++) {
-                        if (chessInfo.piece[y] != null && chessInfo.piece[y][fromPos.x] == piece) {
-                            isFront = false;
-                            break;
-                        }
-                    }
-                } else {
-                    // 黑方：y越大越靠前
-                    isFront = true;
-                    for (int y = fromPos.y + 1; y < 10; y++) {
-                        if (chessInfo.piece[y] != null && chessInfo.piece[y][fromPos.x] == piece) {
-                            isFront = false;
-                            break;
-                        }
+
+        if (samePieces.size() > 1) {
+            isSameColumn = true;
+            // 按 y 排序（红方 y 大为前，黑方 y 小为前）
+            for (int i = 0; i < samePieces.size() - 1; i++) {
+                for (int j = 0; j < samePieces.size() - i - 1; j++) {
+                    Pos p1 = samePieces.get(j);
+                    Pos p2 = samePieces.get(j + 1);
+                    if (p1 != null && p2 != null && p1.y > p2.y) {
+                        samePieces.set(j, p2);
+                        samePieces.set(j + 1, p1);
                     }
                 }
-                move.append(isFront ? "前" : "后");
-            } else {
-                // 否则使用列号
-                move.append(fromCol);
             }
-        }
-        
-        // 计算移动类型和目标位置
-        boolean isHorse = (piece == 4 || piece == 11); // 马
-        boolean isElephant = (piece == 3 || piece == 10); // 象/相
-        boolean isAdvisor = (piece == 2 || piece == 9); // 士/仕
-        boolean isPawn = (piece == 7 || piece == 14); // 卒/兵
-        
-        if (isHorse || isElephant || isAdvisor) {
-            // 马、象/相、士/仕的移动：斜向，用进/退+目标列号
-            if (isRed && toPos.y > fromPos.y || !isRed && toPos.y < fromPos.y) {
-                // 前进
-                move.append("进").append(toCol);
+            if (isPawn) {
+                int index = samePieces.indexOf(new Pos(fromPos.x, fromPos.y)) + 1;
+                prefix = getColChar(index);
             } else {
-                // 后退
-                move.append("退").append(toCol);
-            }
-        } else if (isPawn) {
-            // 卒/兵的移动
-            boolean isPawnCrossedRiver = false;
-            if (isRed) {
-                // 红方兵过河：y < 5（在黑方区域）
-                isPawnCrossedRiver = fromPos.y < 5;
-            } else {
-                // 黑方卒过河：y >= 5（在红方区域）
-                isPawnCrossedRiver = fromPos.y >= 5;
-            }
-            
-            if (fromPos.x == toPos.x) {
-                // 纵向移动
-                int distance = Math.abs(toPos.y - fromPos.y);
-                if (isRed && toPos.y > fromPos.y || !isRed && toPos.y < fromPos.y) {
-                    // 前进
-                    move.append("进").append(distance);
-                } else {
-                    // 后退（兵/卒不能后退）
-                    move.append("进").append(distance);
+                if (samePieces.size() == 2) {
+                    Pos frontPiece = isRed ? samePieces.get(1) : samePieces.get(0);
+                    prefix = (fromPos.y == frontPiece.y) ? "前" : "后";
+                } else if (samePieces.size() == 3) {
+                    Pos frontPiece = isRed ? samePieces.get(2) : samePieces.get(0);
+                    Pos middlePiece = samePieces.get(1);
+                    if (fromPos.y == frontPiece.y) prefix = "前";
+                    else if (fromPos.y == middlePiece.y) prefix = "中";
+                    else prefix = "后";
+                } else if (samePieces.size() > 3) {
+                    int index = samePieces.indexOf(new Pos(fromPos.x, fromPos.y)) + 1;
+                    if (isRed) prefix = (index == samePieces.size()) ? "前" : getColChar(index);
+                    else prefix = (index == 1) ? "前" : getColChar(index);
                 }
-            } else {
-                // 横向移动（只有过河后才能平）
-                move.append("平").append(toCol);
             }
         } else {
-            // 其他棋子（车、炮等）的移动
-            if (fromPos.x == toPos.x) {
-                // 纵向移动
-                int distance = Math.abs(toPos.y - fromPos.y);
-                if (isRed && toPos.y > fromPos.y || !isRed && toPos.y < fromPos.y) {
-                    // 前进
-                    move.append("进").append(distance);
-                } else {
-                    // 后退
-                    move.append("退").append(distance);
+            // 再检查同一行是否有多个相同棋子
+            samePieces.clear();
+            if (chessInfo != null && chessInfo.piece != null) {
+                for (int y = 0; y < 10; y++) {
+                    for (int x = 0; x < 9; x++) {
+                        if (y == fromPos.y && chessInfo.piece[y][x] == piece) {
+                            samePieces.add(new Pos(x, y));
+                        }
+                    }
                 }
-            } else {
-                // 横向移动
-                move.append("平").append(toCol);
+            }
+            if (samePieces.size() > 1) {
+                isSameRow = true;
+                for (int i = 0; i < samePieces.size() - 1; i++) {
+                    for (int j = 0; j < samePieces.size() - i - 1; j++) {
+                        Pos p1 = samePieces.get(j);
+                        Pos p2 = samePieces.get(j + 1);
+                        if (p1 != null && p2 != null && p1.x > p2.x) {
+                            samePieces.set(j, p2);
+                            samePieces.set(j + 1, p1);
+                        }
+                    }
+                }
+                if (samePieces.size() == 2) {
+                    Pos frontPiece = isRed ? samePieces.get(1) : samePieces.get(0);
+                    prefix = (fromPos.x == frontPiece.x) ? "前" : "后";
+                } else if (samePieces.size() == 3) {
+                    Pos frontPiece = isRed ? samePieces.get(2) : samePieces.get(0);
+                    Pos middlePiece = samePieces.get(1);
+                    if (fromPos.x == frontPiece.x) prefix = "前";
+                    else if (fromPos.x == middlePiece.x) prefix = "中";
+                    else prefix = "后";
+                }
             }
         }
-        
-        return move.toString();
+
+        // 起始列号（中文数字）
+        int startCol = isRed ? (9 - fromPos.x) : (fromPos.x + 1);
+        startCol = Math.max(1, Math.min(9, startCol));
+        String startColStr = getColChar(startCol);
+
+        // 移动类型
+        String moveType;
+        int colDiff = toPos.x - fromPos.x;
+        int rowDiff = toPos.y - fromPos.y;
+        if (colDiff == 0) {
+            // 纵向移动：车、炮、兵、帅/将、士、象、马 都用进/退
+            moveType = (isRed ? (rowDiff > 0) : (rowDiff < 0)) ? "进" : "退";
+        } else {
+            // 横向移动：车、炮、兵/卒、帅/将 用「平」；士、象、马用进/退
+            if (baseType == 5 || baseType == 6 || baseType == 0 || baseType == 1) {
+                moveType = "平";
+            } else {
+                moveType = (isRed ? (rowDiff > 0) : (rowDiff < 0)) ? "进" : "退";
+            }
+        }
+
+        // 目标位置
+        String targetPos;
+        if ("平".equals(moveType)) {
+            int targetCol = isRed ? (9 - toPos.x) : (toPos.x + 1);
+            targetCol = Math.max(1, Math.min(9, targetCol));
+            targetPos = getColChar(targetCol);
+        } else {
+            boolean isSpecialPiece = (baseType == 2 || baseType == 3 || baseType == 4); // 士、象、马
+            if (isSpecialPiece) {
+                // 斜向移动：用目标列号
+                int targetCol = isRed ? (9 - toPos.x) : (toPos.x + 1);
+                targetCol = Math.max(1, Math.min(9, targetCol));
+                targetPos = getColChar(targetCol);
+            } else {
+                // 车、炮、兵/卒、帅/将 纵向移动：用步数（格数）
+                int moveSteps = Math.max(1, Math.abs(toPos.y - fromPos.y));
+                targetPos = getColChar(moveSteps);
+            }
+        }
+
+        String pieceName = getPieceName(piece, isRed);
+
+        // 组装走法串（红方用中文数字，黑方再转阿拉伯数字，与棋谱规范一致）
+        String moveString;
+        if ((isSameColumn || isSameRow) && !prefix.isEmpty()) {
+            if (isPawn) {
+                moveString = prefix + pieceName + moveType + targetPos;
+            } else {
+                moveString = prefix + pieceName + startColStr + moveType + targetPos;
+            }
+        } else {
+            moveString = pieceName + startColStr + moveType + targetPos;
+        }
+
+        if (!isRed) {
+            // 黑方记谱：中文数字转为「全角」阿拉伯数字，与本仓库 PGN 约定一致
+            // （如 车６进１、卒５平４ 均用全角 １２３４５６７８９，而非半角 123456789）
+            moveString = toFullWidthDigits(moveString);
+        }
+
+        return moveString;
+    }
+
+    // 中文数字 → 全角阿拉伯数字（用于黑方记谱，符合本仓库 PGN 约定）
+    private String toFullWidthDigits(String s) {
+        if (s == null) return null;
+        return s.replace("零", "０").replace("一", "１").replace("二", "２")
+                .replace("三", "３").replace("四", "４").replace("五", "５")
+                .replace("六", "６").replace("七", "７").replace("八", "８")
+                .replace("九", "９");
+    }
+
+    // 列号/步数 → 中文数字（一~九）
+    private String getColChar(int col) {
+        String[] cols = {"", "一", "二", "三", "四", "五", "六", "七", "八", "九"};
+        if (col >= 1 && col <= 9) {
+            return cols[col];
+        }
+        return String.valueOf(col);
     }
     
     // 获取棋子名称

@@ -130,7 +130,11 @@ public class NotationActivity extends AppCompatActivity implements View.OnClickL
         List<ChessNotation.MoveRecord> moveRecords = notation.getMoveRecords();
         for (int i = 0; i < moveRecords.size(); i++) {
             ChessNotation.MoveRecord record = moveRecords.get(i);
-            moveRecordList.add((i + 1) + ". " + record.redMove + " " + record.blackMove);
+            if (notation.isRedFirst()) {
+                moveRecordList.add((i + 1) + ". " + record.redMove + " " + record.blackMove);
+            } else {
+                moveRecordList.add((i + 1) + ". " + record.blackMove + " " + record.redMove);
+            }
         }
         moveAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, moveRecordList);
         lvMoveRecords.setAdapter(moveAdapter);

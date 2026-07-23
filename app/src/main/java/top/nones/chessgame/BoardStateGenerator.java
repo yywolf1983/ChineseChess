@@ -72,31 +72,32 @@ public class BoardStateGenerator {
                         break;
                     }
                     
-                    // 处理红方走法
-                    if (!record.redMove.isEmpty() && moveCount < moveIndex) {
-                        Utils.LogUtils.d("BoardStateGenerator", "执行红方走法: " + record.redMove);
+                    // 按红先/黑先决定本回合先手方（先走方）：红先则先红后黑，黑先则先黑后红
+                    boolean redFirst = notation.isRedFirst();
+                    String firstMove = redFirst ? record.redMove : record.blackMove;
+                    String secondMove = redFirst ? record.blackMove : record.redMove;
+                    if (firstMove != null && !firstMove.isEmpty() && moveCount < moveIndex) {
+                        Utils.LogUtils.d("BoardStateGenerator", "执行先手走法: " + firstMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
-                        ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, record.redMove, true);
+                        ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, firstMove, redFirst);
                         if (tempInfo != null) {
                             currentInfo = tempInfo;
                             moveCount++;
                             // 记录每一步产生的新局面，供三次重复局面判定使用
                             currentInfo.recordCurrentPosition();
-                            Utils.LogUtils.d("BoardStateGenerator", "红方走法执行完成，当前步数: " + moveCount);
+                            Utils.LogUtils.d("BoardStateGenerator", "先手走法执行完成，当前步数: " + moveCount);
                         }
                     }
-                    
-                    // 处理黑方走法
-                    if (!record.blackMove.isEmpty() && moveCount < moveIndex) {
-                        Utils.LogUtils.d("BoardStateGenerator", "执行黑方走法: " + record.blackMove);
+                    if (secondMove != null && !secondMove.isEmpty() && moveCount < moveIndex) {
+                        Utils.LogUtils.d("BoardStateGenerator", "执行后手走法: " + secondMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
-                        ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, record.blackMove, false);
+                        ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, secondMove, !redFirst);
                         if (tempInfo != null) {
                             currentInfo = tempInfo;
                             moveCount++;
                             // 记录每一步产生的新局面，供三次重复局面判定使用
                             currentInfo.recordCurrentPosition();
-                            Utils.LogUtils.d("BoardStateGenerator", "黑方走法执行完成，当前步数: " + moveCount);
+                            Utils.LogUtils.d("BoardStateGenerator", "后手走法执行完成，当前步数: " + moveCount);
                         }
                     }
                 }

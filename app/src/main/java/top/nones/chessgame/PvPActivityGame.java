@@ -1216,12 +1216,25 @@ public class PvPActivityGame {
             moveString = pieceName + startColStr + moveType + targetPos;
         }
         
-        // 生成黑方走法的阿拉伯数字版本，以符合中国象棋记谱标准
+        // 生成黑方走法：转为「全角」阿拉伯数字，符合本仓库 PGN 约定（车６进１、卒５平４）
         if (!isRed) {
-            moveString = Info.ChessPiece.chineseToArabic(moveString);
+            moveString = toFullWidthDigits(moveString);
         }
-        
+
         return moveString;
+    }
+
+    // 中文数字 / 半角数字 → 全角阿拉伯数字（黑方记谱，符合本仓库 PGN 约定）
+    private String toFullWidthDigits(String s) {
+        if (s == null) return null;
+        return s.replace("零", "０").replace("一", "１").replace("二", "２")
+                .replace("三", "３").replace("四", "４").replace("五", "５")
+                .replace("六", "６").replace("七", "７").replace("八", "８")
+                .replace("九", "９")
+                .replace("0", "０").replace("1", "１").replace("2", "２")
+                .replace("3", "３").replace("4", "４").replace("5", "５")
+                .replace("6", "６").replace("7", "７").replace("8", "８")
+                .replace("9", "９");
     }
     
     private String getPieceName(int pieceType) {
