@@ -310,6 +310,10 @@ public class ChessNotation implements Serializable {
                 } else if (line.startsWith("[Red \"")) {
                     String value = extractPGNValue(line);
                     notation.setPlayerRed(value);
+                } else if (line.startsWith("[White \"")) {
+                    // 部分 PGN（国际象棋惯例）以 White/Black 记录双方，红方对应 White
+                    String value = extractPGNValue(line);
+                    notation.setPlayerRed(value);
                 } else if (line.startsWith("[BlackTeam \"")) {
                     String value = extractPGNValue(line);
                     notation.setBlackTeam(value);
@@ -353,6 +357,10 @@ public class ChessNotation implements Serializable {
                     if (tok.isEmpty()) {
                         continue;
                     }
+                    // 去除可能粘连在着法前的着法序号（如 "1.炮二平四"、"1..."），避免被当成着法
+                    if (tok.matches("^\\d+\\.+.*")) {
+                        tok = tok.replaceFirst("^\\d+\\.+", "");
+                    }
                     // 从 token 中分离走法文本与内嵌评分（形如 炮二平四{#0,0#}）
                     String moveText = tok;
                     Integer tokScore = null;
@@ -368,6 +376,8 @@ public class ChessNotation implements Serializable {
                             }
                         }
                     }
+                    // 去除着法文本后缀的注释符号（+ # ! ? 及其全角形式），避免干扰后续解析
+                    moveText = moveText.replaceAll("[+#!?！？]+$", "");
                     // 纯评分 token（无走法文本）：挂到上一步
                     if (moveText.isEmpty()) {
                         if (tokScore != null && lastMovePly >= 0) {
@@ -377,8 +387,11 @@ public class ChessNotation implements Serializable {
                         }
                         continue;
                     }
-                    // 跳过行号（含 . ）、结果、括号注释
-                    if (tok.matches("^\\d+\\.?$")) {
+                    // 跳过行号（含 . ）、纯数字、结果、括号注释
+                    if (tok.matches("^\\d+\\.+$")) {
+                        continue;
+                    }
+                    if (tok.matches("^\\d+$")) {
                         continue;
                     }
                     if (tok.equals("1-0") || tok.equals("0-1") || tok.equals("1/2-1/2") || tok.equals("*")) {
@@ -389,6 +402,11 @@ public class ChessNotation implements Serializable {
                     }
                     if (tok.startsWith("{")) {
                         // 其它非评分开注释块（如头部 {#1,1#} 已在上一分支处理），跳过
+                        continue;
+                    }
+                    // 仅识别合法的中国象棋着法，忽略杂注 / 软件水印等无关文本
+                    // （如「感谢使用鲨鱼象棋软件」会被误判为着法，必须过滤）
+                    if (!looksLikeMove(tok)) {
                         continue;
                     }
                     // 记录为一个走法
@@ -453,6 +471,36 @@ public class ChessNotation implements Serializable {
             return line.substring(start + 1, end);
         }
         return "";
+    }
+
+    /**
+     * 判断 token 是否像一个合法的中国象棋着法，用于过滤无关文本（软件水印、杂注等）。
+     * 合法着法以棋子名（车马炮兵卒帅将士相象）、特殊记谱前缀（前/中/后）或数字
+     * （多同列记谱，如「一兵进一」）开头。
+     */
+    private static boolean looksLikeMove(String s) {
+        if (s == null || s.isEmpty()) {
+            return false;
+        }
+        char c = s.charAt(0);
+        if (c == '前' || c == '后' || c == '中') {
+            return true;
+        }
+        if (Character.isDigit(c) || Info.ChessPiece.fromChineseNumber(c) >= 0) {
+            return true;
+        }
+        return isPieceNameChar(c);
+    }
+
+    /** 是否为棋子名首字符 */
+    private static boolean isPieceNameChar(char c) {
+        switch (c) {
+            case '车': case '马': case '炮': case '兵': case '卒':
+            case '帅': case '将': case '仕': case '士': case '相': case '象':
+                return true;
+            default:
+                return false;
+        }
     }
     
     private static String removeInlineComments(String line) {

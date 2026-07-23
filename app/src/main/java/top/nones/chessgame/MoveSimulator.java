@@ -522,8 +522,9 @@ public class MoveSimulator {
                                                 // 提取目标列号
                                                 String generatedTargetCol = normalizedGeneratedMoveForCompare.substring(generatedPingIndex + 1);
                                                 
-                                                // 移除前缀数字得到棋子名称
-                                                String generatedPieceName = generatedWithPrefix.replace("1", "").replace("2", "").replace("3", "").replace("4", "").replace("5", "").replace("6", "").replace("7", "").replace("8", "").replace("9", "");
+                                                // 移除前缀（前/后/中 及数字序号）得到棋子名称，
+                                                // 否则"后车平六"与基准"车平六"因前缀不一致而识别失败
+                                                String generatedPieceName = stripMovePrefix(generatedWithPrefix);
                                                 
                                                 // 提取基础走法中的棋子名称和目标列号
                                                 int basePingIndex = baseMoveStringForCompare.indexOf("平");
@@ -548,7 +549,7 @@ public class MoveSimulator {
                                                     }
                                                 }
                                             }
-                                        } else if (normalizedGeneratedMove != null && normalizedGeneratedMove.equals(baseMoveString)) {
+                                        } else if (normalizedGeneratedMove != null && stripMovePrefix(normalizedGeneratedMove).equals(stripMovePrefix(baseMoveString))) {
                                             // 对于非横向移动，直接比较完整的走法字符串
                                             // 找到匹配的走法，执行移动
                                             newInfo.piece[targetPos.y][targetPos.x] = piece;
@@ -1124,6 +1125,25 @@ public class MoveSimulator {
     // 获取棋子名称
     private String getPieceName(int pieceType) {
         return Info.ChessPiece.getName(pieceType);
+    }
+
+    /**
+     * 去除走法字符串开头的特殊前缀（前/后/中 或 数字序号，如「一」「1」），
+     * 用于与无前缀的基准走法（baseMoveString）做一致性比较。
+     * 仅当首字符确为前缀时才剥离，棋子名首字符（车马炮兵卒帅将士相象）不会被误剥。
+     */
+    private static String stripMovePrefix(String s) {
+        if (s == null || s.isEmpty()) {
+            return s;
+        }
+        char c = s.charAt(0);
+        if (c == '前' || c == '后' || c == '中') {
+            return s.substring(1);
+        }
+        if (Character.isDigit(c) || Info.ChessPiece.fromChineseNumber(c) >= 0) {
+            return s.substring(1);
+        }
+        return s;
     }
     
     // 将阿拉伯数字转换为中文数字
