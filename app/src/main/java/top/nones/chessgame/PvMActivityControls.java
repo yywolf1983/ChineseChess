@@ -268,7 +268,10 @@ public class PvMActivityControls {
     public void handleModeButton() {
         try {
             LogUtils.d("PvMActivityControls", "handleModeButton called");
-            // 弹出统一的模式选择底部弹窗（图标卡片）
+            // 从「切换模式」按钮位置下拉弹出模式选择
+            View anchor = activity.findViewById(R.id.btn_mode_switch);
+            if (anchor == null) anchor = activity.findViewById(R.id.btn_mode);
+            // 弹出统一的模式选择弹窗（图标卡片）
             ModePickerDialog dialog = new ModePickerDialog(activity, activity.gameMode, mode -> {
                 try {
                     // 先停止当前AI分析，避免isAIAnalyzing标志残留导致棋子无法选中
@@ -299,7 +302,7 @@ public class PvMActivityControls {
                     LogUtils.e("PvMActivityControls", "Error in mode button click", e);
                 }
             });
-            dialog.show();
+            dialog.show(anchor);
         } catch (Exception e) {
             LogUtils.e("PvMActivityControls", "Error in handleModeButton", e);
         }

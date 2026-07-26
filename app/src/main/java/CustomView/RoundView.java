@@ -90,6 +90,10 @@ public class RoundView extends View {
     private Paint redBarPaint; // 红方进度条画笔（缓存，避免onDraw中频繁创建）
     private Paint blackBarPaint; // 黑方进度条画笔（缓存，避免onDraw中频繁创建）
     private Paint turnPaint; // 行棋方指示图标画笔（红/黑圆点，缓存）
+    private Paint glassBasePaint; // 毛玻璃底板（磨砂玻璃，半透明透出背景）
+    private Paint glassHiPaint; // 玻璃顶部高光（运行时设置渐变 shader）
+    private Paint glassShadowPaint; // 玻璃底部阴影（运行时设置渐变 shader）
+    private Paint glassBorderPaint; // 毛玻璃柔光描边（冷色边缘光晕）
     private HideLoadingCompleteRunnable hideLoadingCompleteRunnable; // 隐藏加载完成回调（缓存引用，便于移除）
     private int viewWidth = 0;
     private int viewHeight = 0;
@@ -413,11 +417,34 @@ public class RoundView extends View {
 
         redBarPaint = new Paint();
         redBarPaint.setStyle(Paint.Style.FILL);
-        redBarPaint.setColor(Color.rgb(180, 30, 30));
+        redBarPaint.setColor(Color.rgb(150, 22, 20)); // 深红
 
+        redBarPaint.setAlpha(255); // 加深、更实（毛玻璃高光/阴影/柔光边仍保留）
         blackBarPaint = new Paint();
         blackBarPaint.setStyle(Paint.Style.FILL);
-        blackBarPaint.setColor(Color.rgb(40, 40, 40));
+        blackBarPaint.setColor(Color.rgb(16, 16, 16)); // 近黑，加深
+        blackBarPaint.setAlpha(255); // 加深、更实（毛玻璃高光/阴影/柔光边仍保留）
+        blackBarPaint.setAntiAlias(true);
+
+        // 评分条毛玻璃效果相关画笔
+        glassBasePaint = new Paint();
+        glassBasePaint.setStyle(Paint.Style.FILL);
+        glassBasePaint.setAntiAlias(true);
+        glassBasePaint.setColor(Color.argb(38, 232, 240, 248)); // 冷白磨砂玻璃底
+
+        glassHiPaint = new Paint();
+        glassHiPaint.setStyle(Paint.Style.FILL);
+        glassHiPaint.setAntiAlias(true);
+
+        glassShadowPaint = new Paint();
+        glassShadowPaint.setStyle(Paint.Style.FILL);
+        glassShadowPaint.setAntiAlias(true);
+
+        glassBorderPaint = new Paint();
+        glassBorderPaint.setStyle(Paint.Style.STROKE);
+        glassBorderPaint.setAntiAlias(true);
+        glassBorderPaint.setStrokeWidth(convertDpToPixel(1.6f, getContext()));
+        glassBorderPaint.setColor(Color.argb(120, 220, 240, 255)); // 玻璃冷色边缘光晕
 
         turnPaint = new Paint();
         turnPaint.setAntiAlias(true);
@@ -427,7 +454,38 @@ public class RoundView extends View {
         turnPaint.setStrokeJoin(Paint.Join.ROUND);
         turnPaint.setStrokeCap(Paint.Cap.ROUND);
     }
-    
+
+    /** 绘制行棋方指示圈：红/黑描边圆 + 圈内对应模式的玩家/电脑图标；
+     *  圆圈更小并紧贴图标，当前行棋方那一侧的外圈加粗（active=true） */
+    private void drawTurnSideCircle(Canvas canvas, float cx, float cy, boolean active,
+                                    float iconSize, float r, int ringColor, int side) {
+        if (turnPaint == null) return;
+        // 外圈：行棋方那侧加粗，非行棋方细圈
+        float strokeW = active ? convertDpToPixel(3.5f, getContext())
+                               : convertDpToPixel(1.6f, getContext());
+        turnPaint.setStyle(Paint.Style.STROKE);
+        turnPaint.setStrokeWidth(strokeW);
+        turnPaint.setColor(ringColor);
+        canvas.drawCircle(cx, cy, r, turnPaint);
+        // 圈内：固定尺寸的模式图标，紧贴外圈
+        float density = getResources().getDisplayMetrics().density;
+        ModeIconDrawable d = new ModeIconDrawable(getContext(), gameMode, density, side, Color.WHITE);
+        int s = (int) iconSize;
+        d.setBounds((int) (cx - s / 2f), (int) (cy - s / 2f),
+                (int) (cx + s / 2f), (int) (cy + s / 2f));
+        d.draw(canvas);
+    }
+
+    /** 仅绘制行棋方模式图标（不画外圈），用于非行棋方弱化指示 */
+    private void drawTurnSideIcon(Canvas canvas, float cx, float cy, float iconSize, int side, int color) {
+        float density = getResources().getDisplayMetrics().density;
+        ModeIconDrawable d = new ModeIconDrawable(getContext(), gameMode, density, side, color);
+        int s = (int) iconSize;
+        d.setBounds((int) (cx - s / 2f), (int) (cy - s / 2f),
+                (int) (cx + s / 2f), (int) (cy + s / 2f));
+        d.draw(canvas);
+    }
+
     // 将dp转换为像素
     private float convertDpToPixel(float dp, Context context) {
         return dp * context.getResources().getDisplayMetrics().density;
@@ -515,13 +573,13 @@ public class RoundView extends View {
         borderPaint.setColor(turnColor);
         
         // 计算垂直间距与行坐标
-        float paddingTop = convertDpToPixel(5, getContext());
+        float paddingTop = convertDpToPixel(6, getContext());
         float lineHeight = convertDpToPixel(20, getContext());
 
-        // ========== 行坐标（紧凑三行：形势/回合/深度 → 时间+评分条 → AI提示） ==========
-        float formY = paddingTop + convertDpToPixel(14, getContext());   // 第1行：回合 / 形势 / 深度
-        float row2Y = paddingTop + convertDpToPixel(39, getContext());   // 第2行：时间 + 阵营图标 + 评分条
-        float row3Y = paddingTop + convertDpToPixel(59, getContext());   // 第3行：AI思考 / 支招 / 步数
+        // ========== 行坐标（紧凑三行，随高度增加均匀拉开上下间距，排版更舒展） ==========
+        float formY = paddingTop + convertDpToPixel(15, getContext());   // 第1行：回合 / 形势 / 深度
+        float row2Y = paddingTop + convertDpToPixel(43, getContext());   // 第2行：时间 + 阵营图标 + 评分条
+        float row3Y = paddingTop + convertDpToPixel(69, getContext());   // 第3行：AI思考 / 支招 / 步数
 
 
         // 评分计算
@@ -650,18 +708,35 @@ public class RoundView extends View {
         infoTextPaint.setColor(formColor);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(formStr, width / 2, formY + convertDpToPixel(3, getContext()), infoTextPaint);
-        // 行棋方指示图标：位于居中“形势/分数”文字左侧，红方回合用红色、黑方回合用黑色（深色）
+        // 行棋方指示：居中"形势/分数"文字左右各一个红/黑圈，圈更小并紧贴圈内模式图标；
+        // 当前行棋方那一侧的外圈加粗（突出轮到谁走）。原来的单个红黑点已移除。
         float formTextW = infoTextPaint.measureText(formStr);
-        float turnR = convertDpToPixel(9, getContext());
-        float formTextLeft = width / 2 - formTextW / 2;
-        float turnCx = formTextLeft - convertDpToPixel(11, getContext()) - turnR;
-        float turnCy = formY + convertDpToPixel(3, getContext()) - convertDpToPixel(6, getContext());
-        turnPaint.setColor(chessInfo.IsRedGo ? Color.rgb(205, 45, 45) : Color.rgb(35, 35, 35));
-        turnPaint.setStyle(Paint.Style.FILL);
-        canvas.drawCircle(turnCx, turnCy, turnR, turnPaint);
-        turnPaint.setStyle(Paint.Style.STROKE);
-        turnPaint.setColor(Color.argb(120, 255, 255, 255));
-        canvas.drawCircle(turnCx, turnCy, turnR, turnPaint);
+        float formCx = width / 2;
+        float formTextLeft = formCx - formTextW / 2;
+        float formTextRight = formCx + formTextW / 2;
+        float cyMark = formY + convertDpToPixel(3, getContext()) - convertDpToPixel(4.5f, getContext()); // 头标圆心对齐分数文字的视觉中心
+        boolean redGo = chessInfo.IsRedGo;
+        float iconSize = convertDpToPixel(16, getContext());  // 圈内玩家图标直径（固定）
+        float aiIconSize = convertDpToPixel(19, getContext()); // 机器人图标略放大，抵消其图形留白，与玩家图标视觉一致
+        float r = convertDpToPixel(10, getContext());          // 圈半径：比图标略大，紧贴图标
+        float turnGap = convertDpToPixel(12, getContext());        // 文字与圆圈之间的留白
+        // 行棋方：加圈 + 模式图标；非行棋方：不加圈，仅显示（弱化）模式图标
+        float redCx = formTextLeft - turnGap - r;
+        float blackCx = formTextRight + turnGap + r;
+        // 判断两侧是否为电脑（机器人）图标，是则放大绘制
+        boolean leftIsAI = (gameMode == 2 || gameMode == 3);
+        boolean rightIsAI = (gameMode == 1 || gameMode == 3);
+        float redSize = leftIsAI ? aiIconSize : iconSize;
+        float blackSize = rightIsAI ? aiIconSize : iconSize;
+        if (redGo) {
+            drawTurnSideCircle(canvas, redCx, cyMark, true, redSize, r,
+                    Color.rgb(214, 60, 56), ModeIconDrawable.SIDE_LEFT);
+            drawTurnSideIcon(canvas, blackCx, cyMark, blackSize, ModeIconDrawable.SIDE_RIGHT, Color.rgb(120, 120, 120));
+        } else {
+            drawTurnSideCircle(canvas, blackCx, cyMark, true, blackSize, r,
+                    Color.rgb(35, 35, 35), ModeIconDrawable.SIDE_RIGHT);
+            drawTurnSideIcon(canvas, redCx, cyMark, redSize, ModeIconDrawable.SIDE_LEFT, Color.rgb(120, 120, 120));
+        }
         // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段），恢复原始字号
         infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         infoTextPaint.setColor(neutralColor);
@@ -829,7 +904,7 @@ public class RoundView extends View {
             height = MeasureSpec.getSize(heightMeasureSpec);
         } else {
             // 使用dp单位计算高度，确保在不同屏幕密度下显示正确
-            height = (int) convertDpToPixel(74, getContext()); // 紧凑三行：形势/时间评分条/AI提示
+            height = (int) convertDpToPixel(84, getContext()); // 紧凑三行：形势/时间评分条/AI提示（较原 74dp 略增高）
         }
         
         viewWidth = width;
@@ -923,7 +998,8 @@ public class RoundView extends View {
             canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, winBgPaint);
             
             canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, borderPaint);
-            
+            canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, glassBorderPaint); // 毛玻璃柔光描边
+
             infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
             infoTextPaint.setTextAlign(Paint.Align.CENTER);
             infoTextPaint.setFakeBoldText(true);
@@ -938,20 +1014,24 @@ public class RoundView extends View {
         
         scoreBarPath.reset();
         scoreBarPath.addRoundRect(barRect, cornerRadius, cornerRadius, android.graphics.Path.Direction.CW);
+
+        // 1) 磨砂玻璃底板（半透明，透出背景形成磨砂质感）
+        canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, glassBasePaint);
+
         canvas.save();
         canvas.clipPath(scoreBarPath);
-        
+
         float maxScore = 1000f;
         float scoreRatio = Math.abs(score) / maxScore;
         if (scoreRatio > 1) scoreRatio = 1;
-        
+
         float centerX = barX + barWidth / 2;
         float totalRange = barWidth / 2;
-        
-        // redBarPaint 和 blackBarPaint 已在 initPaints() 中初始化缓存
+
+        // redBarPaint / blackBarPaint 已在 initPaints() 中初始化缓存（半透明磨砂）
 
         float redStartX, redEndX, blackStartX, blackEndX;
-        
+
         if (score > 0) {
             redStartX = barX;
             redEndX = centerX + totalRange * scoreRatio;
@@ -968,15 +1048,33 @@ public class RoundView extends View {
             blackStartX = centerX;
             blackEndX = barX + barWidth;
         }
-        
+
         android.graphics.RectF redRect = new android.graphics.RectF(redStartX, barY, redEndX, barY + barHeight);
         canvas.drawRect(redRect, redBarPaint);
-        
+
         android.graphics.RectF blackRect = new android.graphics.RectF(blackStartX, barY, blackEndX, barY + barHeight);
         canvas.drawRect(blackRect, blackBarPaint);
-        
+
+        // 2) 顶部高光（玻璃反光：顶亮 → 中透明）
+        glassHiPaint.setShader(new android.graphics.LinearGradient(
+                0, barY, 0, barY + barHeight,
+                Color.argb(130, 255, 255, 255), Color.argb(0, 255, 255, 255),
+                android.graphics.Shader.TileMode.CLAMP));
+        canvas.drawRect(barRect.left, barY, barRect.right, barY + barHeight, glassHiPaint);
+        glassHiPaint.setShader(null);
+
+        // 3) 底部阴影（玻璃厚度 / 立体感）
+        glassShadowPaint.setShader(new android.graphics.LinearGradient(
+                0, barY + barHeight * 0.5f, 0, barY + barHeight,
+                Color.argb(0, 0, 0, 0), Color.argb(70, 0, 0, 0),
+                android.graphics.Shader.TileMode.CLAMP));
+        canvas.drawRect(barRect.left, barY + barHeight * 0.5f, barRect.right, barY + barHeight, glassShadowPaint);
+        glassShadowPaint.setShader(null);
+
         canvas.restore();
-        
+
+        // 4) 毛玻璃柔光描边（冷色边缘光晕）+ 原行棋方外框
+        canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, glassBorderPaint);
         canvas.drawRoundRect(barRect, cornerRadius, cornerRadius, borderPaint);
         
         infoTextPaint.clearShadowLayer();

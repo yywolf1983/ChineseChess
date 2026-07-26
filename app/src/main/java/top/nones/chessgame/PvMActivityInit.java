@@ -16,6 +16,7 @@ import Info.InfoSet;
 import Info.SaveInfo;
 import Info.Setting;
 import CustomView.ChessView;
+import CustomView.ModeIconDrawable;
 import CustomView.RoundView;
 import CustomView.SetupModeView;
 import Utils.LogUtils;
@@ -191,6 +192,53 @@ public class PvMActivityInit {
                     }
                 }
             }
+
+            // 顶部状态栏：左上角「菜单」图标按钮（下拉菜单：新局/保存/加载/设置/模式切换），
+            // 右上角「切换模式」图标按钮（仅图标）。两者尽量贴近屏幕左右边缘（round 信息条区域）。
+            try {
+                float density = activity.getResources().getDisplayMetrics().density;
+                int btnSize = (int) (42 * density); // 按钮尺寸略放大，使图标更大
+                int edge = (int) (4 * density); // 贴近屏幕边缘的外边距
+                // 时间行基线位于 round 内 paddingTop(5dp)+39dp=44dp 处；按钮恢复至距屏幕顶 44dp
+                int top = (int) (44 * density);
+
+                // 左上角：菜单按钮（背景透明、方形，置于 round 信息条顶部左缘）
+                android.widget.ImageButton btnMenu = new android.widget.ImageButton(activity);
+                btnMenu.setId(R.id.btn_menu);
+                btnMenu.setImageResource(R.drawable.ic_menu);
+                btnMenu.setBackground(null); // 完全透明
+                btnMenu.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
+                btnMenu.setContentDescription("菜单");
+                android.widget.RelativeLayout.LayoutParams mp = new android.widget.RelativeLayout.LayoutParams(btnSize, btnSize);
+                mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+                mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
+                mp.setMargins(edge, top, 0, 0);
+                btnMenu.setLayoutParams(mp);
+                activity.relativeLayout.addView(btnMenu);
+
+                // 右上角：切换模式按钮（仅图标，背景透明、方形，置于 round 信息条顶部右缘）
+                android.widget.ImageButton btnModeSwitch = new android.widget.ImageButton(activity);
+                btnModeSwitch.setId(R.id.btn_mode_switch);
+                btnModeSwitch.setBackground(null); // 完全透明
+                btnModeSwitch.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
+                btnModeSwitch.setContentDescription("切换模式");
+                btnModeSwitch.setPadding(0, 0, 0, 0);
+                btnModeSwitch.setImageDrawable(new ModeIconDrawable(activity, activity.gameMode, density,
+                        ModeIconDrawable.SIDE_BOTH, 0xFFFFFFFF));
+                android.widget.RelativeLayout.LayoutParams msp = new android.widget.RelativeLayout.LayoutParams(btnSize, btnSize);
+                msp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+                msp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT);
+                msp.setMargins(0, top, edge, 0);
+                btnModeSwitch.setLayoutParams(msp);
+                activity.relativeLayout.addView(btnModeSwitch);
+                // 点击复用隐藏的 R.id.btn_mode（已接入模式切换逻辑）
+                btnModeSwitch.setOnClickListener(v -> {
+                    android.view.View hidden = activity.findViewById(R.id.btn_mode);
+                    if (hidden != null) hidden.performClick();
+                });
+            } catch (Exception e) {
+                LogUtils.e("PvMActivityInit", "添加菜单/模式按钮失败: " + e.getMessage());
+            }
             Log.d("PvMActivity", "回合显示视图初始化完成");
         } catch (Exception e) {
             Log.e("PvMActivityInit", "Error initializing round view: " + e.getMessage());
@@ -275,9 +323,54 @@ public class PvMActivityInit {
                             paramsV.addRule(android.widget.RelativeLayout.BELOW, R.id.chessView);
                             paramsV.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
                             paramsV.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
-                            paramsV.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                            paramsV.setMargins(0, 0, 0, 0); // 控制栏紧贴棋盘，整体下沉至界面底部
+                            // 控制栏延伸到底部，让评分曲线占满剩余区域、贴近屏幕底线
+                            paramsV.height = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
+                            paramsV.setMargins(0, 0, 0, 0);
                             buttonGroup.setLayoutParams(paramsV);
+
+                            // 让控制面板与按钮组一起延伸到屏幕底部，评分曲线框用 weight 占满剩余垂直空间
+                            try {
+                                android.widget.LinearLayout controlPanel = buttonGroup.findViewById(R.id.control_panel_ui);
+                                if (controlPanel != null) {
+                                    android.widget.LinearLayout.LayoutParams cpParams = new android.widget.LinearLayout.LayoutParams(
+                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT);
+                                    controlPanel.setLayoutParams(cpParams);
+                                }
+                                android.widget.FrameLayout curveFrame = buttonGroup.findViewById(R.id.score_curve_frame);
+                                if (curveFrame != null) {
+                                    android.widget.LinearLayout.LayoutParams cfParams = new android.widget.LinearLayout.LayoutParams(
+                                            android.widget.LinearLayout.LayoutParams.MATCH_PARENT, 0);
+                                    cfParams.weight = 1f;
+                                    curveFrame.setLayoutParams(cfParams);
+                                }
+                                if (activity.scoreCurveView != null) {
+                                    // 曲线高度 = 外框（score_curve_frame）高度的 70%，并垂直居中；
+                                    // 外框由 weight=1 动态撑出，故在其布局完成后按实测高度计算（不写死）。
+                                    final android.widget.FrameLayout fFrame = curveFrame;
+                                    final android.view.View fCurve = activity.scoreCurveView;
+                                    fFrame.getViewTreeObserver().addOnGlobalLayoutListener(
+                                        new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                                            private int lastH = -1;
+                                            @Override
+                                            public void onGlobalLayout() {
+                                                int frameH = fFrame.getHeight();
+                                                if (frameH <= 0) return;
+                                                int curveH = (int) (frameH * 0.7f);
+                                                if (curveH == lastH) return; // 防止重复触发布局循环
+                                                lastH = curveH;
+                                                android.widget.FrameLayout.LayoutParams scParams =
+                                                        new android.widget.FrameLayout.LayoutParams(
+                                                                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                                                                curveH);
+                                                scParams.gravity = android.view.Gravity.CENTER;
+                                                fCurve.setLayoutParams(scParams);
+                                            }
+                                        });
+                                }
+                            } catch (Exception e) {
+                                LogUtils.e("PvMActivityInit", "调整评分曲线区域失败: " + e.getMessage());
+                            }
 
                             // 处理嵌套的LinearLayout布局
                             if (activity.controlsManager != null) {
@@ -294,6 +387,27 @@ public class PvMActivityInit {
                             }
                             // 初始化「模式」按钮图标（以图标形式显示当前模式）
                             activity.updateModeButton();
+
+                            // 顶部「菜单」按钮：下拉菜单包含 新局/保存/加载/设置/模式切换
+                            android.view.View btnMenu = activity.findViewById(R.id.btn_menu);
+                            if (btnMenu != null) {
+                                btnMenu.setOnClickListener(v -> {
+                                    android.widget.PopupMenu popup = new android.widget.PopupMenu(activity, v);
+                                    android.view.Menu menu = popup.getMenu();
+                                    menu.add(0, R.id.btn_retry, 0, "新局");
+                                    menu.add(0, R.id.btn_save, 1, "保存");
+                                    menu.add(0, R.id.btn_load, 2, "加载");
+                                    menu.add(0, R.id.btn_settings, 3, "设置");
+                                    popup.setOnMenuItemClickListener(item -> {
+                                        android.view.View target = buttonGroup.findViewById(item.getItemId());
+                                        if (target != null) {
+                                            target.performClick();
+                                        }
+                                        return true;
+                                    });
+                                    popup.show();
+                                });
+                            }
                         }
                     }
                 }
@@ -315,6 +429,16 @@ public class PvMActivityInit {
             Log.d("PvMActivity", "初始界面绘制完成");
         } catch (Exception e) {
             Log.e("PvMActivityInit", "Error requesting draw: " + e.getMessage());
+        }
+
+        // 确保菜单 / 切换模式按钮始终绘制在棋盘与按钮组之上（否则会被后加入的 chessView 覆盖）
+        try {
+            android.view.View bm = activity.findViewById(R.id.btn_menu);
+            if (bm != null) bm.bringToFront();
+            android.view.View bms = activity.findViewById(R.id.btn_mode_switch);
+            if (bms != null) bms.bringToFront();
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityInit", "bringToFront 顶部按钮失败: " + e.getMessage());
         }
     }
     

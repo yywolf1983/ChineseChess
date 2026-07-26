@@ -358,23 +358,38 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             // 斑马纹与高亮都设在内容行 colRow（rowView）上；其 minWidth 已撑满整行宽度
             android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
                     ? ((android.view.ViewGroup) v).getChildAt(0) : v;
-            if (tag != null && tag == lineIndex) {
-                rowView.setBackgroundColor(0xFF9C774C); // 高亮：亮棕金（与暖木斑马纹、面板描边同色系，更醒目）
-            } else {
-                rowView.setBackgroundColor((i % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
-            }
+            float density = getResources().getDisplayMetrics().density;
+            rowView.setBackground(makeEngineRowBg(density, i % 2 == 0, tag != null && tag == lineIndex)); // 命中：立体金棕；否则立体木纹斑马
         }
     }
 
-    /** 清除候选变线高亮，恢复斑马纹 */
+    /** 清除候选变线高亮，恢复斑马纹（立体木纹背景） */
     private void clearSimLineHighlight() {
         if (engineResultContainer == null) return;
+        float density = getResources().getDisplayMetrics().density;
         for (int i = 0; i < engineResultContainer.getChildCount(); i++) {
             android.view.View v = engineResultContainer.getChildAt(i);
             android.view.View rowView = (v instanceof android.view.ViewGroup && ((android.view.ViewGroup) v).getChildCount() > 0)
                     ? ((android.view.ViewGroup) v).getChildAt(0) : v;
-            rowView.setBackgroundColor((i % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
+            rowView.setBackground(makeEngineRowBg(density, i % 2 == 0, false));
         }
+    }
+
+    /** 生成引擎结果行（支招栏）背景：圆角 + 上亮下暗渐变（立体感）+ 亮色描边（明显分隔线条） */
+    android.graphics.drawable.GradientDrawable makeEngineRowBg(float density, boolean even, boolean highlight) {
+        int top, bottom, stroke;
+        if (highlight) {
+            top = 0xFFB58A5C; bottom = 0xFF7A5A38; stroke = 0xFFFFD28A;
+        } else if (even) {
+            top = 0xFF4A3A28; bottom = 0xFF2A1F14; stroke = 0xFF7A6040;
+        } else {
+            top = 0xFF64503A; bottom = 0xFF3A2C1D; stroke = 0xFF8A7048;
+        }
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{top, bottom});
+        d.setCornerRadius(6f * density);
+        d.setStroke((int) (1.5f * density), stroke);
+        return d;
     }
     // 进入摆棋前保存各按钮原始可用状态；退出时只恢复原本可用的，
     // 原本就因「非加载棋局/无历史」而置灰的（如上一步/下一步）保持禁用
@@ -448,6 +463,13 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             ModeIconDrawable rightD = new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_RIGHT, iconColor);
             if (iconLeft != null) iconLeft.setImageDrawable(leftD);
             if (iconRight != null) iconRight.setImageDrawable(rightD);
+
+            // 同步刷新右上角「切换模式」图标按钮（仅图标，显示双方对照）
+            android.view.View ms = findViewById(R.id.btn_mode_switch);
+            if (ms instanceof android.widget.ImageView) {
+                ((android.widget.ImageView) ms).setImageDrawable(
+                        new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_BOTH, 0xFFFFFFFF));
+            }
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "updateModeButton failed", e);
         }

@@ -51,6 +51,9 @@ public class PvPActivityInit {
         initChessView();
         initButtonGroup();
         addFlipButton();
+        // 菜单按钮在 initRoundView 中加入，会被后加入的 chessView 覆盖，这里提到顶层
+        android.view.View bm = activity.findViewById(R.id.btn_menu);
+        if (bm != null) bm.bringToFront();
     }
 
     private void initChessInfo() {
@@ -109,6 +112,27 @@ public class PvPActivityInit {
         paramsRound.height = RelativeLayout.LayoutParams.WRAP_CONTENT; // 使用内部实测高度，避免硬凑150dp留白
         roundView.setLayoutParams(paramsRound);
         roundView.setId(R.id.roundView);
+
+        // 顶部 round 区域放置一个小的「菜单」图标按钮（下拉菜单：新局/保存/加载/设置/模式切换）
+        try {
+            android.widget.ImageButton btnMenu = new android.widget.ImageButton(activity);
+            btnMenu.setId(R.id.btn_menu);
+            btnMenu.setImageResource(R.drawable.ic_menu);
+            btnMenu.setBackground(null); // 完全透明
+            btnMenu.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
+            btnMenu.setContentDescription("菜单");
+            // 左上角、贴近屏幕左缘；停留在 round 信息条顶部区域内（不进入棋盘）
+            float density = activity.getResources().getDisplayMetrics().density;
+            int menuSize = (int) (42 * density); // 按钮尺寸略放大，使图标更大
+            android.widget.RelativeLayout.LayoutParams mp = new android.widget.RelativeLayout.LayoutParams(menuSize, menuSize);
+            mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
+            mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
+            mp.setMargins((int) (4 * density), (int) (2 * density), 0, 0); // 再上移一点
+            btnMenu.setLayoutParams(mp);
+            relativeLayout.addView(btnMenu);
+            } catch (Exception e) {
+                LogUtils.e("PvPActivityInit", "添加菜单按钮失败: " + e.getMessage());
+            }
     }
 
     private void initChessView() {
@@ -139,6 +163,27 @@ public class PvPActivityInit {
         
         // 设置按钮监听器
         setupButtonListeners(buttonGroup);
+
+        // 顶部「菜单」按钮：下拉菜单包含 新局/保存/加载/设置/模式切换
+        android.view.View btnMenu = activity.findViewById(R.id.btn_menu);
+        if (btnMenu != null) {
+            btnMenu.setOnClickListener(v -> {
+                android.widget.PopupMenu popup = new android.widget.PopupMenu(activity, v);
+                android.view.Menu menu = popup.getMenu();
+                menu.add(0, R.id.btn_retry, 0, "新局");
+                menu.add(0, R.id.btn_save, 1, "保存");
+                menu.add(0, R.id.btn_load, 2, "加载");
+                menu.add(0, R.id.btn_settings, 3, "设置");
+                popup.setOnMenuItemClickListener(item -> {
+                    android.view.View target = buttonGroup.findViewById(item.getItemId());
+                    if (target != null) {
+                        target.performClick();
+                    }
+                    return true;
+                });
+                popup.show();
+            });
+        }
     }
     
     // 递归设置按钮监听器，处理嵌套布局

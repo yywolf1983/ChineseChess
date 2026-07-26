@@ -1301,7 +1301,6 @@ public class PvMActivityAI {
             final int RED_MOVE_COLOR = 0xFFFF8A80;
             final int BLACK_MOVE_COLOR = 0xFF80D8FF;
             final int PLAYED_COLOR = 0xFF9AA7B4;
-            final int HIGHLIGHT_BG = 0xFF9C774C;
 
             int added = 0;
             for (int li = 0; li < lines.size(); li++) {
@@ -1378,16 +1377,16 @@ public class PvMActivityAI {
                 android.widget.LinearLayout.LayoutParams outerLp = new android.widget.LinearLayout.LayoutParams(
                         android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                         android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-                outerLp.bottomMargin = (int) (4 * density); // 候选变线（其他行）之间稍留距离
+                outerLp.topMargin = 0;
+                outerLp.bottomMargin = 0;
+                outerLp.leftMargin = 0;
+                outerLp.rightMargin = 0;
                 lineOuter.setLayoutParams(outerLp);
                 lineOuter.setOrientation(android.widget.LinearLayout.HORIZONTAL);
                 lineOuter.setGravity(android.view.Gravity.CENTER_VERTICAL);
                 lineOuter.setPadding(0, 0, 0, 0);
-                if (followMode) {
-                    lineOuter.setBackgroundColor(HIGHLIGHT_BG); // 命中行整行高亮
-                } else {
-                    lineOuter.setBackgroundColor((added % 2 == 0) ? 0xFF3A2C1D : 0xFF54402B);
-                }
+                // 支招栏每行背景：圆角 + 上亮下暗渐变（立体感）+ 亮色描边（明显分隔线条，区分不同支招）
+                lineOuter.setBackground(this.activity.makeEngineRowBg(density, added % 2 == 0, followMode));
                 rowViews.add(lineOuter);
 
                 // 评分列（固定宽，独占左列）
