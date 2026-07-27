@@ -501,6 +501,21 @@ public class PvMActivityAI {
             if (moveString != null) {
                 Utils.LogUtils.i("Move", "AI走棋: " + moveString);
             }
+
+            // 加载棋谱后支持 AI 行棋：把 AI 着法记录进棋谱，走接管/一致判定。
+            // 与用户手动落子（completeNormalMove -> appendManualMove）同一条路径：
+            // 行棋一致则保持回放主线（currentMoveIndex 前进、不脱离），不一致则标记 diverged 接管，
+            // 原有的脱离棋谱逻辑完全不变。未加载棋谱时 getCurrentNotation()==null，不执行，行为不变。
+            if (moveString != null && this.activity.notationManager != null
+                    && this.activity.notationManager.getCurrentNotation() != null) {
+                final String aiMoveString = moveString;
+                final boolean aiIsRed = isRed;
+                this.activity.runOnUiThread(() -> {
+                    if (this.activity != null && this.activity.notationManager != null) {
+                        this.activity.notationManager.appendManualMove(aiMoveString, aiIsRed);
+                    }
+                });
+            }
             
             this.activity.stopTurnTimer();
             

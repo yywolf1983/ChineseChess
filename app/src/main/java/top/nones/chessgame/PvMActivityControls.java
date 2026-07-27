@@ -686,9 +686,10 @@ public class PvMActivityControls {
         if (activity.chessView != null) activity.chessView.requestDraw();
         if (activity.roundView != null) activity.roundView.requestDraw();
 
-        // 加载棋谱（研究/接管）时不触发 AI 自动行棋：由用户手动落子推进，保证「下一步/上一步」分支一致
-        if (activity.gameManager != null
-                && (activity.notationManager == null || activity.notationManager.getCurrentNotation() == null)) {
+        // 加载棋谱后同样支持 AI 行棋：用户手动落子推进后由 AI 接手，AI 着法会经由
+        // executeAIMove -> appendManualMove 走接管/一致判定（行棋一致则主线、否则脱离），
+        // 原有的脱离棋谱逻辑完全不变。
+        if (activity.gameManager != null) {
             // 跟随模式下：若本步与候选变线一致则保留并高亮揭示后续，否则清除支招
             if (activity.suggestFollowActive) {
                 ChessMove.Move played = new ChessMove.Move(

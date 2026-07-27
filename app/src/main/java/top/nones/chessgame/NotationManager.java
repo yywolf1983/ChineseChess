@@ -616,10 +616,11 @@ public class NotationManager {
             Utils.LogUtils.d("NotationManager", "当前步数: " + currentMoveIndex);
             if (currentMoveIndex > 0) {
                 currentMoveIndex--;
-                // 偏离主线时：逐步回退手动接管走法；回到分歧点（最后与原谱相符的位置）即清除分歧
+                // 偏离主线时：逐步回退手动接管走法（悔棋一次退一步）；
+                // 回到分歧点（最后与原谱相符的位置）即清除分歧、重置回原谱线（界面/保存同步）。
                 if (diverged) {
                     if (currentMoveIndex <= divergeAt) {
-                        // 回到分歧点（最后与原谱相符的位置）：清除分歧，棋谱重置回原谱线（界面/保存同步）
+                        // 回到分歧点：清除分歧，棋谱重置回原谱线（上一步/下一步随之恢复可见）
                         diverged = false;
                         divergeAt = -1;
                         manualMoves.clear();
@@ -740,7 +741,8 @@ public class NotationManager {
             next.setVisibility(android.view.View.GONE);
             return;
         }
-        // 已脱离主线：上一步/下一步均隐藏（回退交由「悔棋」按钮），避免两套回退机制并存
+        // 已脱离主线：上一步/下一步均隐藏，回退交由「悔棋」按钮逐步退回，直至回到脱离点（主线）；
+        // 回到主线后，上一步/下一步恢复可见可用。
         if (diverged) {
             prev.setVisibility(android.view.View.GONE);
             next.setVisibility(android.view.View.GONE);
