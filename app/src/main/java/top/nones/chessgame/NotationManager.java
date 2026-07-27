@@ -676,12 +676,48 @@ public class NotationManager {
             Utils.LogUtils.d("NotationManager", "没有加载棋谱");
         }
     }
-    
+
+    // 跳转到任意一步（0..originalTotalMoves）：回到原谱主线指定步，清除分歧/手动接管
+    public void seekTo(int index) {
+        Utils.LogUtils.d("NotationManager", "跳转至指定步: " + index);
+        if (currentNotation == null) {
+            Utils.LogUtils.d("NotationManager", "没有加载棋谱");
+            return;
+        }
+        if (index < 0) index = 0;
+        if (index > originalTotalMoves) index = originalTotalMoves;
+        if (index == currentMoveIndex && !diverged) {
+            return;
+        }
+        // 任意跳转即回到原谱主线该步：清除可能的分歧/手动接管
+        diverged = false;
+        divergeAt = -1;
+        manualMoves.clear();
+        manualMoveIsRed.clear();
+        copyOriginalNotation(originalNotation);
+        replayMode = true;
+        currentMoveIndex = index;
+        Utils.LogUtils.d("NotationManager", "执行跳转，新步数: " + currentMoveIndex);
+
+        BoardStateGenerator boardStateGenerator = new BoardStateGenerator(activity);
+        boardStateGenerator.generateBoardStateFromNotation(buildNavNotation(), currentMoveIndex);
+        updateMoveInfoDisplay();
+        updateNavButtonsEnabled();
+        activity.refreshScoreCurve();          // 重新计算评分曲线
+        activity.triggerPositionEvaluation();  // 触发当前局面的引擎评估
+    }
+
+    // 本次棋谱的原谱总步数（进度条最大值）
+    public int getOriginalTotalMoves() {
+        return originalTotalMoves;
+    }
+
     // 根据棋谱加载状态与回放进度，更新「上一步/下一步/悔棋」按钮的可用性
     public void updateNavButtonsEnabled() {
         if (activity == null) {
             return;
         }
+
         android.widget.Button prev = activity.btnPrev;
         android.widget.Button next = activity.btnNext;
         android.widget.Button recall = activity.btnRecall;
@@ -699,27 +735,21 @@ public class NotationManager {
             return;
         }
         if (currentNotation == null) {
-            // 未加载棋谱：上一步/下一步不可用（悔棋可用，见上方）
-            prev.setEnabled(false);
-            prev.setAlpha(0.4f);
-            next.setEnabled(false);
-            next.setAlpha(0.4f);
+            // 未加载棋谱：上一步/下一步不可用（隐藏；悔棋可用，见上方）
+            prev.setVisibility(android.view.View.GONE);
+            next.setVisibility(android.view.View.GONE);
             return;
         }
-        // 已脱离主线：上一步/下一步均置灰（回退交由「悔棋」按钮），避免两套回退机制并存
+        // 已脱离主线：上一步/下一步均隐藏（回退交由「悔棋」按钮），避免两套回退机制并存
         if (diverged) {
-            prev.setEnabled(false);
-            prev.setAlpha(0.4f);
-            next.setEnabled(false);
-            next.setAlpha(0.4f);
+            prev.setVisibility(android.view.View.GONE);
+            next.setVisibility(android.view.View.GONE);
             return;
         }
         boolean prevEnabled = currentMoveIndex > 0;
         boolean nextEnabled = canGoNext();
-        prev.setEnabled(prevEnabled);
-        prev.setAlpha(prevEnabled ? 1f : 0.4f);
-        next.setEnabled(nextEnabled);
-        next.setAlpha(nextEnabled ? 1f : 0.4f);
+        prev.setVisibility(prevEnabled ? android.view.View.VISIBLE : android.view.View.GONE);
+        next.setVisibility(nextEnabled ? android.view.View.VISIBLE : android.view.View.GONE);
     }
 
     // 是否可前进到「下一步」：

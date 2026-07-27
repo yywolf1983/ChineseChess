@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.util.Log;
+import android.app.AlertDialog;
 import android.widget.ImageView;
 import android.widget.Toast;
 
@@ -297,6 +298,84 @@ public class PvMActivityInit {
             Log.e("PvMActivityInit", "Error initializing chess view: " + e.getMessage());
         }
 
+        // 棋盘两侧的浮动「上一步/下一步」大按钮（底部按钮行已移除上一步/下一步）
+        try {
+            float density = activity.getResources().getDisplayMetrics().density;
+            final int navW = (int) (60 * density); // 按钮长度（左右方向），略加长
+            final int navH = (int) (44 * density); // 按钮高度，降低
+            final int edge = (int) (4 * density);
+
+            // 左侧：上一步
+            final android.widget.Button fPrev = new android.widget.Button(activity);
+            fPrev.setBackgroundResource(R.drawable.bg_board_btn_nav_prev);
+            fPrev.setText("");
+            fPrev.setGravity(android.view.Gravity.CENTER);
+            fPrev.setPadding(0, 0, 0, 0);
+            fPrev.setContentDescription("上一步");
+            android.widget.RelativeLayout.LayoutParams lpPrev = new android.widget.RelativeLayout.LayoutParams(navW, navH);
+            lpPrev.addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
+            fPrev.setLayoutParams(lpPrev);
+            activity.relativeLayout.addView(fPrev);
+            fPrev.setOnClickListener(v -> {
+                if (activity.controlsManager != null) activity.controlsManager.handlePrevButton();
+            });
+            fPrev.setOnLongClickListener(v -> {
+                showJumpToStepDialog();
+                return true; // 消费长按，避免再触发单击单步
+            });
+            activity.btnPrev = fPrev;
+
+            // 右侧：下一步
+            final android.widget.Button fNext = new android.widget.Button(activity);
+            fNext.setBackgroundResource(R.drawable.bg_board_btn_nav_next);
+            fNext.setText("");
+            fNext.setGravity(android.view.Gravity.CENTER);
+            fNext.setPadding(0, 0, 0, 0);
+            fNext.setContentDescription("下一步");
+            android.widget.RelativeLayout.LayoutParams lpNext = new android.widget.RelativeLayout.LayoutParams(navW, navH);
+            lpNext.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT);
+            fNext.setLayoutParams(lpNext);
+            activity.relativeLayout.addView(fNext);
+            fNext.setOnClickListener(v -> {
+                if (activity.controlsManager != null) activity.controlsManager.handleNextButton();
+            });
+            fNext.setOnLongClickListener(v -> {
+                showJumpToStepDialog();
+                return true; // 消费长按，避免再触发单击单步
+            });
+            activity.btnNext = fNext;
+
+            // 棋盘布局完成后，将两侧浮动按钮垂直居中于棋盘
+            activity.chessView.getViewTreeObserver().addOnGlobalLayoutListener(
+                new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                    @Override
+                    public void onGlobalLayout() {
+                        int boardTop = activity.chessView.getTop();
+                        int boardH = activity.chessView.getHeight();
+                        if (boardH <= 0) return;
+                        int offset = boardTop + boardH / 2 - navH / 2;
+                        android.widget.RelativeLayout.LayoutParams p = (android.widget.RelativeLayout.LayoutParams) fPrev.getLayoutParams();
+                        p.setMargins(edge, offset, 0, 0); // 左侧按钮：贴左缘、垂直居中
+                        fPrev.setLayoutParams(p);
+                        android.widget.RelativeLayout.LayoutParams n = (android.widget.RelativeLayout.LayoutParams) fNext.getLayoutParams();
+                        n.setMargins(0, offset, edge, 0); // 右侧按钮：贴右缘、垂直居中
+                        fNext.setLayoutParams(n);
+                        android.view.ViewTreeObserver vto = activity.chessView.getViewTreeObserver();
+                        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.JELLY_BEAN) {
+                            vto.removeOnGlobalLayoutListener(this);
+                        } else {
+                            vto.removeGlobalOnLayoutListener(this);
+                        }
+                    }
+                });
+
+            // 确保浮动按钮绘制在棋盘之上
+            fPrev.bringToFront();
+            fNext.bringToFront();
+        } catch (Exception e) {
+            LogUtils.e("PvMActivityInit", "添加棋盘两侧导航/模拟提示失败: " + e.getMessage());
+        }
+
         // 初始化AI支招信息显示 - 由aiManager处理
         Log.d("PvMActivity", "AI支招信息显示初始化完成");
 
@@ -377,11 +456,9 @@ public class PvMActivityInit {
                                 activity.controlsManager.setupButtonListeners(buttonGroup);
                             }
 
-                            // 获取上一步/下一步按钮引用，并同步其初始可用状态
-                            // （未加载棋谱时应禁用）
-                            activity.btnPrev = buttonGroup.findViewById(R.id.btn_prev);
-                            activity.btnNext = buttonGroup.findViewById(R.id.btn_next);
+                            // 上一步/下一步按钮已移到棋盘两侧（浮动大按钮），此处仅获取悔棋按钮引用
                             activity.btnRecall = buttonGroup.findViewById(R.id.btn_recall);
+
                             if (activity.notationManager != null) {
                                 activity.notationManager.updateNavButtonsEnabled();
                             }
@@ -395,8 +472,8 @@ public class PvMActivityInit {
                                     android.widget.PopupMenu popup = new android.widget.PopupMenu(activity, v);
                                     android.view.Menu menu = popup.getMenu();
                                     menu.add(0, R.id.btn_retry, 0, "新局");
-                                    menu.add(0, R.id.btn_save, 1, "保存");
-                                    menu.add(0, R.id.btn_load, 2, "加载");
+                                    menu.add(0, R.id.btn_load, 1, "加载");
+                                    menu.add(0, R.id.btn_save, 2, "保存");
                                     menu.add(0, R.id.btn_settings, 3, "设置");
                                     popup.setOnMenuItemClickListener(item -> {
                                         android.view.View target = buttonGroup.findViewById(item.getItemId());
@@ -441,7 +518,46 @@ public class PvMActivityInit {
             LogUtils.e("PvMActivityInit", "bringToFront 顶部按钮失败: " + e.getMessage());
         }
     }
-    
+
+    // 长按浮动「上一步/下一步」按钮：弹出棋谱所有步数列表，点击跳转
+    private void showJumpToStepDialog() {
+        if (activity == null || activity.notationManager == null) return;
+        final Info.ChessNotation notation = activity.notationManager.getCurrentNotation();
+        final int total = activity.notationManager.getOriginalTotalMoves();
+        if (notation == null || total <= 0) {
+            Toast.makeText(activity, "暂无可跳转的棋谱", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        final int current = activity.notationManager.getCurrentMoveIndex();
+        final java.util.List<Info.ChessNotation.MoveRecord> records = notation.getMoveRecords();
+        final boolean redFirst = notation.isRedFirst();
+
+        // 选项：第 0 项=初始局面，1..total 为每一步
+        final String[] items = new String[total + 1];
+        items[0] = "初始局面（第 0 步）";
+        for (int ply = 1; ply <= total; ply++) {
+            final int recIdx = (ply - 1) / 2;
+            String move = "";
+            if (recIdx < records.size()) {
+                final Info.ChessNotation.MoveRecord rec = records.get(recIdx);
+                if (rec != null) {
+                    final boolean isRed = redFirst ? (ply % 2 == 1) : (ply % 2 == 0);
+                    move = isRed ? rec.redMove : rec.blackMove;
+                }
+            }
+            items[ply] = "第 " + ply + " 步" + (move != null && !move.isEmpty() ? "  " + move : "");
+        }
+
+        final android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(activity);
+        builder.setTitle("选择要跳转的步数");
+        builder.setSingleChoiceItems(items, current, (android.content.DialogInterface d, int which) -> {
+            activity.notationManager.seekTo(which);
+            d.dismiss();
+        });
+        builder.setNegativeButton("取消", (android.content.DialogInterface d, int which) -> { });
+        builder.show();
+    }
+
     public void initBackgroundTasks() {
         if (activity == null) {
             Log.e("PvMActivityInit", "Activity is null, cannot initialize background tasks");

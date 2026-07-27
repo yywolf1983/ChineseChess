@@ -228,7 +228,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 会被 isSimulating 守卫跳过，避免刚设置的模拟支招被清掉
         isSimulating = true;
         if (chessView != null) {
-            chessView.isSimulating = true;
+            chessView.setSimulating(true);
             chessView.requestDraw();
         }
 
@@ -335,7 +335,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         simStepIndex = 0;
         isSimulating = false;
         if (chessView != null) {
-            chessView.isSimulating = false;
+            chessView.setSimulating(false);
             chessView.requestDraw();
         }
 
@@ -400,7 +400,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
     // 按钮组ID（在 PvMActivityInit 中给按钮组根布局设置该 ID 并赋值此字段）
     public int buttonGroupId = 10001;
-    // 上一步/下一步按钮引用，用于在「未加载棋谱」时禁用
+    // 上一步/下一步按钮引用（棋盘两侧浮动按钮），在「未加载棋谱」时隐藏
     public android.widget.Button btnPrev;
     public android.widget.Button btnNext;
     // 悔棋按钮引用，加载棋谱时置灰禁用
@@ -764,12 +764,6 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
 
             if (viewId == R.id.btn_retry) {
                 controlsManager.handleRetryButton();
-            } else if (viewId == R.id.btn_prev) {
-                // 上一步
-                controlsManager.handlePrevButton();
-            } else if (viewId == R.id.btn_next) {
-                // 下一步
-                controlsManager.handleNextButton();
             } else if (viewId == R.id.btn_recall) {
                 controlsManager.handleRecallButton();
             } else if (viewId == R.id.btn_save) {

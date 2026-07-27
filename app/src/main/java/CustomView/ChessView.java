@@ -41,8 +41,40 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     /** 棋盘视图是否翻转（仅显示层，不动任何数据/算法） */
     public volatile boolean boardFlipped = false;
 
-    /** 是否处于模拟行棋演示中（开启后绘制琥珀色边框 + 右下角"演示中"角标以区分真实对局） */
+    /** 是否处于模拟行棋演示中（开启后绘制琥珀色边框 + 棋盘正中"模拟中"角标以区分真实对局） */
     public boolean isSimulating = false;
+
+    /** "模拟中"角标的呼吸/点循环动画：仅在 isSimulating 期间自调度重绘 */
+    private long simStartTime = 0;
+    private final android.os.Handler simAnimHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final Runnable simAnimRunnable = new Runnable() {
+        @Override
+        public void run() {
+            if (!isSimulating) return;
+            requestDraw();
+            simAnimHandler.postDelayed(this, 120);
+        }
+    };
+
+    /** 设置模拟态；进入时启动角标动画循环，退出时停止并收尾重绘一次 */
+    public void setSimulating(boolean simulating) {
+        if (this.isSimulating == simulating) return;
+        this.isSimulating = simulating;
+        if (simulating) {
+            simStartTime = System.currentTimeMillis();
+            simAnimHandler.removeCallbacks(simAnimRunnable);
+            simAnimHandler.post(simAnimRunnable);
+        } else {
+            simAnimHandler.removeCallbacks(simAnimRunnable);
+            requestDraw();
+        }
+    }
+
+    /** 当前模拟角标脉动系数（约 0.56~1.0 呼吸），供边框与角标共用 */
+    private float simPulse() {
+        long elapsed = simStartTime > 0 ? System.currentTimeMillis() - simStartTime : 0;
+        return (float) (0.78f + 0.22f * Math.sin(elapsed / 1200.0 * Math.PI * 2));
+    }
 
 
 
@@ -378,10 +410,11 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
         // 模拟行棋标识：琥珀色描边边框，明确区分演示与真实对局（暖色，区别于青色走子高亮/红蓝支招箭头）
         if (isSimulating) {
+            float pulse = simPulse();
             Paint simBorder = new Paint();
             simBorder.setAntiAlias(true);
             simBorder.setStyle(Paint.Style.STROKE);
-            simBorder.setColor(Color.argb(255, 232, 163, 61));
+            simBorder.setColor(Color.argb((int) (140 + 115 * pulse), 232, 163, 61));
             simBorder.setStrokeWidth(Scale(8));
             int inset = Scale(4);
             android.graphics.RectF bRect = new android.graphics.RectF(inset, inset, Board_width - inset, Board_height - inset);
@@ -390,20 +423,26 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
         canvas.restore();
 
-        // 角标绘制在 restore 之后，固定在视图右下角（不受棋盘翻转影响）
+        // 角标绘制在 restore 之后，位于棋盘正中（不受棋盘翻转影响）
         if (isSimulating) {
-            String simLabel = "模拟中";
+            float pulse = simPulse();
+            // 文字："模拟中" + 循环点（0~3 个），每 500ms 变化一次
+            long elapsed = simStartTime > 0 ? System.currentTimeMillis() - simStartTime : 0;
+            int dotCount = (int) ((elapsed / 500) % 4);
+            StringBuilder dots = new StringBuilder();
+            for (int i = 0; i < dotCount; i++) dots.append('.');
+            String simLabel = "模拟中" + dots.toString();
             int padX = Scale(18), padY = Scale(10);
             int ts = Scale(34);
             // 深墨蓝半透明胶囊 + 琥珀描边与文字：在暖色木盘上清晰可辨，且与控制面板同族、沉稳不刺眼
             android.graphics.Paint badgeBg = new android.graphics.Paint();
             badgeBg.setAntiAlias(true);
-            badgeBg.setColor(Color.argb(224, 30, 43, 58));
+            badgeBg.setColor(Color.argb((int) (224 * (0.56f + 0.44f * pulse)), 30, 43, 58));
             android.graphics.Paint badgeStroke = new android.graphics.Paint();
             badgeStroke.setAntiAlias(true);
             badgeStroke.setStyle(Paint.Style.STROKE);
             badgeStroke.setStrokeWidth(Scale(2));
-            badgeStroke.setColor(Color.argb(255, 232, 163, 61));
+            badgeStroke.setColor(Color.argb((int) (255 * (0.4f + 0.6f * pulse)), 232, 163, 61));
             android.graphics.Paint labelP = new android.graphics.Paint();
             labelP.setAntiAlias(true);
             labelP.setColor(Color.argb(255, 240, 190, 110));
@@ -413,8 +452,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             float textW = labelP.measureText(simLabel);
             int bw = (int) (textW + 2 * padX);
             int bh = (int) (ts + 2 * padY);
-            int bx = Board_width - bw - Scale(10);
-            int by = Board_height - bh - Scale(10);
+            int bx = (Board_width - bw) / 2;
+            int by = (Board_height - bh) / 2;
             android.graphics.RectF badgeRect = new android.graphics.RectF(bx, by, bx + bw, by + bh);
             canvas.drawRoundRect(badgeRect, Scale(10), Scale(10), badgeBg);
             canvas.drawRoundRect(badgeRect, Scale(10), Scale(10), badgeStroke);

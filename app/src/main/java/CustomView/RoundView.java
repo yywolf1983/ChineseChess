@@ -760,11 +760,6 @@ public class RoundView extends View {
         if (isSuggestMode) {
             drawThinkingText(canvas, width, currentY, aiTextSize, "AI思考中", aiThinkingProgress);
             currentY += lineHeight;
-        } else if (isSimulatingView) {
-            // 模拟行棋演示中：醒目青色提示（区别于橙色/蓝色），带脉动动画点
-            infoTextPaint.setColor(Color.rgb(38, 198, 218));
-            drawThinkingText(canvas, width, currentY, aiTextSize, "模拟行棋中", simProgress);
-            currentY += lineHeight;
         } else if (!hasSuggest) {
             if (isAILoading) {
                 drawThinkingText(canvas, width, currentY, aiTextSize, "AI加载中", aiLoadingProgress);

@@ -86,7 +86,17 @@ public class PvMActivityNotation {
     public void handleNextButton() {
         notationManager.handleNextButton();
     }
-    
+
+    // 跳转到任意一步（0..originalTotalMoves）
+    public void seekTo(int index) {
+        notationManager.seekTo(index);
+    }
+
+    // 本次棋谱原谱总步数（进度条最大值）
+    public int getOriginalTotalMoves() {
+        return notationManager.getOriginalTotalMoves();
+    }
+
     // 同步上一步/下一步按钮的可用状态
     public void updateNavButtonsEnabled() {
         notationManager.updateNavButtonsEnabled();

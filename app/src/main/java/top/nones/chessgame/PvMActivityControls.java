@@ -388,7 +388,7 @@ public class PvMActivityControls {
     // 模拟行棋演示中，除"返回"(btn_statistics)与"翻转"(btn_flip)外，其余按钮一律置灰禁用
     private static final int[] SIM_DISABLED_BTN_IDS = {
             R.id.btn_retry, R.id.btn_settings, R.id.btn_save, R.id.btn_load,
-            R.id.btn_prev, R.id.btn_next, R.id.btn_mode,
+            R.id.btn_mode,
             R.id.btn_setup, R.id.btn_recall
     };
 

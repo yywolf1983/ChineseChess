@@ -171,8 +171,8 @@ public class PvPActivityInit {
                 android.widget.PopupMenu popup = new android.widget.PopupMenu(activity, v);
                 android.view.Menu menu = popup.getMenu();
                 menu.add(0, R.id.btn_retry, 0, "新局");
-                menu.add(0, R.id.btn_save, 1, "保存");
-                menu.add(0, R.id.btn_load, 2, "加载");
+                menu.add(0, R.id.btn_load, 1, "加载");
+                menu.add(0, R.id.btn_save, 2, "保存");
                 menu.add(0, R.id.btn_settings, 3, "设置");
                 popup.setOnMenuItemClickListener(item -> {
                     android.view.View target = buttonGroup.findViewById(item.getItemId());
