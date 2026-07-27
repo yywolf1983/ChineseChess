@@ -997,7 +997,6 @@ public class PvPActivityGame {
         int baseType = pieceType % 7;
         boolean isPawn = baseType == 0; // 兵/卒
         boolean isSameColumn = false;
-        boolean isSameRow = false;
         java.util.List<Info.Pos> samePieces = new java.util.ArrayList<>();
         
         // 收集同一列的相同棋子
@@ -1027,11 +1026,14 @@ public class PvPActivityGame {
                 }
             }
             
+            // 计算「前方名次」frontRank：1=最前方（离对方最近），向后递增为二、三、四、五。
+            // 红方前=最大y；黑方前=最小y。前≡一，故最前方的兵/卒必须是「一/１」。
+            int mpos = samePieces.indexOf(new Info.Pos(fromPos.x, fromPos.y));
+            int frontRank = isRed ? (samePieces.size() - mpos) : (mpos + 1);
             if (isPawn) {
-                // 兵/卒使用数字前缀：一兵、二兵、三兵、四兵、五兵
-                // 按照从前往后的顺序编号
-                int index = samePieces.indexOf(new Info.Pos(fromPos.x, fromPos.y)) + 1;
-                prefix = getColChar(index);
+                // 兵/卒使用数字前缀：一兵、二兵、三兵、四兵、五兵（黑方：１卒２卒３卒）
+                // 按从前往后编号：前=一，向后为二、三、四、五
+                prefix = getColChar(frontRank);
             } else {
                 // 其他棋子使用前后前缀
                 if (samePieces.size() == 2) {
@@ -1050,66 +1052,13 @@ public class PvPActivityGame {
                         prefix = "后";
                     }
                 } else if (samePieces.size() > 3) {
-                    // 四个或五个棋子：前、二、三、四、五
-                    int index = samePieces.indexOf(new Info.Pos(fromPos.x, fromPos.y)) + 1;
-                    if (isRed) {
-                        // 红方：y 最大的是前
-                        prefix = (index == samePieces.size()) ? "前" : getColChar(index);
-                    } else {
-                        // 黑方：y 最小的是前
-                        prefix = (index == 1) ? "前" : getColChar(index);
-                    }
-                }
-            }
-        } else {
-            // 检查同一行是否有多个相同的棋子
-            samePieces.clear();
-            if (chessInfo != null && chessInfo.piece != null) {
-                for (int y = 0; y < 10; y++) {
-                    for (int x = 0; x < 9; x++) {
-                        if (y == fromPos.y && chessInfo.piece[y][x] == pieceType) {
-                            samePieces.add(new Info.Pos(x, y));
-                        }
-                    }
-                }
-            }
-            
-            if (samePieces.size() > 1) {
-                isSameRow = true;
-                // 对棋子按x坐标排序（兼容API 16）
-                for (int i = 0; i < samePieces.size() - 1; i++) {
-                    for (int j = 0; j < samePieces.size() - i - 1; j++) {
-                        Info.Pos p1 = samePieces.get(j);
-                        Info.Pos p2 = samePieces.get(j + 1);
-                        if (p1 != null && p2 != null && p1.x > p2.x) {
-                            // 交换位置
-                            samePieces.set(j, p2);
-                            samePieces.set(j + 1, p1);
-                        }
-                    }
-                }
-                
-                // 其他棋子使用前后前缀
-                if (samePieces.size() == 2) {
-                    // 两个棋子：前、后
-                    // 对于红方，右边的棋子是"前"；对于黑方，左边的棋子是"前"
-                    Info.Pos frontPiece = isRed ? samePieces.get(1) : samePieces.get(0);
-                    prefix = (fromPos.x == frontPiece.x) ? "前" : "后";
-                } else if (samePieces.size() == 3) {
-                    // 三个棋子：前、中、后
-                    // 对于红方，从右到左为前、中、后；对于黑方，从左到右为前、中、后
-                    Info.Pos frontPiece = isRed ? samePieces.get(2) : samePieces.get(0);
-                    Info.Pos middlePiece = samePieces.get(1);
-                    if (fromPos.x == frontPiece.x) {
-                        prefix = "前";
-                    } else if (fromPos.x == middlePiece.x) {
-                        prefix = "中";
-                    } else {
-                        prefix = "后";
-                    }
+                    // 四个或五个棋子：前方为"前"，向后递增为二、三、四、五
+                    prefix = (frontRank == 1) ? "前" : getColChar(frontRank);
                 }
             }
         }
+        // 注意：前/后/中/一二三四五 仅用于「同一列（同一路）」存在多个同兵种的情况。
+        // 同兵种位于不同列时一律按列号区分（如车一、车二），不存在按行（同一横线）分前后的记谱规则。
         
         // 计算起始列号
         int startCol;
@@ -1203,7 +1152,7 @@ public class PvPActivityGame {
         
         // 生成走法字符串
         String moveString;
-        if ((isSameColumn || isSameRow) && !prefix.isEmpty()) {
+        if (isSameColumn && !prefix.isEmpty()) {
             if (isPawn) {
                 // 兵/卒：一兵、二兵等
                 moveString = prefix + pieceName + moveType + targetPos;
