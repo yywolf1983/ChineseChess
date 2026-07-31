@@ -43,7 +43,16 @@ public class PvMActivityAI {
         this.activity = activity;
         initExecutorService();
     }
-    
+
+    // 分数文字底片：半透明柔和色调，与深色木纹自然融合（不突兀）；圆角随分辨率缩放，并加极淡描边增加精致感
+    private static android.graphics.drawable.GradientDrawable makeScoreChip(int fill, float density) {
+        android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
+        d.setColor(fill);                                  // 已含 alpha，半透明
+        d.setCornerRadius(5f * density);                   // 圆角随分辨率缩放
+        d.setStroke((int) (1 * density), 0x22000000);      // 极淡描边
+        return d;
+    }
+
     // 播放音效
     private void playEffect(MediaPlayer mediaPlayer) {
         Utils.SoundManager.playEffect(mediaPlayer);
@@ -1426,7 +1435,25 @@ public class PvMActivityAI {
                     scoreTv.setTextColor(0xFF9AA7B4);
                 } else {
                     int normScore = PvMActivity.normalizeScore(line.score, baseIsRed);
-                    scoreStr = normScore > 0 ? "+" + normScore : String.valueOf(normScore);
+                    // 红优用红色、黑优用黑色显示，不以正负号区分；
+                    // 背景为深色木纹，故给分数文字加浅色圆角底片，保证文字清晰可读且红/黑有色差。
+                    android.graphics.drawable.GradientDrawable scoreBg;
+                    int padH = (int) (4 * density), padV = (int) (2 * density);
+                    if (normScore > 0) {
+                        scoreStr = String.valueOf(normScore);
+                        scoreTv.setTextColor(0xFFD97272); // 柔和红字（半透明底上更协调）
+                        scoreBg = makeScoreChip(0x33E57373, density); // 半透明红底
+                    } else if (normScore < 0) {
+                        scoreStr = String.valueOf(Math.abs(normScore));
+                        scoreTv.setTextColor(0xFF9DB4C8); // 柔和蓝灰字（代表黑方）
+                        scoreBg = makeScoreChip(0x3390A4B8, density); // 半透明蓝灰底
+                    } else {
+                        scoreStr = "0";
+                        scoreTv.setTextColor(0xFFC9B89A); // 柔和点字
+                        scoreBg = makeScoreChip(0x33C9B89A, density); // 半透明米底
+                    }
+                    scoreTv.setBackground(scoreBg);
+                    scoreTv.setPadding(padH, padV, padH, padV);
                 }
                 scoreTv.setText(scoreStr);
                 lineOuter.addView(scoreTv);

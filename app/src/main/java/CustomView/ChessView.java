@@ -204,7 +204,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                             int up = (chessInfo.piece[i][j] >= 8) ? RED_UP : 0;
                             // 等比例：落子行对齐真实格线 BOARD_TOP + drawY*GRID，绘制 PIECE×PIECE 棋子
                             int cx = sy(j * GRID + HALF);
-                            int cy = sy(gridY(drawY, up));
+                            int blackOff = (chessInfo.piece[i][j] <= 7) ? Scale(1) : 0; // 黑棋额外下移（随分辨率缩放）
+                            int cy = sy(gridY(drawY, up)) + Scale(1) + blackOff; // 所有棋子下移（随分辨率缩放）
                             int ph = sy(PIECE_H);
                             pDesRect = new Rect(cx - ph, cy - ph, cx + ph, cy + ph);
                             if (chessInfo.piece[i][j] <= 7) {
@@ -236,18 +237,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                                         canvas.drawBitmap(RP[num], pSrcRect, pDesRect, null);
                                     }
                                 }
-                            }
-
-                            // 临时调试十字：以棋子中心画水平+垂直提示线，超出棋子，用于确认棋子在格子中央
-                            if (DEBUG_CROSS) {
-                                int ext = Scale(22); // 超出棋子的长度
-                                Paint crossPaint = new Paint();
-                                crossPaint.setColor(0xAA00FFFF); // 半透明青色
-                                crossPaint.setStrokeWidth(Math.max(1, Scale(1)));
-                                // 水平线
-                                canvas.drawLine(cx - ph - ext, cy, cx + ph + ext, cy, crossPaint);
-                                // 垂直线
-                                canvas.drawLine(cx, cy - ph - ext, cx, cy + ph + ext, crossPaint);
                             }
                         }
                     }
@@ -404,10 +393,11 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 int fromUp = 0;
                 int toUp = 0;
                 // 提示线端点：等比例格中心对齐
+                int lineOff = isRedMove ? 0 : Scale(2); // 黑方提示线向下（随分辨率缩放）
                 int fromCenterX = sy(fromX * GRID + HALF);
-                int fromCenterY = sy(gridY(fromY, fromUp));
+                int fromCenterY = sy(gridY(fromY, fromUp)) + lineOff;
                 int toCenterX = sy(toX * GRID + HALF);
-                int toCenterY = sy(gridY(toY, toUp));
+                int toCenterY = sy(gridY(toY, toUp)) + lineOff;
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
@@ -525,17 +515,15 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         return sy(boardTop);
     }
 
-    // 坐标换算：先四舍五入再按 750 基准缩放，避免先 (int) 截断引入的像素量化误差
+    // 坐标换算：按 750 基准缩放（Scale 内部已四舍五入），避免像素量化误差
     private int sy(float v) {
         return Scale(Math.round(v));
     }
 
-    // 临时调试：给每个棋子中心画十字提示线（超出棋子），用于核对棋子是否落在格子交叉点中央。测完设 false。
-    private static final boolean DEBUG_CROSS = true;
-
     public int Scale(int x) {
-        // 统一以棋盘源图宽度 750 为基准（源图 750×929），与背景 cDesRect 比例一致，避免横向压缩变形
-        return x * Board_width / 750;
+        // 统一以棋盘源图宽度 750 为基准（源图 750×929），与背景 cDesRect 比例一致，避免横向压缩变形。
+        // 使用浮点四舍五入，确保不同 Board_width 下缩放比例均匀一致（消除整数除法截断在不同分辨率下的不均匀）。
+        return Math.round((float) x * Board_width / 750f);
     }
 
     @Override
@@ -546,8 +534,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         // 高度按源图 750×929 比例计算（与 Scale 的 750 基准一致）
         Board_height = Board_width * 929 / 750;
 
-        // 整体上移 51px（屏幕像素）：boardTop 从 80 减 51*750/Board_width（源图单位），使所有元素上移
-        boardTop = 80f - 51f * 750f / Board_width;
+        // 整体上移量用源图单位，保证所有分辨率下比例一致（不会因屏幕像素导致某些手机偏上/偏下）。
+        // 此前 51（源图单位）在当前设备偏上，下调到 35（等效于约 1080 宽屏下 ~50 屏幕像素上移，贴近原始调试位置）。
+        boardTop = 80f - 35f;
 
         // 添加空指针检查，确保 ChessBoard 不为 null
         if (ChessBoard != null) {
@@ -704,11 +693,11 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         
         Paint gridPaint = new Paint();
         gridPaint.setColor(Color.BLACK);
-        gridPaint.setStrokeWidth(2);
+        gridPaint.setStrokeWidth(Scale(2));
         gridPaint.setAntiAlias(true);
-        
-        // 绘制棋盘边框
-        int padding = 30;
+
+        // 绘制棋盘边框（回退路径同样使用 750 基准，保证与正常显示一致）
+        int padding = Scale(30);
         int gridSize = Math.min(Board_width - 2 * padding, Board_height - 2 * padding) / 9;
         int startX = padding;
         int startY = padding;
@@ -732,7 +721,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         // 绘制九宫格
         Paint palacePaint = new Paint();
         palacePaint.setColor(Color.BLACK);
-        palacePaint.setStrokeWidth(2);
+        palacePaint.setStrokeWidth(Scale(2));
         palacePaint.setAntiAlias(true);
         
         // 红方九宫格
@@ -763,6 +752,10 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         Paint redCoordPaint = new Paint(coordPaint);
         redCoordPaint.setColor(Color.RED); // 红方坐标用红色
         
+        // 黑方坐标专用 paint：更粗（更大字号 + 粗体）
+        Paint blackCoordPaint = new Paint(coordPaint);
+        blackCoordPaint.setTextSize(Scale(26));
+        
         // 红方横坐标（从右到左：一、二、三、四、五、六、七、八、九）
         String[] redCoords = {"九", "八", "七", "六", "五", "四", "三", "二", "一"};
         // 黑方横坐标（从左到右：1、2、3、4、5、6、7、8、9）
@@ -770,18 +763,17 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         
         // 绘制红方横坐标（底部边框带）：对齐真实底框带（最后一排格线下方）
         int RED_UP = 0;
-        int redCoordDown = -4; // 红方坐标再向下一丝
         for (int i = 0; i < 9; i++) {
             int x = sy(i * GRID + HALF);
-            int y = sy(boardTop + 9 * GRID + GRID + redCoordDown);
+            int y = sy(boardTop + 9 * GRID + GRID) + Scale(20); // 红方坐标向下 20px（随分辨率缩放）
             canvas.drawText(redCoords[i], x, y, redCoordPaint);
         }
-        
-        // 绘制黑方横坐标（顶部边框带）：对齐真实顶框带（第一排格线上方）
+
+        // 绘制黑方横坐标（顶部边框带）：固定在顶框带内（图源 y≈20），加粗并向下 10px
         for (int i = 0; i < 9; i++) {
             int x = sy(i * GRID + HALF);
-            int y = sy(boardTop - GRID);
-            canvas.drawText(blackCoords[i], x, y, coordPaint);
+            int y = sy(20) + Scale(20); // 黑方坐标向下 20px（随分辨率缩放）
+            canvas.drawText(blackCoords[i], x, y, blackCoordPaint);
         }
     }
 }
