@@ -792,7 +792,7 @@ public class PvPActivityGame {
         double x = e.getX();
         double y = e.getY();
         int[] dis = new int[]{
-                chessView.Scale(3), chessView.Scale(41), chessView.Scale(80), chessView.Scale(85)
+                chessView.Scale(3), chessView.getBoardTopScaled(), chessView.Scale(42), chessView.Scale(84)
         };
         x = x - dis[0];
         y = y - dis[1];
