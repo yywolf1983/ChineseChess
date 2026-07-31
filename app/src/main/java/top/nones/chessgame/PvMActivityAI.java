@@ -1390,10 +1390,21 @@ public class PvMActivityAI {
                 if (notations.isEmpty()) continue;
 
                 final float density = this.activity.getResources().getDisplayMetrics().density;
-                final int SCORE_COL_W = (int) (44 * density);
-                final int MOVE_COL_W = (int) (62 * density);
+                final int SCORE_COL_W = (int) (52 * density);
+                // 自适应着法列宽：4 列 + 间距恰好占满可用宽度，保证任意屏幕每行 4 个且不超出屏幕
+                int panelW = container.getWidth();
+                if (panelW <= 0) panelW = this.activity.getResources().getDisplayMetrics().widthPixels;
+                int availW = panelW - container.getPaddingLeft() - container.getPaddingRight()
+                        - SCORE_COL_W - (int) (2 * density);
+                if (availW < 0) availW = 0;
+                final int MOVE_GAP = (int) (6 * density);
+                int colW = (availW - 3 * MOVE_GAP) / 4;
+                final int MIN_COL = (int) (40 * density);
+                if (colW < MIN_COL) colW = MIN_COL;
+                final int MOVE_COL_W = colW;
+                final int MOVES_FLOW_W = colW * 4 + 3 * MOVE_GAP;
                 // 第一行（综合评分最高的变线）字号 +1，突出首选着法
-                final float TEXT_SP = (added == 0) ? 14 : 13;
+                final float TEXT_SP = (added == 0) ? 16 : 15;
 
                 // 外层：评分列（独立左列）+ 着法流（右侧）。分数不混入着法流，
                 // 故着法流左边缘即“第一步”位置，折行时永远对齐第一步、绝不与分数对齐。
@@ -1421,7 +1432,7 @@ public class PvMActivityAI {
                 scoreTv.setLayoutParams(scoreLp);
                 scoreTv.setGravity(android.view.Gravity.CENTER);
                 scoreTv.setSingleLine(true); // 评分单行
-                scoreTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
+                scoreTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, TEXT_SP);
                 scoreTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                 scoreTv.setIncludeFontPadding(false);
                 scoreTv.setPadding(0, 0, 0, 0);
@@ -1460,10 +1471,10 @@ public class PvMActivityAI {
 
                 // 着法流：从评分列右侧起，折行时自然对齐第一步（起点=第一步位置）
                 top.nones.chessgame.FlowLayout movesFlow = new top.nones.chessgame.FlowLayout(this.activity);
-                android.widget.LinearLayout.LayoutParams movesLp = new android.widget.LinearLayout.LayoutParams(
-                        0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-                movesFlow.setLayoutParams(movesLp);
-                movesFlow.setSpacingDp(0, 1); // 列间无水平间距，折行行距仅 1dp
+                // 着法流固定 4 列宽（自适应不超出屏幕），保证任意屏幕每行正好 4 个棋着
+                movesFlow.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                        MOVES_FLOW_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                movesFlow.setSpacingDp(6, 0); // 棋着之间水平间距 6dp，折行行距减小到 0dp 更紧凑
                 movesFlow.setPadding(0, 0, 0, 0);
                 lineOuter.addView(movesFlow);
 
@@ -1474,7 +1485,7 @@ public class PvMActivityAI {
                             MOVE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
                     mvTv.setGravity(android.view.Gravity.CENTER);
                     mvTv.setSingleLine(true); // 单个着法强制单行，不在列内折行
-                    mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, TEXT_SP);
+                    mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, TEXT_SP);
                     mvTv.setTypeface(android.graphics.Typeface.MONOSPACE);
                     mvTv.setPadding(0, 0, 0, 0);
                     mvTv.setIncludeFontPadding(false);
