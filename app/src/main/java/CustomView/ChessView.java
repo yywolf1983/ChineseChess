@@ -496,7 +496,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         int off = Scale(8);
         int viewW = Board_width + off;
         int viewH = viewW * 909 / 750;
-        cDesRect = new Rect(off, off, viewW, viewH);
+        cDesRect = new Rect(0, 0, viewW, viewH);
 
         // 摆棋UI现在是浮动的，不需要额外增加View高度（尺寸已含偏移量）
         setMeasuredDimension(viewW, viewH);
