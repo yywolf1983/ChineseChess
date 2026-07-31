@@ -237,6 +237,18 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                                     }
                                 }
                             }
+
+                            // 临时调试十字：以棋子中心画水平+垂直提示线，超出棋子，用于确认棋子在格子中央
+                            if (DEBUG_CROSS) {
+                                int ext = Scale(22); // 超出棋子的长度
+                                Paint crossPaint = new Paint();
+                                crossPaint.setColor(0xAA00FFFF); // 半透明青色
+                                crossPaint.setStrokeWidth(Math.max(1, Scale(1)));
+                                // 水平线
+                                canvas.drawLine(cx - ph - ext, cy, cx + ph + ext, cy, crossPaint);
+                                // 垂直线
+                                canvas.drawLine(cx, cy - ph - ext, cx, cy + ph + ext, crossPaint);
+                            }
                         }
                     }
                 }
@@ -517,6 +529,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     private int sy(float v) {
         return Scale(Math.round(v));
     }
+
+    // 临时调试：给每个棋子中心画十字提示线（超出棋子），用于核对棋子是否落在格子交叉点中央。测完设 false。
+    private static final boolean DEBUG_CROSS = true;
 
     public int Scale(int x) {
         // 统一以棋盘源图宽度 750 为基准（源图 750×929），与背景 cDesRect 比例一致，避免横向压缩变形
