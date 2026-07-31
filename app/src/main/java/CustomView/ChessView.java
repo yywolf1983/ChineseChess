@@ -203,13 +203,13 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                             final int RED_UP = 6;
                             int up = (chessInfo.piece[i][j] >= 8) ? RED_UP : 0;
                             // 增大棋子尺寸：86x86，超出格子边界，让棋子更大更饱满
-                            pDesRect = new Rect(Scale(j * 85 + 3), Scale(drawY * 85 + 45 - up), Scale(j * 85 + 89), Scale(drawY * 85 + 131 - up));
+                            pDesRect = new Rect(Scale(j * 85 + 7), Scale(drawY * 85 + 45 - up), Scale(j * 85 + 93), Scale(drawY * 85 + 131 - up));
                             if (chessInfo.piece[i][j] <= 7) {
                                 int num = chessInfo.piece[i][j] - 1;
                                 if (BP != null && num >= 0 && num < BP.length && BP[num] != null) {
                                     if (boardFlipped) {
                                         canvas.save();
-                                        canvas.rotate(180, Scale(j * 85 + 46), Scale(drawY * 85 + 80));
+                                        canvas.rotate(180, Scale(j * 85 + 50), Scale(drawY * 85 + 80));
                                         pSrcRect = new Rect(0, 0, BP[num].getWidth(), BP[num].getHeight());
                                         canvas.drawBitmap(BP[num], pSrcRect, pDesRect, null);
                                         canvas.restore();
@@ -224,7 +224,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                                 if (RP != null && num >= 0 && num < RP.length && RP[num] != null) {
                                     if (boardFlipped) {
                                         canvas.save();
-                                        canvas.rotate(180, Scale(j * 85 + 46), Scale(drawY * 85 + 88 - up));
+                                        canvas.rotate(180, Scale(j * 85 + 50), Scale(drawY * 85 + 88 - up));
                                         pSrcRect = new Rect(0, 0, RP[num].getWidth(), RP[num].getHeight());
                                         canvas.drawBitmap(RP[num], pSrcRect, pDesRect, null);
                                         canvas.restore();
@@ -254,10 +254,10 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 // 绘制选中效果，无论当前是哪个玩家的回合
                 if (isRedPiece && R_box != null) {
                     pSrcRect = new Rect(0, 0, R_box.getWidth(), R_box.getHeight());
-                    pDesRect = new Rect(Scale(drawX * 85 + 3), Scale(displayY * 85 + 45 - selUp), Scale(drawX * 85 + 89), Scale(displayY * 85 + 131 - selUp));
+                    pDesRect = new Rect(Scale(drawX * 85 + 7), Scale(displayY * 85 + 45 - selUp), Scale(drawX * 85 + 93), Scale(displayY * 85 + 131 - selUp));
                     if (boardFlipped) {
                         canvas.save();
-                        canvas.rotate(180, Scale(drawX * 85 + 46), Scale(displayY * 85 + 88 - selUp));
+                        canvas.rotate(180, Scale(drawX * 85 + 50), Scale(displayY * 85 + 88 - selUp));
                         canvas.drawBitmap(R_box, pSrcRect, pDesRect, null);
                         canvas.restore();
                     } else {
@@ -265,10 +265,10 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                     }
                 } else if (B_box != null) {
                     pSrcRect = new Rect(0, 0, B_box.getWidth(), B_box.getHeight());
-                    pDesRect = new Rect(Scale(drawX * 85 + 3), Scale(displayY * 85 + 45), Scale(drawX * 85 + 89), Scale(displayY * 85 + 131));
+                    pDesRect = new Rect(Scale(drawX * 85 + 7), Scale(displayY * 85 + 45), Scale(drawX * 85 + 93), Scale(displayY * 85 + 131));
                     if (boardFlipped) {
                         canvas.save();
-                        canvas.rotate(180, Scale(drawX * 85 + 46), Scale(displayY * 85 + 88));
+                        canvas.rotate(180, Scale(drawX * 85 + 50), Scale(displayY * 85 + 88));
                         canvas.drawBitmap(B_box, pSrcRect, pDesRect, null);
                         canvas.restore();
                     } else {
@@ -288,10 +288,10 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                         int hintUp = (chessInfo.piece[y][x] >= 8) ? 6 : 0;
                         if (Pot != null) {
                             pSrcRect = new Rect(0, 0, Pot.getWidth(), Pot.getHeight());
-                            pDesRect = new Rect(Scale(x * 85 + 3), Scale(displayPosY * 85 + 45 - hintUp), Scale(x * 85 + 89), Scale(displayPosY * 85 + 131 - hintUp));
+                            pDesRect = new Rect(Scale(x * 85 + 7), Scale(displayPosY * 85 + 45 - hintUp), Scale(x * 85 + 93), Scale(displayPosY * 85 + 131 - hintUp));
                             if (boardFlipped) {
                                 canvas.save();
-                                canvas.rotate(180, Scale(x * 85 + 46), Scale(displayPosY * 85 + 88 - hintUp));
+                                canvas.rotate(180, Scale(x * 85 + 50), Scale(displayPosY * 85 + 88 - hintUp));
                                 canvas.drawBitmap(Pot, pSrcRect, pDesRect, null);
                                 canvas.restore();
                             } else {
@@ -319,8 +319,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             // 使用增大后的棋子尺寸 86x86 绘制走棋轨迹；红方轨迹同步上移 RED_UP，黑方不动
             int curUp = (real_curY >= 0 && real_curY < 10 && chessInfo.piece != null && chessInfo.piece[real_curY] != null && chessInfo.piece[real_curY][real_curX] >= 8) ? 6 : 0;
             int preUp = (chessInfo.prePos.y >= 0 && chessInfo.prePos.y < 10 && chessInfo.piece != null && chessInfo.piece[chessInfo.prePos.y] != null && chessInfo.piece[chessInfo.prePos.y][chessInfo.prePos.x] >= 8) ? 6 : 0;
-            pDesRect = new Rect(Scale(draw_curX * 85 + 3), Scale(draw_curY * 85 + 45 - curUp), Scale(draw_curX * 85 + 89), Scale(draw_curY * 85 + 131 - curUp));
-            tmpRect = new Rect(Scale(draw_preX * 85 + 3), Scale(draw_preY * 85 + 45 - preUp), Scale(draw_preX * 85 + 89), Scale(draw_preY * 85 + 131 - preUp));
+            pDesRect = new Rect(Scale(draw_curX * 85 + 7), Scale(draw_curY * 85 + 45 - curUp), Scale(draw_curX * 85 + 93), Scale(draw_curY * 85 + 131 - curUp));
+            tmpRect = new Rect(Scale(draw_preX * 85 + 7), Scale(draw_preY * 85 + 45 - preUp), Scale(draw_preX * 85 + 93), Scale(draw_preY * 85 + 131 - preUp));
 
             if (real_curY >= 0 && real_curY < 10 && real_curX >= 0 && real_curX < 9 && chessInfo.piece != null && chessInfo.piece[real_curY] != null && chessInfo.piece[real_curY][real_curX] >= 1 && chessInfo.piece[real_curY][real_curX] <= 7) {
                 if (B_box != null) {
@@ -372,10 +372,12 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 int toX = move.toPos.x;
                 int toY = 9 - move.toPos.y;
                 
-                int fromCenterX = Scale(fromX * 85 + 46);
-                int fromCenterY = Scale(fromY * 85 + 88);
-                int toCenterX = Scale(toX * 85 + 46);
-                int toCenterY = Scale(toY * 85 + 88);
+                int fromUp = isRedMove ? 6 : 0;
+                int toUp = isRedMove ? 6 : 0;
+                int fromCenterX = Scale(fromX * 85 + 50);
+                int fromCenterY = Scale(fromY * 85 + 88 - fromUp);
+                int toCenterX = Scale(toX * 85 + 50);
+                int toCenterY = Scale(toY * 85 + 88 - toUp);
                 
                 String label = chessInfo.suggestMoveLabels.get(i);
                 
@@ -489,10 +491,15 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         } else {
             cSrcRect = new Rect(0, 0, Board_width, Board_height);
         }
-        cDesRect = new Rect(0, 0, Board_width, Board_height);
-        
-        // 摆棋UI现在是浮动的，不需要增加View高度
-        setMeasuredDimension(Board_width, Board_height);
+        // 棋盘背景随棋子整体同步偏移：右移 8、下移 8（设计单位），使打印的网格线与棋子/提示点对齐
+        // 同时把 View 测量尺寸也相应扩大（off），避免棋盘整体偏移后出现右/下裁剪
+        int off = Scale(8);
+        int viewW = Board_width + off;
+        int viewH = viewW * 909 / 750;
+        cDesRect = new Rect(off, off, viewW, viewH);
+
+        // 摆棋UI现在是浮动的，不需要额外增加View高度（尺寸已含偏移量）
+        setMeasuredDimension(viewW, viewH);
 
         paint = new Paint();
         paint.setTextSize(Scale(57));
@@ -698,14 +705,14 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         
         // 绘制红方横坐标（底部）
         for (int i = 0; i < 9; i++) {
-            int x = Scale(i * 85 + 43); // 中心点
+            int x = Scale(i * 85 + 50); // 中心点，与棋子/提示线对齐（整体右移8）
             int y = Scale(9 * 85 + 144); // 底部，随棋子整体下移 8 再上移 4
             canvas.drawText(redCoords[i], x, y, redCoordPaint);
         }
         
         // 绘制黑方横坐标（顶部，向下调整）
         for (int i = 0; i < 9; i++) {
-            int x = Scale(i * 85 + 43); // 中心点
+            int x = Scale(i * 85 + 50); // 中心点，与棋子/提示线对齐
             int y = Scale(40); // 顶部，向下调整
             canvas.drawText(blackCoords[i], x, y, coordPaint);
         }
