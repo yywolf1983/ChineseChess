@@ -290,9 +290,8 @@ public class PvMActivityInit {
                         paramsChess.addRule(android.widget.RelativeLayout.CENTER_HORIZONTAL);
                         paramsChess.width = android.widget.RelativeLayout.LayoutParams.MATCH_PARENT;
                         paramsChess.height = android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT;
-                        // 左右增加留白（边距 6dp），让棋盘两侧不贴屏幕、有呼吸空间
-                        int sideMargin = (int) (6 * activity.getResources().getDisplayMetrics().density);
-                        paramsChess.setMargins(sideMargin, 0, sideMargin, 0);
+                        // 左右不留边距，棋盘铺满屏幕宽度
+                        paramsChess.setMargins(0, 0, 0, 0);
                         activity.chessView.setLayoutParams(paramsChess);
                         activity.chessView.setId(R.id.chessView);
                     }

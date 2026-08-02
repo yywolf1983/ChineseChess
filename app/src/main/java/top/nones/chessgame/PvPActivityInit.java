@@ -146,9 +146,8 @@ public class PvPActivityInit {
         paramsChess.addRule(RelativeLayout.BELOW, R.id.roundView);
         paramsChess.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         paramsChess.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
-        // 左右增加留白（边距 6dp），让棋盘两侧不贴屏幕、有呼吸空间
-        int sideMargin = (int) (6 * relativeLayout.getResources().getDisplayMetrics().density);
-        paramsChess.setMargins(sideMargin, 0, sideMargin, 0);
+        // 左右不留边距，棋盘铺满屏幕宽度
+        paramsChess.setMargins(0, 0, 0, 0);
         chessView.setLayoutParams(paramsChess);
         chessView.setId(R.id.chessView);
     }
