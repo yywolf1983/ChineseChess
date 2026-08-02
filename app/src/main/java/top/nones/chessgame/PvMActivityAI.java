@@ -48,7 +48,7 @@ public class PvMActivityAI {
     private static android.graphics.drawable.GradientDrawable makeScoreChip(int fill, float density) {
         android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable();
         d.setColor(fill);                                  // 已含 alpha，半透明
-        d.setCornerRadius(5f * density);                   // 圆角随分辨率缩放
+        d.setCornerRadius(9f * density);                   // 更圆润的胶囊形
         d.setStroke((int) (1 * density), 0x22000000);      // 极淡描边
         return d;
     }
@@ -1390,17 +1390,34 @@ public class PvMActivityAI {
                 if (notations.isEmpty()) continue;
 
                 final float density = this.activity.getResources().getDisplayMetrics().density;
-                final int SCORE_COL_W = (int) (52 * density);
+                // 评分列宽度随密度缩放，但保持紧凑，避免窄屏挤压着法列
+                final int SCORE_COL_W = (int) (46 * density);
                 // 自适应着法列宽：4 列 + 间距恰好占满可用宽度，保证任意屏幕每行 4 个且不超出屏幕
+                // panelW 优先用真实测量宽度；若尚未测量（≤0）回退到父容器可用宽度的安全估值，
+                // 绝不使用全屏 widthPixels（过大，会导致窄屏算出行宽超出）。
                 int panelW = container.getWidth();
-                if (panelW <= 0) panelW = this.activity.getResources().getDisplayMetrics().widthPixels;
-                int availW = panelW - container.getPaddingLeft() - container.getPaddingRight()
+                if (panelW <= 0) {
+                    int parentW = container.getRootView() != null
+                            ? container.getRootView().getWidth() : 0;
+                    panelW = (parentW > 0 ? parentW
+                            : this.activity.getResources().getDisplayMetrics().widthPixels) * 9 / 10;
+                }
+                int containerPad = container.getPaddingLeft() + container.getPaddingRight();
+                int outerMargins = (int) (2 * density); // 行左右 margin 之和(1+1)，丝微
+                int innerPad = (int) (4 * density);     // 行左右内边距之和(2+2)，丝微
+                int availW = panelW - containerPad - outerMargins - innerPad
                         - SCORE_COL_W - (int) (2 * density);
                 if (availW < 0) availW = 0;
                 final int MOVE_GAP = (int) (6 * density);
-                int colW = (availW - 3 * MOVE_GAP) / 4;
-                final int MIN_COL = (int) (40 * density);
-                if (colW < MIN_COL) colW = MIN_COL;
+                // 先按理想 4 列均分；若算出的总宽仍会超出可用宽（极小屏），则收缩到能容纳的最大值，
+                // 绝不允许用固定下限把行撑超出屏幕（保证“不超出”）。
+                int colW = (availW > 0) ? Math.max(1, (availW - 3 * MOVE_GAP) / 4) : 1;
+                int movesFlowW = colW * 4 + 3 * MOVE_GAP;
+                if (panelW > 0 && movesFlowW + SCORE_COL_W + (int) (2 * density) > availW + SCORE_COL_W + (int) (2 * density)) {
+                    // 理论上 colW 已受 availW 约束，这里兜底再收缩以防浮点/取整误差
+                    int maxFlow = Math.max(4, availW);
+                    colW = Math.max(1, (maxFlow - 3 * MOVE_GAP) / 4);
+                }
                 final int MOVE_COL_W = colW;
                 final int MOVES_FLOW_W = colW * 4 + 3 * MOVE_GAP;
                 // 第一行（综合评分最高的变线）字号 +1，突出首选着法
@@ -1412,14 +1429,14 @@ public class PvMActivityAI {
                 android.widget.LinearLayout.LayoutParams outerLp = new android.widget.LinearLayout.LayoutParams(
                         android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
                         android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-                outerLp.topMargin = 0;
-                outerLp.bottomMargin = 0;
-                outerLp.leftMargin = 0;
-                outerLp.rightMargin = 0;
+                outerLp.topMargin = (int) (1 * density);
+                outerLp.bottomMargin = (int) (1 * density);
+                outerLp.leftMargin = (int) (1 * density);
+                outerLp.rightMargin = (int) (1 * density);
                 lineOuter.setLayoutParams(outerLp);
                 lineOuter.setOrientation(android.widget.LinearLayout.HORIZONTAL);
                 lineOuter.setGravity(android.view.Gravity.CENTER_VERTICAL);
-                lineOuter.setPadding(0, 0, 0, 0);
+                lineOuter.setPadding((int) (2 * density), (int) (2 * density), (int) (2 * density), (int) (2 * density));
                 // 支招栏每行背景：圆角 + 上亮下暗渐变（立体感）+ 亮色描边（明显分隔线条，区分不同支招）
                 lineOuter.setBackground(this.activity.makeEngineRowBg(density, added % 2 == 0, followMode));
                 rowViews.add(lineOuter);
@@ -1449,7 +1466,7 @@ public class PvMActivityAI {
                     // 红优用红色、黑优用黑色显示，不以正负号区分；
                     // 背景为深色木纹，故给分数文字加浅色圆角底片，保证文字清晰可读且红/黑有色差。
                     android.graphics.drawable.GradientDrawable scoreBg;
-                    int padH = (int) (4 * density), padV = (int) (2 * density);
+                    int padH = (int) (7 * density), padV = (int) (3 * density);
                     if (normScore > 0) {
                         scoreStr = String.valueOf(normScore);
                         scoreTv.setTextColor(0xFFD97272); // 柔和红字（半透明底上更协调）
@@ -1498,6 +1515,10 @@ public class PvMActivityAI {
                         color = isRedStep.get(i) ? RED_MOVE_COLOR : BLACK_MOVE_COLOR;
                     }
                     mvTv.setTextColor(color);
+                    // 首选着法（第一行）整体加粗，强化“推荐”视觉权重
+                    if (added == 0) {
+                        mvTv.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
+                    }
                     movesFlow.addView(mvTv);
                 }
 

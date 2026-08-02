@@ -10,10 +10,10 @@
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:background="@drawable/bg_control_panel"
-        android:paddingLeft="6dp"
-        android:paddingRight="6dp"
+        android:paddingLeft="0dp"
+        android:paddingRight="0dp"
         android:paddingTop="4dp"
-        android:paddingBottom="10dp">
+        android:paddingBottom="0dp">
 
         <!-- 剩下的按钮放在一行 -->
         <LinearLayout
@@ -22,6 +22,8 @@
             android:orientation="horizontal"
             android:baselineAligned="false"
             android:weightSum="5.8"
+            android:paddingLeft="6dp"
+            android:paddingRight="6dp"
             android:layout_marginBottom="4dp">
 
             <Button
@@ -164,7 +166,13 @@
             android:layout_height="wrap_content"
             android:background="@drawable/bg_engine_box"
             android:layout_marginTop="0dp"
-            android:padding="1dp">
+            android:layout_marginLeft="0dp"
+            android:layout_marginRight="0dp"
+            android:layout_marginBottom="0dp"
+            android:paddingLeft="0dp"
+            android:paddingRight="0dp"
+            android:paddingTop="1dp"
+            android:paddingBottom="0dp">
 
             <CustomView.ScoreCurveView
                 android:id="@+id/score_curve_view"
@@ -187,7 +195,10 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="1dp" />
+                    android:paddingLeft="2dp"
+                    android:paddingRight="2dp"
+                    android:paddingTop="2dp"
+                    android:paddingBottom="2dp" />
                 </ScrollView>
         </FrameLayout>
     </LinearLayout>

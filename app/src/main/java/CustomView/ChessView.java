@@ -36,6 +36,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
     public int Board_width, Board_height;
 
+    /** View 实测尺寸（含 off 偏移），供翻转旋转中心与触摸映射使用，避免翻转后错位 */
+    private int viewMeasuredW = 0, viewMeasuredH = 0;
+
     public ChessInfo chessInfo;
 
     /** 棋盘视图是否翻转（仅显示层，不动任何数据/算法） */
@@ -164,11 +167,17 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     public void Draw(Canvas canvas) {
         canvas.save();
         // 棋盘翻转：Canvas 180° 旋转，仅显示层操作，不动任何数据
+        // 旋转中心用 View 实测尺寸中心，保证翻转后内容原地居中、不跳动
         if (boardFlipped) {
-            canvas.rotate(180, Board_width / 2f, Board_height / 2f);
+            float cx = (viewMeasuredW > 0 ? viewMeasuredW : Board_width) / 2f;
+            float cy = (viewMeasuredH > 0 ? viewMeasuredH : Board_height) / 2f;
+            canvas.rotate(180, cx, cy);
         }
 
-        canvas.drawColor(Color.WHITE);
+        // 不填充纯白底（避免 boardTop 上移产生的顶部/底部空白带呈现「白色空白」）。
+        // 改为填充与木纹背景协调的深棕底色，使留白融入整体、观感上不再有白边，
+        // 且棋盘 View 屏幕位置完全不变、反转原地旋转不移动。
+        canvas.drawColor(0xFF2A1E14);
         // 添加空指针检查，确保 ChessBoard 不为 null 时才绘制
         if (ChessBoard != null && cSrcRect != null && cDesRect != null) {
             // 绘制棋盘图片
@@ -180,9 +189,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             drawChessboardGrid(canvas);
             LogUtils.i("ChessView", "Drawing chessboard grid instead of bitmap");
         }
-        
-        // 绘制传统坐标
-        drawTraditionalCoordinates(canvas);
         
         // 添加空指针检查，确保 chessInfo 不为 null
         if (chessInfo == null) {
@@ -243,6 +249,9 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                 }
             }
         }
+
+        // 绘制传统坐标（放在棋子之后，使坐标文字压在棋子边缘之上、靠近棋子且清晰可见）
+        drawTraditionalCoordinates(canvas);
 
         // 检查 chessInfo.Select 是否为 null
         if (chessInfo.Select != null && chessInfo.Select.length >= 2) {
@@ -549,10 +558,16 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         int off = Scale(6);
         int viewW = Board_width + off;
         // 背景按源图 750×929 比例，与 Scale(750 基准) 一致，等比例无压缩
-        int viewH = viewW * 929 / 750;
-        cDesRect = new Rect(0, 0, viewW, viewH);
+        int fullH = viewW * 929 / 750;
+        // boardTop 上移了 (80-35)=45 源图单位，棋盘内容整体向上平移，View 顶部/底部会有空白带。
+        // 为「不移动棋盘位置、反转不跳动」，这里保持 View 固定高度 fullH（与修改前一致），不裁剪、不平移画布；
+        // 空白带改为透出父布局背景（drawColor 不再填白），从观感上消除「白色空白」，且棋盘屏幕位置完全不变。
+        int viewH = fullH;
+        cDesRect = new Rect(0, 0, viewW, fullH);
 
         // 摆棋UI现在是浮动的，不需要额外增加View高度（尺寸已含偏移量）
+        viewMeasuredW = viewW;
+        viewMeasuredH = viewH;
         setMeasuredDimension(viewW, viewH);
 
         paint = new Paint();
@@ -631,13 +646,13 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
      * @return 转换后的事件（坐标映射到未翻转时的数据坐标系）；未翻转时返回原事件
      */
     public MotionEvent transformTouchForFlip(MotionEvent event) {
-        if (!boardFlipped || Board_width <= 0 || Board_height <= 0) {
+        if (!boardFlipped || viewMeasuredW <= 0 || viewMeasuredH <= 0) {
             return event;
         }
         return MotionEvent.obtain(event.getDownTime(), event.getEventTime(),
                 event.getAction(),
-                Board_width - event.getX(),
-                Board_height - event.getY(),
+                viewMeasuredW - event.getX(),
+                viewMeasuredH - event.getY(),
                 event.getMetaState());
     }
 
@@ -741,39 +756,58 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     // 绘制传统坐标
     private void drawTraditionalCoordinates(Canvas canvas) {
         if (canvas == null) return;
-        
+
+        // 棋盘翻转时整张画布已旋转 180°，坐标位置随之镜像（红方坐标落到屏幕上方，黑方落下方），
+        // 这正符合「反转坐标跟随」的需求。但文字会随之倒置，故每个文字单独反向旋转 180° 保持正立。
         Paint coordPaint = new Paint();
         coordPaint.setColor(Color.BLACK);
         coordPaint.setTextSize(Scale(20));
         coordPaint.setTextAlign(Paint.Align.CENTER);
         coordPaint.setAntiAlias(true);
         coordPaint.setTypeface(android.graphics.Typeface.DEFAULT_BOLD); // 设置粗体
-        
+
         Paint redCoordPaint = new Paint(coordPaint);
         redCoordPaint.setColor(Color.RED); // 红方坐标用红色
-        
+
         // 黑方坐标专用 paint：更粗（更大字号 + 粗体）
         Paint blackCoordPaint = new Paint(coordPaint);
         blackCoordPaint.setTextSize(Scale(26));
-        
+
         // 红方横坐标（从右到左：一、二、三、四、五、六、七、八、九）
         String[] redCoords = {"九", "八", "七", "六", "五", "四", "三", "二", "一"};
         // 黑方横坐标（从左到右：1、2、3、4、5、6、7、8、9）
         String[] blackCoords = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-        
-        // 绘制红方横坐标（底部边框带）：对齐真实底框带（最后一排格线下方）
-        int RED_UP = 0;
+
+        // 屏幕上方坐标距框线：未反转 6，反转后 20(红方变远)
+        // 屏幕下方坐标距框线：未反转 22，反转后 14(黑方不变/近)
+        int topOff = boardFlipped ? sy(20) : sy(6);
+        int botOff = boardFlipped ? sy(14) : sy(22);
+        int blackY = sy(boardTop) - topOff;                        // 黑坐标：顶框线上方空白带
+        int redY = sy(boardTop + 9 * GRID + GRID) + botOff;        // 红坐标：底框线下方空白带
+
+        // 绘制红方横坐标（从右到左：九、八、…、一）
         for (int i = 0; i < 9; i++) {
             int x = sy(i * GRID + HALF);
-            int y = sy(boardTop + 9 * GRID + GRID) + Scale(20); // 红方坐标向下 20px（随分辨率缩放）
-            canvas.drawText(redCoords[i], x, y, redCoordPaint);
+            drawCoordText(canvas, redCoords[i], x, redY, redCoordPaint);
         }
 
-        // 绘制黑方横坐标（顶部边框带）：固定在顶框带内（图源 y≈20），加粗并向下 10px
+        // 绘制黑方横坐标（从左到右：1、2、…、9）
         for (int i = 0; i < 9; i++) {
             int x = sy(i * GRID + HALF);
-            int y = sy(20) + Scale(20); // 黑方坐标向下 20px（随分辨率缩放）
-            canvas.drawText(blackCoords[i], x, y, blackCoordPaint);
+            drawCoordText(canvas, blackCoords[i], x, blackY, blackCoordPaint);
+        }
+    }
+
+    // 绘制单个坐标文字；翻转时文字随整机旋转会变倒置，这里单独反向旋转 180° 使其保持正立，
+    // 而文字的(x,y)位置仍由调用方按原始坐标系给出（整机翻转会自然把红方坐标镜像到上方）。
+    private void drawCoordText(Canvas canvas, String text, int x, int y, Paint paint) {
+        if (boardFlipped) {
+            canvas.save();
+            canvas.rotate(180, x, y);
+            canvas.drawText(text, x, y, paint);
+            canvas.restore();
+        } else {
+            canvas.drawText(text, x, y, paint);
         }
     }
 }

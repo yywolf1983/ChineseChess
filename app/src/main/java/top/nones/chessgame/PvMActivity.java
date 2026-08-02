@@ -379,7 +379,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     android.graphics.drawable.GradientDrawable makeEngineRowBg(float density, boolean even, boolean highlight) {
         int top, bottom, stroke;
         if (highlight) {
-            top = 0xFFB58A5C; bottom = 0xFF7A5A38; stroke = 0xFFFFD28A;
+            // 首选着法：更鲜明的金棕渐变 + 暖金描边，视觉突出
+            top = 0xFFC79A66; bottom = 0xFF8A6238; stroke = 0xFFFFE0A0;
         } else if (even) {
             top = 0xFF4A3A28; bottom = 0xFF2A1F14; stroke = 0xFF7A6040;
         } else {
@@ -387,7 +388,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         }
         android.graphics.drawable.GradientDrawable d = new android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM, new int[]{top, bottom});
-        d.setCornerRadius(6f * density);
+        d.setCornerRadius(8f * density);
         d.setStroke((int) (1.5f * density), stroke);
         return d;
     }
