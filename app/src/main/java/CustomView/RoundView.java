@@ -142,6 +142,13 @@ public class RoundView extends View {
     
     // 设置搜索深度
     public void setSearchDepth(int depth, boolean isRed) {
+        // 已被用户中断（显示"已停止"）时，拒绝任何"恢复思考"的写入，
+        // 否则后台仍运行的 DepthUpdateRunnable 在 cancel 生效前拿到引擎真实深度后，
+        // 会重新 isAIThinking=true 并清掉 isAIStopped，导致"点中断后还是显示思考中"。
+        // 下一手 AI 开始时 tryStartAnalyzing 已先 resetAIStopped 清标志，此处才会正常生效。
+        if (this.isAIStopped) {
+            return;
+        }
         // 思考过程中只记录最大深度，不实时更新显示；思考结束（depth=0）时才固定显示最终值
         if (depth > 0) {
             if (isRed) {

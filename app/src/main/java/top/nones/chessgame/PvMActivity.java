@@ -498,7 +498,11 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public PvMActivityControls controlsManager;
     public PvMActivityAI aiManager;
     public PvMActivityGame gameManager;
-    
+
+    // 标记 AI 是否在切到后台时被中断：用于 onResume 时强制补绘"AI停止思考"提示
+    // （因为切后台时 UI 不刷新，runOnUiThread 的 markAIStopped 不会立即显示）
+    private boolean aiStoppedInBackground = false;
+
     // 相机拍照临时文件
     private java.io.File cameraImageFile;
     
@@ -1457,13 +1461,17 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         super.onStop();
         // 停止AI分析
         if (aiManager != null) {
+            // 先取 isAIAnalyzing（在 stopAIAnalysis 把它置 false 之前），
+            // 判断切后台时 AI 是否真的在跑，避免玩家回合误显示"已停止"
+            boolean wasAnalyzing = aiManager.isAIAnalyzing;
             aiManager.stopAIAnalysis();
             // 切到后台时，stopAIAnalysis 内部的 markAIStopped 是 post 到 UI 线程的，
             // Activity 已 stop 后该任务不会刷新界面，导致"AI停止思考"提示不显示。
-            // 这里同步调用 markAIStopped 立即记录状态（View 对象仍有效），
+            // 因此这里同步调用 markAIStopped 立即记录状态（View 对象仍有效），
             // 待 onResume 时再 postInvalidate 触发绘制。
-            if (roundView != null && aiManager.isAIAnalyzing) {
+            if (wasAnalyzing && roundView != null) {
                 roundView.markAIStopped();
+                aiStoppedInBackground = true;
             }
         }
     }
@@ -1490,10 +1498,13 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             photoCaptureManager.resetFlagsOnResume();
         }
 
-        // 回到前台时，若 AI 在上一次切后台时被中断（isAIStopped 已置），
-        // 重新触发一次绘制以显示"AI停止思考"提示（后台时 postInvalidate 不会刷新界面）
-        if (roundView != null && roundView.isAIStopped() && !roundView.isAIThinking()) {
+        // 回到前台时，若 AI 在上一次切后台时被中断（aiStoppedInBackground 已置），
+        // 重新触发一次绘制以显示"AI停止思考"提示（后台时 UI 不刷新，runOnUiThread 的
+        // markAIStopped 可能延迟/不立即绘制，故此处强制补绘）
+        if (aiStoppedInBackground && roundView != null) {
+            roundView.markAIStopped();
             roundView.postInvalidate();
+            aiStoppedInBackground = false;
         }
     }
 
