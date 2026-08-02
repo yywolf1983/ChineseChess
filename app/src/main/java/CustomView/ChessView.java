@@ -657,9 +657,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         // 背景按源图 755×938 比例，与 Scale(755 基准) 一致，等比例无压缩
         int fullH = Math.round(Board_width * (float) BOARD_SRC_H / BOARD_SRC_W);
 
-        // 棋盘左右边距固定为 MARGIN_X（2px）：左距 2，绘制宽度 = 可用宽 - 2*边距，
-        // 高度按源图 755×938 比例跟随，不居中（贴近左边缘）。矮屏高度约束时 drawW 可能更小，仍左对齐。
-        final int MARGIN_X = 2;
+        // 棋盘左右不留边距：左距 0，绘制宽度铺满可用宽，高度按源图 755×938 比例跟随，左对齐。
+        final int MARGIN_X = 0;
         int maxDrawW = Math.max(1, viewW - 2 * MARGIN_X);
         int drawW = Math.min(Math.round(Board_width * boardDrawScale), maxDrawW);
         int drawH = Math.round(drawW * (float) BOARD_SRC_H / BOARD_SRC_W);
@@ -691,6 +690,12 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     public void surfaceCreated(SurfaceHolder holder) {
+        // 当 Surface 创建时：若位图已被回收（如切后台后再返回），先重新解码所有位图，
+        // 再按当前尺寸重载棋盘图，否则 Draw 时 ChessBoard/BP/RP 均为 null 会只画底色（黑屏）。
+        if (ChessBoard == null) {
+            init();
+            requestLayout(); // 触发 onMeasure 按当前 Board_width 重载棋盘图为合适尺寸
+        }
         // 当 Surface 创建时，立即绘制一次棋盘
         if (holder != null) {
             Canvas canvas = holder.lockCanvas();
