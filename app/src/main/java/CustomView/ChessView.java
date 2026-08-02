@@ -234,20 +234,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
                             int ph = sy(PIECE_H);
                             pDesRect = new Rect(cx - ph, cy - ph, cx + ph, cy + ph);
 
-                            // 调试：为每个棋子绘制十字中心延长线（横竖贯穿整盘），用于核对棋子是否落在中心点
-                            if (drawPieceCrosshair) {
-                                Paint crossPaint = new Paint();
-                                crossPaint.setColor(Color.MAGENTA);
-                                crossPaint.setStrokeWidth(Math.max(1, Scale(1)));
-                                crossPaint.setAntiAlias(true);
-                                // 以棋子中心 (cx, cy) 起，向四个方向延伸到棋盘边缘（整盘延长线）
-                                int left = 0;
-                                int right = viewMeasuredW > 0 ? viewMeasuredW : getWidth();
-                                int top = 0;
-                                int bottom = getHeight();
-                                canvas.drawLine(left, cy, right, cy, crossPaint);   // 水平延长线
-                                canvas.drawLine(cx, top, cx, bottom, crossPaint);  // 垂直延长线
-                            }
                             if (chessInfo.piece[i][j] <= 7) {
                                 int num = chessInfo.piece[i][j] - 1;
                                 if (BP != null && num >= 0 && num < BP.length && BP[num] != null) {
@@ -906,37 +892,34 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         Paint blackCoordPaint = new Paint(coordPaint);
         blackCoordPaint.setTextSize(Scale(26));
 
-        // 圆角底 pill：浅色半透明，与木色风格统一、提升对比度
-        Paint pillPaint = new Paint();
-        pillPaint.setStyle(Paint.Style.FILL);
-        pillPaint.setAntiAlias(true);
-        pillPaint.setColor(Color.argb(205, 242, 226, 194)); // 暖米白半透明（黑方底）
-
-        Paint redPillPaint = new Paint(pillPaint);
-        redPillPaint.setColor(Color.argb(210, 246, 212, 206)); // 淡红半透明（红方底）
-
         // 红方横坐标（从右到左：一、二、三、四、五、六、七、八、九）
         String[] redCoords = {"九", "八", "七", "六", "五", "四", "三", "二", "一"};
         // 黑方横坐标（从左到右：1、2、3、4、5、6、7、8、9）
         String[] blackCoords = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 
-        // 屏幕上方坐标距框线：未反转 6，反转后 20(红方变远)
-        // 屏幕下方坐标距框线：未反转 22，反转后 14(黑方不变/近)
-        int topOff = boardFlipped ? sy(20) : sy(6);
-        int botOff = boardFlipped ? sy(14) : sy(22);
+        // 偏移量（距框线源图单位）：
+        //   未反转时黑方(上方)=topOff=-4，红方(下方)=botOff=32
+        //   翻转后整画布旋180°：黑坐标(绘制在顶框线上方)转到屏幕下方，红坐标(绘制在底框线下方)转到屏幕上方。
+        //   故翻转后「屏幕上方=红」由 botOff 控制、「屏幕下方=黑」由 topOff 控制。
+        //   按用户校准：反转后 上(红)=12、下(黑)=12。
+        // 翻转后几何：屏幕下方=黑方(由 topOff 控制，字号大 Scale(26) 字身高，需更大偏移才不压棋子)，
+        //           屏幕上方=红方(由 botOff 控制，字号小 Scale(20) 字身矮，用小偏移即贴近框线/棋子)。
+        // 因字号不同，不能简单上下对称，黑方偏移需明显大于红方。
+        int topOff = boardFlipped ? sy(28) : sy(-4);   // 翻转时控制屏幕下方(黑方)
+        int botOff = boardFlipped ? sy(6) : sy(32);    // 翻转时控制屏幕上方(红方)
         int blackY = sy(boardTop) - topOff + drawOffY;                        // 黑坐标：顶框线上方空白带
         int redY = sy(boardTop + 9 * GRID + GRID) + botOff + drawOffY;        // 红坐标：底框线下方空白带
 
-        // 绘制红方横坐标（从右到左：九、八、…、一）
+        // 绘制红方横坐标（从右到左：九、八、…、一）。下方坐标不要背景 pill（传 null）
         for (int i = 0; i < 9; i++) {
             int x = sy(i * GRID + HALF) - Scale(1) + drawOffX;
-            drawCoordText(canvas, redCoords[i], x, redY, redCoordPaint, redPillPaint);
+            drawCoordText(canvas, redCoords[i], x, redY, redCoordPaint, null);
         }
 
-        // 绘制黑方横坐标（从左到右：1、2、…、9）
+        // 绘制黑方横坐标（从左到右：1、2、…、9）。黑方坐标也不要背景 pill（传 null）
         for (int i = 0; i < 9; i++) {
             int x = sy(i * GRID + HALF) - Scale(1) + drawOffX;
-            drawCoordText(canvas, blackCoords[i], x, blackY, blackCoordPaint, pillPaint);
+            drawCoordText(canvas, blackCoords[i], x, blackY, blackCoordPaint, null);
         }
     }
 
@@ -964,8 +947,10 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         float pillH = textSize + padY * 2;
         float left = x - pillW / 2f;
         float top = y - pillH / 2f;
-        // 圆角半径取高度一半，呈现胶囊形
-        canvas.drawRoundRect(left, top, left + pillW, top + pillH, pillH / 2f, pillH / 2f, pillPaint);
+        // 圆角半径取高度一半，呈现胶囊形；pillPaint 为 null 时不画背景（仅文字）
+        if (pillPaint != null) {
+            canvas.drawRoundRect(left, top, left + pillW, top + pillH, pillH / 2f, pillH / 2f, pillPaint);
+        }
         // 文字垂直居中：基线 = y + (ascent+descent)/2（ascent 为负，descent 为正）
         Paint.FontMetrics fm = paint.getFontMetrics();
         float baseline = y + (fm.ascent + fm.descent) / 2f;

@@ -1104,7 +1104,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         };
         x = x - dis[0];
         y = y - dis[1];
-        if (x % dis[3] <= dis[2] && y % dis[3] <= dis[2]) {
+        // 命中区域覆盖整个棋子格（整格），不再限制为半格，避免棋子右/下半部分成为点击死区
+        if (x >= 0 && y >= 0) {
             pos[0] = (int) Math.floor(x / dis[3]);
             pos[1] = 9 - (int) Math.floor(y / dis[3]);
             // 反转y坐标，与绘制时的逻辑保持一致
