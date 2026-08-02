@@ -195,13 +195,13 @@ public class RoundView extends View {
         postInvalidate();
     }
 
-    // 标记"AI 行棋/支招被非正常中断"：清除思考中的动画状态，并显示"已停止"提示
-    // （仅在确实处于思考/支招/加载中时才置位，避免误显示）。
-    // 由调用方在真正中断 AI 时（如 Activity onStop）调用。
+    // 标记"AI 行棋/支招被非正常中断"：清除思考中的动画状态，并显示"已停止"提示。
+    // 是否已真正处于思考由调用方（stopAIAnalysis 中的 wasSearching）判断，
+    // 此处直接置位，避免在 runOnUiThread 前状态已被 finishAnalyzing 清除导致漏显
+    // （人机模式 isAIThinking 先被清，故必须直接置位；支招模式 isSuggestMode 仍在才显示，
+    // 因此统一改为直接置位、由调用方决定是否调用本方法）。
     public void markAIStopped() {
-        if (isAIThinking || isSuggestMode || isAILoading) {
-            this.isAIStopped = true;
-        }
+        this.isAIStopped = true;
         this.isAIThinking = false;
         this.aiThinkingProgress = 0;
         this.isSuggestMode = false;
@@ -886,9 +886,11 @@ public class RoundView extends View {
                 drawCenteredChipText(canvas, width, currentY, aiTextSize, t, Color.argb(46, 70, 130, 200));
                 currentY += lineHeight;
             } else if (isAIStopped) {
-                // AI 行棋被非正常中断：提示已停止，而非残留"思考中"
-                drawCenteredChipText(canvas, width, currentY, aiTextSize, "AI行棋已停止",
-                        Color.argb(46, 130, 70, 70));
+                // AI 行棋被非正常中断：提示已停止，而非残留"思考中"。
+                // 背景与其他 AI 提示保持一致的蓝色胶囊底；文字用警示橙红色区分。
+                infoTextPaint.setColor(Color.rgb(255, 150, 130));
+                drawCenteredChipText(canvas, width, currentY, aiTextSize, "AI停止思考",
+                        Color.argb(46, 70, 130, 200));
                 currentY += lineHeight;
             }
         }
