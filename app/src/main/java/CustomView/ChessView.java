@@ -209,11 +209,6 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             LogUtils.i("ChessView", "Drawing chessboard grid instead of bitmap");
         }
 
-        // 调试：在棋盘图片上叠加整盘网格参考线（9 列×10 行中心点），用于核对棋盘图片网格是否准确
-        if (drawBoardReference) {
-            drawBoardReference(canvas);
-        }
-        
         // 添加空指针检查，确保 chessInfo 不为 null
         if (chessInfo == null) {
             return;
@@ -676,17 +671,19 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         // 背景按源图 755×938 比例，与 Scale(755 基准) 一致，等比例无压缩
         int fullH = Math.round(Board_width * (float) BOARD_SRC_H / BOARD_SRC_W);
 
-        // boardDrawScale 整体缩小棋盘：缩小后绘制区域 = 源图 755×938 经 boardDrawScale 缩放，
-        // 在 View（viewW × viewH）内水平居中，紧凑高度跟随棋盘（无多余空白带）。
-        int drawW = Math.round(Board_width * boardDrawScale);
-        int drawH = Math.round(fullH * boardDrawScale);
-        drawOffX = (viewW - drawW) / 2;
+        // 棋盘左右边距固定为 MARGIN_X（2px）：左距 2，绘制宽度 = 可用宽 - 2*边距，
+        // 高度按源图 755×938 比例跟随，不居中（贴近左边缘）。矮屏高度约束时 drawW 可能更小，仍左对齐。
+        final int MARGIN_X = 2;
+        int maxDrawW = Math.max(1, viewW - 2 * MARGIN_X);
+        int drawW = Math.min(Math.round(Board_width * boardDrawScale), maxDrawW);
+        int drawH = Math.round(drawW * (float) BOARD_SRC_H / BOARD_SRC_W);
+        drawOffX = MARGIN_X;
         drawOffY = 0;
 
-        // 背景图片按 boardDrawScale 缩小，绘制在居中区域（整图等比例，无拉伸）
+        // 背景图片按 boardDrawScale 缩小，绘制在左对齐区域（整图等比例，无拉伸）
         cDesRect = new Rect(drawOffX, drawOffY, drawOffX + drawW, drawOffY + drawH);
 
-        // View 高度 = 缩小后棋盘高度（紧凑，适应内容）；棋盘屏幕位置由 drawOffX 水平居中决定。
+        // View 高度 = 缩小后棋盘高度（紧凑，适应内容）
         int viewH = drawH;
 
         // 摆棋UI现在是浮动的，不需要额外增加View高度（尺寸已含偏移量）
