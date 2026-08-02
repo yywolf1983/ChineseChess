@@ -110,6 +110,18 @@ build_release() {
         echo "${RED}Release版本构建失败！${NC}"
         exit 1
     fi
+
+    # 构建成功后复制APK到指定位置
+    local src_apk="$PROJECT_DIR/app/build/outputs/apk/release/app-release.apk"
+    local dst_dir="/Users/yy/Desktop/back/dapk"
+    local dst_apk="$dst_dir/chess.apk"
+    if [ -f "$src_apk" ]; then
+        mkdir -p "$dst_dir"
+        cp "$src_apk" "$dst_apk"
+        echo "${GREEN}APK已复制到: $dst_apk${NC}"
+    else
+        echo "${RED}警告: 未找到APK文件: $src_apk${NC}"
+    fi
 }
 
 # 安装Debug版本
