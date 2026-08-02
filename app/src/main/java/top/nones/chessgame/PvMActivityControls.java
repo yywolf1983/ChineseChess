@@ -136,6 +136,8 @@ public class PvMActivityControls {
                     // 新局：重置开局库，下一局双机对战将重新随机选取开局
                     if (activity.aiManager != null) {
                         activity.aiManager.resetOpeningBook();
+                        // 新局同时清除双机对战暂停态，避免遗留暂停导致 AI 不再行棋
+                        activity.aiManager.setDoubleAIPaused(false);
                     }
                     // 新局后检查是否需要 AI 先手
                     if (activity.gameManager != null) {
@@ -282,6 +284,8 @@ public class PvMActivityControls {
                     // 切换到双机对战时重置开局库，立即重新随机选取开局
                     if (mode == 3 && activity.aiManager != null) {
                         activity.aiManager.resetOpeningBook();
+                        // 切换到双机对战时清除暂停态，确保新对弈立即开始
+                        activity.aiManager.setDoubleAIPaused(false);
                     }
                     // 更新RoundView的游戏模式显示
                     if (activity.roundView != null) {
@@ -313,16 +317,20 @@ public class PvMActivityControls {
         try {
             LogUtils.d("PvMActivityControls", "handleStatisticsButton called");
 
-            // 如果 AI 正在思考/支招/加载中（含 AI 行棋），立即中断（不受点击间隔限制）
-            // 用 roundView.isAISearching() 判断，覆盖"支招"与"AI行棋"两种思考态，
-            // 避免 AI 行棋时按钮被覆盖成"支招"而无法点击中断、导致"思考中"动画残留
-            boolean aiSearching = activity.aiManager != null && activity.aiManager.isAIAnalyzing;
-            if (!aiSearching && activity.roundView != null && activity.roundView.isAISearching()) {
-                aiSearching = true;
-            }
-            if (aiSearching) {
-                LogUtils.d("PvMActivityControls", "AI is analyzing/searching, interrupting it");
+            // 用按钮当前显示文本判断点击意图：显示"中断"就中断，显示"支招"就支招。
+            // 不能用 aiManager.isAIAnalyzing 判断：AI 行棋落子间隙 isAIAnalyzing 会短暂变 false，
+            // 但按钮此时仍显示"中断"，若据此走支招分支会导致点了"中断"却什么都不做、
+            // 也不显示"AI停止思考"。按钮文本是最准确的用户可见状态。
+            android.view.View btnChk = activity.findViewById(R.id.btn_statistics);
+            boolean buttonIsStop = btnChk instanceof Button
+                    && "中断".equals(((Button) btnChk).getText().toString());
+            if (buttonIsStop) {
+                LogUtils.d("PvMActivityControls", "button shows 中断, interrupting AI");
                 activity.aiManager.stopAIAnalysis();
+                // 双机对战（gameMode==3）：暂停对弈回环，避免已入队的下一手继续触发"思考中"
+                if (activity.aiManager != null && activity.gameMode == 3) {
+                    activity.aiManager.setDoubleAIPaused(true);
+                }
                 if (activity.pikafishAI != null) {
                     activity.pikafishAI.interrupt();
                 }
@@ -342,6 +350,17 @@ public class PvMActivityControls {
             }
             lastSuggestClickTime = currentTime;
 
+            // 双机对战（gameMode==3）且处于暂停态：点"支招/继续"恢复对弈回环，重启 AI 行棋
+            if (activity.gameMode == 3
+                    && activity.aiManager != null && activity.aiManager.isDoubleAIPaused()) {
+                activity.aiManager.setDoubleAIPaused(false);
+                if (activity.roundView != null) {
+                    activity.roundView.markThinking(activity.chessInfo.IsRedGo);
+                }
+                activity.aiManager.checkAIMove();
+                return;
+            }
+
             if (activity.chessInfo != null && !activity.chessInfo.IsSetupMode) {
                 // 自动为当前行棋方支招
                 boolean currentPlayerIsRed = activity.chessInfo.IsRedGo;
@@ -359,11 +378,11 @@ public class PvMActivityControls {
             android.view.View btnView = activity.findViewById(R.id.btn_statistics);
             if (!(btnView instanceof Button)) return;
             Button btn = (Button) btnView;
-            // AI 仍在思考/支招/加载中（含 AI 行棋）时，强制保持"中断"态，
+            // AI 仍在行棋（isAIAnalyzing）时，强制保持"中断"态，
+            // 仅用 aiManager.isAIAnalyzing 判断（整段 AI 行棋期间恒为真，不闪烁），
             // 避免被上一手/下一步/悔棋/退出摆棋等 UI 路径重置回"支招"，
-            // 从而保证 AI 行棋期间按钮始终是"中断"且可点击中断
-            boolean aiSearching = (activity.aiManager != null && activity.aiManager.isAIAnalyzing)
-                    || (activity.roundView != null && activity.roundView.isAISearching());
+            // 从而保证 AI 行棋期间按钮始终是"中断"且可立即点击中断
+            boolean aiSearching = activity.aiManager != null && activity.aiManager.isAIAnalyzing;
             if (aiSearching) {
                 analyzing = true;
             }
@@ -387,11 +406,11 @@ public class PvMActivityControls {
             android.view.View btnView = activity.findViewById(R.id.btn_statistics);
             if (!(btnView instanceof Button)) return;
             Button btn = (Button) btnView;
-            // 非模拟态（returning=false）且 AI 仍在思考/行棋中时，保持"中断"而非覆盖为"支招"，
-            // 否则 AI 行棋期间退出模拟/摆棋等路径会把它重置成"支招"，导致无法点击中断
+            // 非模拟态（returning=false）且 AI 仍在行棋（isAIAnalyzing）时，保持"中断"而非覆盖为"支招"，
+            // 仅用 isAIAnalyzing 判断（不闪烁），否则 AI 行棋期间退出模拟/摆棋等路径
+            // 会把它重置成"支招"，导致第一次点击无效、需再次点击才生效
             if (!returning) {
-                boolean aiSearching = (activity.aiManager != null && activity.aiManager.isAIAnalyzing)
-                        || (activity.roundView != null && activity.roundView.isAISearching());
+                boolean aiSearching = activity.aiManager != null && activity.aiManager.isAIAnalyzing;
                 if (aiSearching) {
                     updateSuggestButton(true);
                     return;

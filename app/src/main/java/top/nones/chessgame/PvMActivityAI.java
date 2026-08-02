@@ -30,6 +30,9 @@ public class PvMActivityAI {
     private final java.util.concurrent.atomic.AtomicInteger aiGeneration = new java.util.concurrent.atomic.AtomicInteger(0);
     // 标记 AI 是否被外部中断（stopAIAnalysis），用于让旧 AI 线程尽快退出
     private final AtomicBoolean aiInterrupted = new AtomicBoolean(false);
+    // 双机对战（gameMode==3）对弈回环是否被用户暂停：暂停后即使已入队的
+    // DoubleAIMoveRunnable 触发，也不再启动下一手 AI，从而让"中断"能真正停住对弈
+    private final AtomicBoolean doubleAIPaused = new AtomicBoolean(false);
     // 使用有界队列和自定义拒绝策略，避免线程堆积
     private java.util.concurrent.ThreadPoolExecutor executorService;
     // 内置开局库（仅双机对战 gameMode==3 时使用，随机走开局前两步）
@@ -692,6 +695,10 @@ public class PvMActivityAI {
         @Override
         public void run() {
             if (aiInstance != null && aiInstance.activity != null && aiInstance.activity.chessInfo != null && aiInstance.activity.chessInfo.status == 1) {
+                // 双机对战被用户暂停时，不启动下一手 AI，使对弈真正停住
+                if (aiInstance.doubleAIPaused.get()) {
+                    return;
+                }
                 // 移除延迟，直接开始AI计算
                 aiInstance.checkAIMove();
             }
@@ -873,7 +880,10 @@ public class PvMActivityAI {
                 aiShouldMove = true;
             }
         } else if (this.activity.gameMode == 3) {
-            aiShouldMove = true;
+            // 双机对战：被用户暂停（点了"中断"）时不启动 AI，使对弈真正停住
+            if (!this.doubleAIPaused.get()) {
+                aiShouldMove = true;
+            }
         }
 
         if (aiShouldMove) {
@@ -2076,6 +2086,17 @@ public class PvMActivityAI {
         if (openingBook != null) {
             openingBook.reset();
         }
+    }
+
+    /** 设置双机对战（gameMode==3）对弈回环的暂停态：true=暂停（点击"中断"），
+     *  false=恢复（点击"支招/继续"）。暂停后已入队的 DoubleAIMoveRunnable 不再启动下一手 AI。 */
+    public void setDoubleAIPaused(boolean paused) {
+        doubleAIPaused.set(paused);
+    }
+
+    /** 当前双机对战是否被暂停。 */
+    public boolean isDoubleAIPaused() {
+        return doubleAIPaused.get();
     }
 
     public void shutdown() {
