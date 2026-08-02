@@ -2014,9 +2014,11 @@ public class PvMActivityAI {
     
     // 停止AI分析
     public void stopAIAnalysis() {
-        // 记录中断前是否正处于 AI 思考/支招/加载中（用于区分"非正常中断"与"本就空闲"）
-        final boolean wasSearching = activity != null && activity.roundView != null
-                && activity.roundView.isAISearching();
+        // 用权威标志 aiAnalyzingState 判断是否正处于 AI 行棋（覆盖整段 AI 行棋，含落子间隙、
+        // 不被 UI 动画态 isAIThinking 的闪烁影响），避免"落子间隙 isAIThinking 短暂为 false"
+        // 导致 wasSearching 误判为 false、从而漏显"已停止"提示（点了中断却仍显示思考中）。
+        // 注意：需在 finishAnalyzing 之前取值，因为 finishAnalyzing 会把 isAIAnalyzing 置 false。
+        final boolean wasSearching = aiAnalyzingState.get();
         finishAnalyzing();
         // 中断引擎搜索，释放 searchLock，避免后续 AI 计算被阻塞
         if (activity != null && activity.pikafishAI != null) {
@@ -2024,7 +2026,9 @@ public class PvMActivityAI {
         }
         // 取消深度更新任务
         stopAISearch();
-        // 中断后更新 UI：若确实在思考/支招则提示"已停止"，否则仅清除残留状态
+        // 中断后更新 UI：若确实在思考/支招则提示"已停止"，否则仅清除残留状态。
+        // 用 runOnUiThread 确保主线程执行；与 handleStatisticsButton 的同步 markAIStopped 重复
+        // 调用无害（幂等）。
         if (activity != null && activity.roundView != null) {
             activity.runOnUiThread(() -> {
                 if (activity.roundView != null) {
