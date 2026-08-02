@@ -525,8 +525,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     private static final float GRID = 84f;            // 每格设计单位（贴合源图真实格距 ≈84）
     private static final float HALF = 44f;            // 格中心偏移 = 44（起始列 x 坐标，不再等于 GRID/2）
     private float boardTop = 44f;                     // 第一排落子点 y 的基准（源图单位），运行时重算；起始行 y = boardTop + HALF = 88
-    private static final float PIECE = 84f;           // 棋子边长设计单位（= GRID，占满整格）
-    private static final float PIECE_H = PIECE / 2f;  // 棋子半边 = 42
+    private static final float PIECE = 90f;           // 棋子边长设计单位（略大于 GRID，视觉更饱满）
+    private static final float PIECE_H = PIECE / 2f;  // 棋子半边 = 45
 
     // 棋盘整体绘制缩放（所有格子/棋子/提示/坐标/背景图统一缩小，并在 View 中居中）。
     // 默认在 onMeasure 中按可用屏幕宽高自适应计算（尽量铺满且完整适应、不溢出），
