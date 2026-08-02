@@ -1918,7 +1918,11 @@ public class PvMActivityAI {
                 // 二次校验：getCurrentDepth 是 JNI 调用，期间分析可能已结束并递增代际，
                 // 必须在写入 RoundView 前再次确认仍在分析中且代际未变，
                 // 否则会把"思考中"状态写死，导致 AI 已停止但动画仍在动
-                if (!aiInstance.isAIAnalyzing || aiInstance.aiGeneration.get() != myGeneration) {
+                // 额外检查 aiInterrupted：中断后会置 true，可拦截"stopAIAnalysis 已执行、
+                // 但 isAIAnalyzing 守卫因与 finishAnalyzing 的竞态尚未生效"的极端窗口，
+                // 避免 DepthUpdateRunnable 再次 markThinking 覆盖"已停止"提示
+                if (!aiInstance.isAIAnalyzing || aiInstance.aiGeneration.get() != myGeneration
+                        || aiInstance.aiInterrupted.get()) {
                     aiInstance.activity.roundView.setSearchDepth(0, isRed);
                     return;
                 }
@@ -2042,6 +2046,10 @@ public class PvMActivityAI {
             isAIAnalyzing = true;
             aiGeneration.incrementAndGet();  // 递增代际
             aiInterrupted.set(false);  // 重置中断标志
+            // 清除上一手可能因中断遗留的"已停止"标记，使本手 markThinking 能正常显示"思考中"
+            if (activity != null && activity.roundView != null) {
+                activity.roundView.resetAIStopped();
+            }
             // 支招按钮变为"中断"状态（UI 线程更新）
             notifySuggestButton(true);
         }

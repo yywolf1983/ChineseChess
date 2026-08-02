@@ -185,6 +185,11 @@ public class RoundView extends View {
     // 与 setSearchDepth(1) 的区别：不会把"启动初期的占位深度 1"误当作
     // 真实深度记录进 pendingFinalDepth，从而避免搜索被中断时深度停在 1。
     public void markThinking(boolean isRed) {
+        // 已被用户中断（显示"已停止"）时，不允许任何 markThinking 覆盖回"思考中"，
+        // 否则 DepthUpdateRunnable 或下一手启动前的瞬时调用会抹掉中断提示，导致动画残留
+        if (this.isAIStopped) {
+            return;
+        }
         this.isAIThinking = true;
         this.isRedTurn = isRed;
         this.isAIStopped = false; // 正常开始思考，清除停止标记
@@ -206,6 +211,13 @@ public class RoundView extends View {
         this.aiThinkingProgress = 0;
         this.isSuggestMode = false;
         syncDotAnimation();
+        postInvalidate();
+    }
+
+    // 清除"已停止"标记（仅清 isAIStopped，不动其他思考动画状态），
+    // 供下一手 AI 正常开始时调用，使 markThinking 能重新显示"思考中"
+    public void resetAIStopped() {
+        this.isAIStopped = false;
         postInvalidate();
     }
 
