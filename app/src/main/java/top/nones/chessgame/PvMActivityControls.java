@@ -320,6 +320,10 @@ public class PvMActivityControls {
                 if (activity.pikafishAI != null) {
                     activity.pikafishAI.interrupt();
                 }
+                // 同步标记 AI 行棋被中断，确保立即显示"AI停止思考"提示（不依赖 stopAIAnalysis 内部异步时序）
+                if (activity.roundView != null) {
+                    activity.roundView.markAIStopped();
+                }
                 updateSuggestButton(false);
                 return;
             }
