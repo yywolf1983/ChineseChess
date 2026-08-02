@@ -625,22 +625,8 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
         // 按真实显示宽度按需重载棋盘图：只在尺寸变化（或尚未加载）时重新解码，
         // 保证棋盘图只解码“当前屏幕所需”的像素量，避免 init 时用退回值过度解码、浪费内存。
-        int neededW = Board_width;
-        int neededH = Board_height;
-        if (ChessBoard == null || Math.abs(ChessBoard.getWidth() - neededW) > 2) {
-            Bitmap old = ChessBoard;
-            ChessBoard = decodeSampledBitmapFromResource(getResources(), R.drawable.chessboard, neededW, neededH);
-            if (old != null && old != ChessBoard) {
-                old.recycle(); // 释放上一张，避免内存堆积
-            }
-        }
-
-        // 添加空指针检查，确保 ChessBoard 不为 null
-        if (ChessBoard != null) {
-            cSrcRect = new Rect(0, 0, ChessBoard.getWidth(), ChessBoard.getHeight());
-        } else {
-            cSrcRect = new Rect(0, 0, Board_width, Board_height);
-        }
+        // 按当前显示尺寸重载棋盘位图（与 surfaceCreated 复用同一逻辑）
+        reloadChessBoardBitmap();
         // 测量宽度严格等于可用宽度 Board_width（= 父布局宽度），不再额外加 off，
         // 避免 View 比父布局宽导致 CENTER_HORIZONTAL 时整盘左移、左右棋子被裁切/超出屏幕。
         int viewW = Board_width;
@@ -682,12 +668,13 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     }
 
     public void surfaceCreated(SurfaceHolder holder) {
-        // 当 Surface 创建时：若位图已被回收（如切后台后再返回），先重新解码所有位图，
-        // 再按当前尺寸重载棋盘图，否则 Draw 时 ChessBoard/BP/RP 均为 null 会只画底色（黑屏）。
-        if (ChessBoard == null) {
-            init();
-            requestLayout(); // 触发 onMeasure 按当前 Board_width 重载棋盘图为合适尺寸
+        // 当 Surface 创建时：同步确保位图已就绪（切后台再返回时位图可能被回收），
+        // 否则 Draw 时 ChessBoard/BP/RP 为 null 或已回收，导致棋盘黑屏或棋子消失。
+        // 注意：不依赖异步 requestLayout，这里直接同步重载棋盘图到当前尺寸，保证本次 Draw 即可用。
+        if (bitmapsInvalid()) {
+            init(); // 重新解码全部位图（含棋子），覆盖被回收的引用
         }
+        reloadChessBoardBitmap(); // 同步把棋盘图重载为当前显示尺寸
         // 当 Surface 创建时，立即绘制一次棋盘
         if (holder != null) {
             Canvas canvas = holder.lockCanvas();
@@ -712,11 +699,38 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     // 统一回收本 View 加载的所有 bitmap，供 surfaceDestroyed / onDetachedFromWindow 调用
     private void recycleBitmaps() {
         if (ChessBoard != null && !ChessBoard.isRecycled()) { ChessBoard.recycle(); ChessBoard = null; }
-        if (B_box != null && !B_box.isRecycled()) { B_box.recycle(); }
-        if (R_box != null && !R_box.isRecycled()) { R_box.recycle(); }
-        if (Pot != null && !Pot.isRecycled()) { Pot.recycle(); }
-        for (Bitmap b : RP) { if (b != null && !b.isRecycled()) b.recycle(); }
-        for (Bitmap b : BP) { if (b != null && !b.isRecycled()) b.recycle(); }
+        if (B_box != null && !B_box.isRecycled()) { B_box.recycle(); B_box = null; }
+        if (R_box != null && !R_box.isRecycled()) { R_box.recycle(); R_box = null; }
+        if (Pot != null && !Pot.isRecycled()) { Pot.recycle(); Pot = null; }
+        for (int i = 0; i < RP.length; i++) { if (RP[i] != null && !RP[i].isRecycled()) RP[i].recycle(); RP[i] = null; }
+        for (int i = 0; i < BP.length; i++) { if (BP[i] != null && !BP[i].isRecycled()) BP[i].recycle(); BP[i] = null; }
+    }
+
+    // 按当前显示尺寸重载棋盘位图（覆盖 init 的兜底尺寸，避免异步 requestLayout 时序问题）
+    private void reloadChessBoardBitmap() {
+        int neededW = Board_width;
+        int neededH = Board_height;
+        if (ChessBoard == null || Math.abs(ChessBoard.getWidth() - neededW) > 2) {
+            Bitmap old = ChessBoard;
+            ChessBoard = decodeSampledBitmapFromResource(getResources(), R.drawable.chessboard, neededW, neededH);
+            if (old != null && old != ChessBoard) old.recycle();
+        }
+        if (ChessBoard != null) {
+            cSrcRect = new Rect(0, 0, ChessBoard.getWidth(), ChessBoard.getHeight());
+        } else {
+            cSrcRect = new Rect(0, 0, Board_width, Board_height);
+        }
+    }
+
+    // 任一关键位图缺失或被回收则返回 true（用于 surface 重建时判断是否需要重新解码）
+    private boolean bitmapsInvalid() {
+        if (ChessBoard == null || ChessBoard.isRecycled()) return true;
+        if (RP[0] == null || RP[0].isRecycled()) return true;
+        if (BP[0] == null || BP[0].isRecycled()) return true;
+        if (B_box == null || B_box.isRecycled()) return true;
+        if (R_box == null || R_box.isRecycled()) return true;
+        if (Pot == null || Pot.isRecycled()) return true;
+        return false;
     }
 
     // 绘制方法，添加空指针检查
