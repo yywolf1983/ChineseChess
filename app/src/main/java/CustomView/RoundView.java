@@ -214,6 +214,14 @@ public class RoundView extends View {
         postInvalidate();
     }
 
+    public boolean isAIStopped() {
+        return this.isAIStopped;
+    }
+
+    public boolean isAIThinking() {
+        return this.isAIThinking;
+    }
+
     // 清除"已停止"标记（仅清 isAIStopped，不动其他思考动画状态），
     // 供下一手 AI 正常开始时调用，使 markThinking 能重新显示"思考中"
     public void resetAIStopped() {

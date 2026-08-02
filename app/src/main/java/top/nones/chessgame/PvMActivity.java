@@ -1458,6 +1458,13 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 停止AI分析
         if (aiManager != null) {
             aiManager.stopAIAnalysis();
+            // 切到后台时，stopAIAnalysis 内部的 markAIStopped 是 post 到 UI 线程的，
+            // Activity 已 stop 后该任务不会刷新界面，导致"AI停止思考"提示不显示。
+            // 这里同步调用 markAIStopped 立即记录状态（View 对象仍有效），
+            // 待 onResume 时再 postInvalidate 触发绘制。
+            if (roundView != null && aiManager.isAIAnalyzing) {
+                roundView.markAIStopped();
+            }
         }
     }
 
@@ -1481,6 +1488,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         // 安全重置相机/图片选择器标志（防止状态卡住）
         if (photoCaptureManager != null) {
             photoCaptureManager.resetFlagsOnResume();
+        }
+
+        // 回到前台时，若 AI 在上一次切后台时被中断（isAIStopped 已置），
+        // 重新触发一次绘制以显示"AI停止思考"提示（后台时 postInvalidate 不会刷新界面）
+        if (roundView != null && roundView.isAIStopped() && !roundView.isAIThinking()) {
+            roundView.postInvalidate();
         }
     }
 
