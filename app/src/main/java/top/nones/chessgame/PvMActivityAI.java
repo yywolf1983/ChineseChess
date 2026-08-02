@@ -2000,6 +2000,9 @@ public class PvMActivityAI {
     
     // 停止AI分析
     public void stopAIAnalysis() {
+        // 记录中断前是否正处于 AI 思考/支招/加载中（用于区分"非正常中断"与"本就空闲"）
+        final boolean wasSearching = activity != null && activity.roundView != null
+                && activity.roundView.isAISearching();
         finishAnalyzing();
         // 中断引擎搜索，释放 searchLock，避免后续 AI 计算被阻塞
         if (activity != null && activity.pikafishAI != null) {
@@ -2007,12 +2010,17 @@ public class PvMActivityAI {
         }
         // 取消深度更新任务
         stopAISearch();
-        // 立即清除 AI 思考动画和支招模式，确保中断后动画不残留
+        // 中断后更新 UI：若确实在思考/支招则提示"已停止"，否则仅清除残留状态
         if (activity != null && activity.roundView != null) {
             activity.runOnUiThread(() -> {
                 if (activity.roundView != null) {
-                    activity.roundView.setSearchDepth(0, false);
-                    activity.roundView.setSuggestMode(false);
+                    if (wasSearching) {
+                        // AI 行棋被非正常中断：显示"已停止"，不再显示"思考中"
+                        activity.roundView.markAIStopped();
+                    } else {
+                        activity.roundView.setSearchDepth(0, false);
+                        activity.roundView.setSuggestMode(false);
+                    }
                 }
             });
         }

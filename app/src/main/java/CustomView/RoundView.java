@@ -35,6 +35,7 @@ public class RoundView extends View {
     private int lastSearchDepth = 0; // 最近一次有效深度（用于持续显示，不随行棋方切换消失）
     private int pendingFinalDepth = 0; // 思考过程中的最大深度，仅在思考结束时固定显示
     private boolean isAIThinking = false; // AI是否正在思考
+    private boolean isAIStopped = false;  // AI行棋/支招是否被非正常中断（显示"已停止"而非"思考中"）
     private boolean isRedTurn = false; // 当前是否是红方回合
     private int aiThinkingProgress = 0; // AI思考动画进度
     private boolean isSuggestMode = false; // 是否处于支招模式
@@ -163,6 +164,10 @@ public class RoundView extends View {
         // 当深度大于0时，表示AI正在思考，显示"AI正在思考"提示
         boolean wasThinking = this.isAIThinking;
         this.isAIThinking = depth > 0;
+        // 开始思考即清除"已停止"标记，恢复正常思考提示
+        if (this.isAIThinking) {
+            this.isAIStopped = false;
+        }
         // 只有当AI正在思考时才更新isRedTurn，这样当AI思考完成后，isRedTurn会保持为AI的颜色
         if (this.isAIThinking) {
             this.isRedTurn = isRed;
@@ -182,11 +187,31 @@ public class RoundView extends View {
     public void markThinking(boolean isRed) {
         this.isAIThinking = true;
         this.isRedTurn = isRed;
+        this.isAIStopped = false; // 正常开始思考，清除停止标记
         if (!isSuggestMode) {
             this.aiThinkingProgress = 0;
         }
         syncDotAnimation();
         postInvalidate();
+    }
+
+    // 标记"AI 行棋/支招被非正常中断"：清除思考中的动画状态，并显示"已停止"提示
+    // （仅在确实处于思考/支招/加载中时才置位，避免误显示）。
+    // 由调用方在真正中断 AI 时（如 Activity onStop）调用。
+    public void markAIStopped() {
+        if (isAIThinking || isSuggestMode || isAILoading) {
+            this.isAIStopped = true;
+        }
+        this.isAIThinking = false;
+        this.aiThinkingProgress = 0;
+        this.isSuggestMode = false;
+        syncDotAnimation();
+        postInvalidate();
+    }
+
+    // 当前是否正处于 AI 思考/支招/加载中（供中断判断使用）
+    public boolean isAISearching() {
+        return isAIThinking || isSuggestMode || isAILoading;
     }
 
     // 清除搜索深度与思考状态（用于棋谱导航/加载，避免残留深度与思考动画）
@@ -196,6 +221,7 @@ public class RoundView extends View {
         this.lastSearchDepth = 0;
         this.pendingFinalDepth = 0;
         this.isAIThinking = false;
+        this.isAIStopped = false;
         this.aiThinkingProgress = 0;
         syncDotAnimation();
         postInvalidate();
@@ -858,6 +884,11 @@ public class RoundView extends View {
             } else if (isAIThinking) {
                 String t = "AI思考中" + buildDotSuffix(aiThinkingProgress);
                 drawCenteredChipText(canvas, width, currentY, aiTextSize, t, Color.argb(46, 70, 130, 200));
+                currentY += lineHeight;
+            } else if (isAIStopped) {
+                // AI 行棋被非正常中断：提示已停止，而非残留"思考中"
+                drawCenteredChipText(canvas, width, currentY, aiTextSize, "AI行棋已停止",
+                        Color.argb(46, 130, 70, 70));
                 currentY += lineHeight;
             }
         }
