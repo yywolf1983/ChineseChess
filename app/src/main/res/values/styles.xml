@@ -23,6 +23,27 @@
         <item name="colorPrimaryDark">@color/boardBrownDark</item>
         <item name="colorAccent">@color/boardAccent</item>
         <item name="android:statusBarColor">@color/boardBrownDark</item>
+        <!-- 下拉菜单（PopupMenu）样式 -->
+        <item name="popupMenuStyle">@style/PopupMenuStyle</item>
+        <item name="popupWindowStyle">@style/PopupWindowStyle</item>
+    </style>
+
+    <!-- 下拉菜单整体样式：圆角深色卡片背景 + 暖白文字 + 阴影，收窄内边距避免过宽 -->
+    <style name="PopupMenuStyle" parent="Widget.AppCompat.PopupMenu">
+        <item name="android:popupBackground">@drawable/popup_menu_bg</item>
+        <item name="android:dropDownVerticalOffset">4dp</item>
+        <item name="android:dropDownHorizontalOffset">0dp</item>
+        <item name="android:textColor">#FFF1DA</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:itemPadding">6dp</item>
+        <item name="android:listPreferredItemHeightSmall">40dp</item>
+        <item name="android:listSelector">@drawable/popup_item_selector</item>
+    </style>
+
+    <!-- 弹窗容器样式：开启阴影（悬浮卡片感） -->
+    <style name="PopupWindowStyle" parent="Widget.AppCompat.PopupWindow">
+        <item name="android:popupElevation">8dp</item>
+        <item name="android:popupBackground">@drawable/popup_menu_bg</item>
     </style>
 
 </resources>

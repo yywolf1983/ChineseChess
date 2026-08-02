@@ -6,9 +6,12 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.drawable.DrawableCompat;
+import androidx.core.content.ContextCompat;
 
 import ChessMove.Rule;
 import CustomView.ChessView;
@@ -143,7 +146,9 @@ public class PvPActivityInit {
         paramsChess.addRule(RelativeLayout.BELOW, R.id.roundView);
         paramsChess.width = RelativeLayout.LayoutParams.MATCH_PARENT;
         paramsChess.height = RelativeLayout.LayoutParams.WRAP_CONTENT;
-        paramsChess.setMargins(0, 0, 0, 0); // 棋盘上下不留空隙
+        // 左右增加留白（边距 6dp），让棋盘两侧不贴屏幕、有呼吸空间
+        int sideMargin = (int) (6 * relativeLayout.getResources().getDisplayMetrics().density);
+        paramsChess.setMargins(sideMargin, 0, sideMargin, 0);
         chessView.setLayoutParams(paramsChess);
         chessView.setId(R.id.chessView);
     }
@@ -168,20 +173,71 @@ public class PvPActivityInit {
         android.view.View btnMenu = activity.findViewById(R.id.btn_menu);
         if (btnMenu != null) {
             btnMenu.setOnClickListener(v -> {
-                android.widget.PopupMenu popup = new android.widget.PopupMenu(activity, v);
-                android.view.Menu menu = popup.getMenu();
-                menu.add(0, R.id.btn_retry, 0, "新局");
-                menu.add(0, R.id.btn_load, 1, "加载");
-                menu.add(0, R.id.btn_save, 2, "保存");
-                menu.add(0, R.id.btn_settings, 3, "设置");
-                popup.setOnMenuItemClickListener(item -> {
-                    android.view.View target = buttonGroup.findViewById(item.getItemId());
-                    if (target != null) {
-                        target.performClick();
-                    }
-                    return true;
+                // 自定义下拉菜单（ListPopupWindow）：宽度紧凑可控、图标可见、有分隔线
+                final int[] iconRes = {R.drawable.ic_new_game, R.drawable.ic_load,
+                        R.drawable.ic_save, R.drawable.ic_settings};
+                final int[] actionIds = {R.id.btn_retry, R.id.btn_load,
+                        R.id.btn_save, R.id.btn_settings};
+                final String[] titles = {"新局", "加载", "保存", "设置"};
+                final int ICON_TINT = 0xFFE6B36A; // 暖金，深色背景上更醒目
+
+                final float dens = activity.getResources().getDisplayMetrics().density;
+                // 紧凑宽度：最长文字 + 图标 + 间距 + 内边距，避免菜单过宽
+                android.graphics.Paint measurePaint = new android.graphics.Paint();
+                measurePaint.setTextSize(android.util.TypedValue.applyDimension(
+                        android.util.TypedValue.COMPLEX_UNIT_SP, 14,
+                        activity.getResources().getDisplayMetrics()));
+                float maxTextW = 0;
+                for (String t : titles) {
+                    maxTextW = Math.max(maxTextW, measurePaint.measureText(t));
+                }
+                final int compactW = (int) (maxTextW
+                        + 20 * dens     // 图标宽
+                        + 10 * dens     // 图标文字间距
+                        + 10 * dens     // 左内边距
+                        + 14 * dens     // 右内边距
+                        + 4 * dens);    // 余量
+
+                final android.widget.ArrayAdapter<String> adapter =
+                        new android.widget.ArrayAdapter<String>(activity, 0, titles) {
+                            @Override
+                            public android.view.View getView(int position,
+                                                             android.view.View convertView,
+                                                             android.view.ViewGroup parent) {
+                                if (convertView == null) {
+                                    convertView = android.view.LayoutInflater.from(activity)
+                                            .inflate(R.layout.popup_menu_item, parent, false);
+                                }
+                                ImageView iv = convertView.findViewById(R.id.iv_icon);
+                                TextView tv = convertView.findViewById(R.id.tv_title);
+                                tv.setText(titles[position]);
+                                iv.setImageDrawable(tintMenuIcon(activity,
+                                        iconRes[position], ICON_TINT));
+                                return convertView;
+                            }
+                        };
+
+                final androidx.appcompat.widget.ListPopupWindow lpw =
+                        new androidx.appcompat.widget.ListPopupWindow(activity);
+                lpw.setAnchorView(v);
+                lpw.setModal(true);
+                lpw.setWidth(compactW);
+                lpw.setAdapter(adapter);
+                lpw.setBackgroundDrawable(
+                        activity.getResources().getDrawable(R.drawable.popup_menu_bg));
+                lpw.setVerticalOffset((int) (4 * dens));
+                lpw.setOnItemClickListener((parent, view, position, id) -> {
+                    android.view.View target = buttonGroup.findViewById(actionIds[position]);
+                    if (target != null) target.performClick();
+                    lpw.dismiss();
                 });
-                popup.show();
+                lpw.show();
+                // 加暖色分隔线，使各菜单项区分明显
+                android.widget.ListView lv = lpw.getListView();
+                if (lv != null) {
+                    lv.setDivider(new android.graphics.drawable.ColorDrawable(0x557A6040));
+                    lv.setDividerHeight((int) (1 * dens));
+                }
             });
         }
     }
@@ -346,5 +402,14 @@ public class PvPActivityInit {
                 LogUtils.e("PvPActivityInit", "操作失败", e);
             }
         }
+    }
+
+    /** 给菜单图标着色（暖金），在深色背景上更醒目；返回 mutate 后的 drawable */
+    private static android.graphics.drawable.Drawable tintMenuIcon(android.content.Context ctx,
+                                                                    int resId, int color) {
+        android.graphics.drawable.Drawable d = androidx.core.content.ContextCompat
+                .getDrawable(ctx, resId).mutate();
+        DrawableCompat.setTint(d, color);
+        return d;
     }
 }

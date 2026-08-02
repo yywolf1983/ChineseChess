@@ -78,6 +78,8 @@ public class RoundView extends View {
     };
 
     private Paint backgroundPaint;
+    private Paint bgGradPaint; // 回合信息条背景渐变（上亮下暗木纹立体感）
+    private Paint tagPaint;           // 通用胶囊底片（第3行提示等）
     private Paint redTextPaint;
     private Paint blackTextPaint; // 黑方回合画笔
     private Paint infoTextPaint; // 模式和评分画笔
@@ -344,6 +346,16 @@ public class RoundView extends View {
         backgroundPaint.setStyle(Paint.Style.FILL);
         backgroundPaint.setColor(Color.rgb(180, 130, 80));
 
+        // 回合信息条背景：上亮下暗的木纹渐变（立体卡片感），shader 在 onDraw 中按尺寸设置
+        bgGradPaint = new Paint();
+        bgGradPaint.setStyle(Paint.Style.FILL);
+        bgGradPaint.setAntiAlias(true);
+
+        // 通用胶囊底片（第3行 AI/支招提示等）
+        tagPaint = new Paint();
+        tagPaint.setStyle(Paint.Style.FILL);
+        tagPaint.setAntiAlias(true);
+
         borderPaint = new Paint();
         borderPaint.setStyle(Paint.Style.STROKE);
         borderPaint.setColor(Color.rgb(100, 60, 30));
@@ -460,16 +472,37 @@ public class RoundView extends View {
     private void drawTurnSideCircle(Canvas canvas, float cx, float cy, boolean active,
                                     float iconSize, float r, int ringColor, int side) {
         if (turnPaint == null) return;
-        // 外圈：行棋方那侧加粗，非行棋方细圈
-        float strokeW = active ? convertDpToPixel(3.5f, getContext())
-                               : convertDpToPixel(1.6f, getContext());
-        turnPaint.setStyle(Paint.Style.STROKE);
-        turnPaint.setStrokeWidth(strokeW);
-        turnPaint.setColor(ringColor);
-        canvas.drawCircle(cx, cy, r, turnPaint);
-        // 圈内：固定尺寸的模式图标，紧贴外圈
         float density = getResources().getDisplayMetrics().density;
-        ModeIconDrawable d = new ModeIconDrawable(getContext(), gameMode, density, side, Color.WHITE);
+        if (active) {
+            // 行棋方：实心填充（同色径向渐变，更有质感）+ 金色柔光描边
+            int fillLight = side == ModeIconDrawable.SIDE_LEFT
+                    ? Color.rgb(214, 70, 60) : Color.rgb(70, 70, 80);
+            int fillDark = side == ModeIconDrawable.SIDE_LEFT
+                    ? Color.rgb(150, 28, 22) : Color.rgb(20, 20, 26);
+            android.graphics.RadialGradient rg = new android.graphics.RadialGradient(
+                    cx - r * 0.3f, cy - r * 0.3f, r * 1.5f, fillLight, fillDark,
+                    android.graphics.Shader.TileMode.CLAMP);
+            turnPaint.setStyle(Paint.Style.FILL);
+            turnPaint.setShader(rg);
+            turnPaint.setStrokeWidth(0);
+            canvas.drawCircle(cx, cy, r, turnPaint);
+            turnPaint.setShader(null);
+            // 金色柔光描边
+            turnPaint.setStyle(Paint.Style.STROKE);
+            turnPaint.setStrokeWidth(convertDpToPixel(2.2f, getContext()));
+            turnPaint.setColor(side == ModeIconDrawable.SIDE_LEFT
+                    ? Color.rgb(255, 214, 120) : Color.rgb(200, 205, 215));
+            canvas.drawCircle(cx, cy, r, turnPaint);
+        } else {
+            // 非行棋方：仅细圈（弱化）
+            turnPaint.setStyle(Paint.Style.STROKE);
+            turnPaint.setStrokeWidth(convertDpToPixel(1.6f, getContext()));
+            turnPaint.setColor(ringColor);
+            canvas.drawCircle(cx, cy, r, turnPaint);
+        }
+        // 圈内：固定尺寸的模式图标，紧贴外圈
+        ModeIconDrawable d = new ModeIconDrawable(getContext(), gameMode, density, side,
+                active ? Color.WHITE : Color.rgb(150, 150, 150));
         int s = (int) iconSize;
         d.setBounds((int) (cx - s / 2f), (int) (cy - s / 2f),
                 (int) (cx + s / 2f), (int) (cy + s / 2f));
@@ -504,6 +537,23 @@ public class RoundView extends View {
         infoTextPaint.setTextSize(textSize);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
         canvas.drawText(prefix + buildDotSuffix(progress), width / 2, y, infoTextPaint);
+    }
+
+    /** 绘制一条居中提示文字，并在其后方叠加半透明圆角胶囊底片，使提示更醒目 */
+    private void drawCenteredChipText(Canvas canvas, float width, float y, float textSize,
+                                      String text, int chipColor) {
+        infoTextPaint.setTextSize(textSize);
+        infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        float tw = infoTextPaint.measureText(text);
+        float padX = convertDpToPixel(10, getContext());
+        float chipH = convertDpToPixel(21, getContext());
+        float chipW = tw + padX * 2;
+        float cx = width / 2;
+        android.graphics.RectF chip = new android.graphics.RectF(
+                cx - chipW / 2f, y - chipH * 0.74f, cx + chipW / 2f, y + chipH * 0.74f);
+        tagPaint.setColor(chipColor);
+        canvas.drawRoundRect(chip, chipH * 0.5f, chipH * 0.5f, tagPaint);
+        canvas.drawText(text, cx, y, infoTextPaint);
     }
 
     private boolean shouldAnimateDots() {
@@ -556,12 +606,41 @@ public class RoundView extends View {
         int width = getWidth();
         int height = getHeight();
         
-        // 绘制背景
-        canvas.drawRect(0, 0, width, height, backgroundPaint);
+        // 绘制背景：上亮下暗木纹渐变（立体卡片感），并叠加顶部高光、底部暗边
+        // 每次按当前尺寸设置 shader（尺寸不变时重复设置开销极小，且避免缓存失效问题）
+        android.graphics.LinearGradient bgGrad = new android.graphics.LinearGradient(
+                0, 0, 0, height,
+                Color.rgb(201, 150, 96),   // 顶部亮木色
+                Color.rgb(150, 104, 62),   // 底部暗木色
+                android.graphics.Shader.TileMode.CLAMP);
+        bgGradPaint.setShader(bgGrad);
+        canvas.drawRect(0, 0, width, height, bgGradPaint);
+
+        // 顶部高光条（玻璃反光质感）
+        android.graphics.LinearGradient topHi = new android.graphics.LinearGradient(
+                0, 0, 0, convertDpToPixel(18, getContext()),
+                Color.argb(70, 255, 248, 235), Color.argb(0, 255, 248, 235),
+                android.graphics.Shader.TileMode.CLAMP);
+        Paint topHiPaint = new Paint();
+        topHiPaint.setStyle(Paint.Style.FILL);
+        topHiPaint.setShader(topHi);
+        topHiPaint.setAntiAlias(true);
+        canvas.drawRect(0, 0, width, convertDpToPixel(18, getContext()), topHiPaint);
+
+        // 底部暗边（增强厚度/立体感）
+        android.graphics.LinearGradient botSh = new android.graphics.LinearGradient(
+                0, height - convertDpToPixel(16, getContext()), 0, height,
+                Color.argb(0, 0, 0, 0), Color.argb(55, 40, 24, 10),
+                android.graphics.Shader.TileMode.CLAMP);
+        Paint botShPaint = new Paint();
+        botShPaint.setStyle(Paint.Style.FILL);
+        botShPaint.setShader(botSh);
+        botShPaint.setAntiAlias(true);
+        canvas.drawRect(0, height - convertDpToPixel(16, getContext()), width, height, botShPaint);
         
         // 绘制边框 - 使用dp单位确保不同屏幕一致性，颜色随行棋方变化
         float borderPadding = convertDpToPixel(3, getContext());
-        float cornerRadius = convertDpToPixel(6, getContext());
+        float cornerRadius = convertDpToPixel(11, getContext());
         android.graphics.RectF rectF = new android.graphics.RectF(
             borderPadding, borderPadding, 
             width - borderPadding, height - borderPadding);
@@ -645,25 +724,25 @@ public class RoundView extends View {
             }
         }
         
-        // 红方时间（左侧）
+        // 红方时间（左侧）：纯文字，无背景胶囊
         float redTimeX = convertDpToPixel(12, getContext());
         redTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         redTextPaint.setTextAlign(Paint.Align.LEFT);
         redTextPaint.setFakeBoldText(true);
         String redText = formatTime(redTime);
-        canvas.drawText(redText, redTimeX, row2Y, redTextPaint);
         float redTimeW = redTextPaint.measureText(redText);
+        canvas.drawText(redText, redTimeX, row2Y, redTextPaint);
 
-        // 黑方时间（右侧）
+        // 黑方时间（右侧）：纯文字，无背景胶囊
         blackTextPaint.setTextSize(convertDpToPixel(13, getContext()));
         blackTextPaint.setTextAlign(Paint.Align.RIGHT);
         blackTextPaint.setFakeBoldText(true);
         String blackText = formatTime(blackTime);
         float blackRightX = width - convertDpToPixel(12, getContext());
-        canvas.drawText(blackText, blackRightX, row2Y, blackTextPaint);
         float blackTimeW = blackTextPaint.measureText(blackText);
+        canvas.drawText(blackText, blackRightX, row2Y, blackTextPaint);
 
-        // 评分条：左右两端分别贴近红/黑时间，填满两者之间的空隙（左半红、右半黑对应两侧）
+        // 评分条：左右两端分别贴近红/黑时间文字，填满两者之间的空隙（左半红、右半黑对应两侧）
         float barGap = convertDpToPixel(10, getContext());
         float barX = redTimeX + redTimeW + barGap;
         float barEnd = blackRightX - blackTimeW - barGap;
@@ -703,11 +782,14 @@ public class RoundView extends View {
         infoTextPaint.setColor(neutralColor);
         infoTextPaint.setTextAlign(Paint.Align.LEFT);
         canvas.drawText(roundStr, padX, formY, infoTextPaint);
-        // 中：形势/分数（始终居中，字号比回合、深度更大，突出评分）
+        // 中：形势/分数（始终居中，字号比回合、深度更大，突出评分，带柔光）
         infoTextPaint.setTextSize(convertDpToPixel(16, getContext()));
         infoTextPaint.setColor(formColor);
         infoTextPaint.setTextAlign(Paint.Align.CENTER);
+        infoTextPaint.setShadowLayer(convertDpToPixel(3, getContext()), 0, convertDpToPixel(1, getContext()),
+                Color.argb(90, 255, 240, 200));
         canvas.drawText(formStr, width / 2, formY + convertDpToPixel(3, getContext()), infoTextPaint);
+        infoTextPaint.setShadowLayer(0, 0, 0, 0);
         // 行棋方指示：居中"形势/分数"文字左右各一个红/黑圈，圈更小并紧贴圈内模式图标；
         // 当前行棋方那一侧的外圈加粗（突出轮到谁走）。原来的单个红黑点已移除。
         float formTextW = infoTextPaint.measureText(formStr);
@@ -737,7 +819,7 @@ public class RoundView extends View {
                     Color.rgb(35, 35, 35), ModeIconDrawable.SIDE_RIGHT);
             drawTurnSideIcon(canvas, redCx, cyMark, redSize, ModeIconDrawable.SIDE_LEFT, Color.rgb(120, 120, 120));
         }
-        // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段），恢复原始字号
+        // 右：深度（有值时右对齐固定槽位，消失也不影响其他两段），纯文字无背景
         infoTextPaint.setTextSize(convertDpToPixel(14, getContext()));
         infoTextPaint.setColor(neutralColor);
         infoTextPaint.setTextAlign(Paint.Align.RIGHT);
@@ -754,35 +836,38 @@ public class RoundView extends View {
         boolean hasAIOrSuggestInfo = hasSuggest || isAILoading || isShowLoadingComplete || isAIThinking || isSuggestMode
                 || (bestMoveText != null && !bestMoveText.isEmpty()) || isSimulatingView;
         
-        // 绘制AI加载中、加载完成、支招思考或AI走棋思考动画
+        // 绘制AI加载中、加载完成、支招思考或AI走棋思考动画（统一加上半透明冷色胶囊底片更醒目）
         float aiTextSize = convertDpToPixel(14, getContext());
-        infoTextPaint.setColor(Color.rgb(130, 195, 255)); // AI/支招提示统一醒目蓝
+        infoTextPaint.setColor(Color.rgb(150, 205, 255)); // AI/支招提示统一醒目蓝
+
+        // 辅助：绘制一条居中提示文字（带冷色胶囊底片）
+        // 注意：Java 不支持闭包捕获可变局部变量，这里用独立代码块逐条处理
+        // 第3行提示统一蓝色，已设好 infoTextPaint.setColor；每条绘制前画胶囊
         if (isSuggestMode) {
-            drawThinkingText(canvas, width, currentY, aiTextSize, "AI思考中", aiThinkingProgress);
+            String t = "AI思考中" + buildDotSuffix(aiThinkingProgress);
+            drawCenteredChipText(canvas, width, currentY, aiTextSize, t, Color.argb(46, 70, 130, 200));
             currentY += lineHeight;
         } else if (!hasSuggest) {
             if (isAILoading) {
-                drawThinkingText(canvas, width, currentY, aiTextSize, "AI加载中", aiLoadingProgress);
+                String t = "AI加载中" + buildDotSuffix(aiLoadingProgress);
+                drawCenteredChipText(canvas, width, currentY, aiTextSize, t, Color.argb(46, 70, 130, 200));
                 currentY += lineHeight;
             } else if (isShowLoadingComplete) {
-                infoTextPaint.setTextSize(aiTextSize);
-                infoTextPaint.setTextAlign(Paint.Align.CENTER);
-                canvas.drawText("AI加载完成！", width / 2, currentY, infoTextPaint);
+                drawCenteredChipText(canvas, width, currentY, aiTextSize, "AI加载完成！", Color.argb(46, 70, 130, 200));
                 currentY += lineHeight;
             } else if (isAIThinking) {
-                drawThinkingText(canvas, width, currentY, aiTextSize, "AI思考中", aiThinkingProgress);
+                String t = "AI思考中" + buildDotSuffix(aiThinkingProgress);
+                drawCenteredChipText(canvas, width, currentY, aiTextSize, t, Color.argb(46, 70, 130, 200));
                 currentY += lineHeight;
             }
         }
-        
+
         // 显示支招走法信息（支招思考或AI走棋思考时不显示，避免覆盖）
         if (!isSuggestMode && !isAIThinking && suggestMoveText != null && !suggestMoveText.isEmpty()) {
-            float originalTextSize = infoTextPaint.getTextSize();
-            infoTextPaint.setTextSize(convertDpToPixel(12, getContext()));
-            infoTextPaint.setTextAlign(Paint.Align.CENTER);
-            canvas.drawText("支招: " + suggestMoveText, width / 2, currentY, infoTextPaint);
+            String t = "支招: " + suggestMoveText;
+            drawCenteredChipText(canvas, width, currentY, convertDpToPixel(13, getContext()), t,
+                    Color.argb(40, 70, 130, 200));
             currentY += lineHeight;
-            infoTextPaint.setTextSize(originalTextSize);
         }
         
         // 显示最优一步（支招结果的核心着法，显示在回合信息条，可点击模拟行棋）

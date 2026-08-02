@@ -1097,7 +1097,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         double x = e.getX();
         double y = e.getY();
         int[] dis = new int[]{
-                chessView.Scale(3), chessView.Scale(41), chessView.Scale(80), chessView.Scale(85)
+                chessView.Scale(3) + chessView.Scale(1) + chessView.getDrawOffX(), chessView.Scale(41), chessView.Scale(80), chessView.Scale(85)
         };
         x = x - dis[0];
         y = y - dis[1];

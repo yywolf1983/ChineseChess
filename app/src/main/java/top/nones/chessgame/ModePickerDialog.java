@@ -29,11 +29,12 @@ public class ModePickerDialog {
     };
 
     // 每种模式的主题色（用于色条与选中高亮，直观区分模式）
+    // 在深色卡片上需提亮以保证可读性
     private static final int[] THEME_COLORS = {
-            Color.rgb(76, 175, 80),   // 0 双人：绿
-            Color.rgb(200, 40, 40),   // 1 玩家红：红
-            Color.rgb(45, 45, 45),    // 2 玩家黑：黑
-            Color.rgb(90, 150, 235)   // 3 双机：蓝
+            Color.rgb(120, 210, 120), // 0 双人：绿（提亮）
+            Color.rgb(235, 90, 90),   // 1 玩家红：红（提亮）
+            Color.rgb(200, 200, 205), // 2 玩家黑：浅灰（黑在深底不可见）
+            Color.rgb(125, 180, 245)  // 3 双机：蓝（提亮）
     };
 
     private static final int RED = Color.rgb(200, 40, 40);
@@ -104,7 +105,7 @@ public class ModePickerDialog {
                 check.setColorFilter(THEME_COLORS[i]);
                 check.setVisibility(View.VISIBLE);
             } else {
-                card.setBackgroundResource(R.drawable.bg_mode_card);
+                card.setBackgroundResource(R.drawable.bg_mode_card_dark);
                 name.setTextColor(THEME_COLORS[i]);
                 check.setVisibility(View.GONE);
             }
