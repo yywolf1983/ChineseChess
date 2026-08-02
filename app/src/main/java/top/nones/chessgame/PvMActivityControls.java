@@ -313,9 +313,15 @@ public class PvMActivityControls {
         try {
             LogUtils.d("PvMActivityControls", "handleStatisticsButton called");
 
-            // 如果 AI 正在分析，立即中断（不受点击间隔限制）
-            if (activity.aiManager != null && activity.aiManager.isAIAnalyzing) {
-                LogUtils.d("PvMActivityControls", "AI is analyzing, interrupting it");
+            // 如果 AI 正在思考/支招/加载中（含 AI 行棋），立即中断（不受点击间隔限制）
+            // 用 roundView.isAISearching() 判断，覆盖"支招"与"AI行棋"两种思考态，
+            // 避免 AI 行棋时按钮被覆盖成"支招"而无法点击中断、导致"思考中"动画残留
+            boolean aiSearching = activity.aiManager != null && activity.aiManager.isAIAnalyzing;
+            if (!aiSearching && activity.roundView != null && activity.roundView.isAISearching()) {
+                aiSearching = true;
+            }
+            if (aiSearching) {
+                LogUtils.d("PvMActivityControls", "AI is analyzing/searching, interrupting it");
                 activity.aiManager.stopAIAnalysis();
                 if (activity.pikafishAI != null) {
                     activity.pikafishAI.interrupt();
@@ -353,6 +359,14 @@ public class PvMActivityControls {
             android.view.View btnView = activity.findViewById(R.id.btn_statistics);
             if (!(btnView instanceof Button)) return;
             Button btn = (Button) btnView;
+            // AI 仍在思考/支招/加载中（含 AI 行棋）时，强制保持"中断"态，
+            // 避免被上一手/下一步/悔棋/退出摆棋等 UI 路径重置回"支招"，
+            // 从而保证 AI 行棋期间按钮始终是"中断"且可点击中断
+            boolean aiSearching = (activity.aiManager != null && activity.aiManager.isAIAnalyzing)
+                    || (activity.roundView != null && activity.roundView.isAISearching());
+            if (aiSearching) {
+                analyzing = true;
+            }
             if (analyzing) {
                 btn.setText("中断");
                 btn.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_stop, 0, 0);
@@ -373,6 +387,16 @@ public class PvMActivityControls {
             android.view.View btnView = activity.findViewById(R.id.btn_statistics);
             if (!(btnView instanceof Button)) return;
             Button btn = (Button) btnView;
+            // 非模拟态（returning=false）且 AI 仍在思考/行棋中时，保持"中断"而非覆盖为"支招"，
+            // 否则 AI 行棋期间退出模拟/摆棋等路径会把它重置成"支招"，导致无法点击中断
+            if (!returning) {
+                boolean aiSearching = (activity.aiManager != null && activity.aiManager.isAIAnalyzing)
+                        || (activity.roundView != null && activity.roundView.isAISearching());
+                if (aiSearching) {
+                    updateSuggestButton(true);
+                    return;
+                }
+            }
             if (returning) {
                 btn.setText("返回");
                 btn.setTextColor(0xFFFFFFFF);
