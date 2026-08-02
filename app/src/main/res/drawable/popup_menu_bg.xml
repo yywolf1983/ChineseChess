@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 下拉菜单（PopupMenu）背景：圆角深色木纹卡片 + 柔光描边 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#2B2016" />
+    <stroke
+        android:width="1dp"
+        android:color="#7A6040" />
+    <corners android:radius="12dp" />
+</shape>
