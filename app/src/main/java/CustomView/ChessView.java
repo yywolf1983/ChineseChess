@@ -645,22 +645,14 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         // 避免 View 比父布局宽导致 CENTER_HORIZONTAL 时整盘左移、左右棋子被裁切/超出屏幕。
         int viewW = Board_width;
 
-        // 自适应：棋盘（源图 755×938）按可用屏幕宽高等比缩放，尽量铺满且完整适应屏幕、不溢出不裁切。
-        // 当父布局高度充足时 boardDrawScale=1（铺满宽度）；高度不足（矮屏/横屏）时按高度约束自动缩小。
-        int specH = MeasureSpec.getSize(heightMeasureSpec);
-        if (specH > 0) {
-            boardDrawScale = Math.min(1.0f, (specH * (float) BOARD_SRC_W) / ((float) BOARD_SRC_H * Board_width));
-        } else {
-            boardDrawScale = 1.0f; // 高度无约束（wrap_content）：按宽度铺满
-        }
-
-        // 背景按源图 755×938 比例，与 Scale(755 基准) 一致，等比例无压缩
-        int fullH = Math.round(Board_width * (float) BOARD_SRC_H / BOARD_SRC_W);
+        // 宽度优先铺满：棋盘（源图 755×938）始终按宽度满铺，不再受父布局高度约束而横向缩小，
+        // 从而消除左右空余。高度按比例跟随（可能超出可用高度，由布局容纳/滚动）。
+        boardDrawScale = 1.0f;
 
         // 棋盘左右不留边距：左距 0，绘制宽度铺满可用宽，高度按源图 755×938 比例跟随，左对齐。
         final int MARGIN_X = 0;
         int maxDrawW = Math.max(1, viewW - 2 * MARGIN_X);
-        int drawW = Math.min(Math.round(Board_width * boardDrawScale), maxDrawW);
+        int drawW = Math.min(viewW, maxDrawW);   // 直接铺满宽度（viewW=Board_width）
         int drawH = Math.round(drawW * (float) BOARD_SRC_H / BOARD_SRC_W);
         drawOffX = MARGIN_X;
         drawOffY = 0;
