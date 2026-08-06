@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="248dp"
+    android:layout_width="210dp"
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:background="@drawable/bg_popup_dark"
@@ -42,7 +42,7 @@
             android:layout_marginEnd="10dp"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
-            android:background="#CCCCCC" />
+            android:background="#E6B36A" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
@@ -73,6 +73,12 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#557A6040"
+        android:layout_marginBottom="4dp" />
+
     <!-- 玩家执红 -->
     <LinearLayout
         android:id="@+id/mode_card_1"
@@ -94,7 +100,7 @@
             android:layout_marginEnd="10dp"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
-            android:background="#CCCCCC" />
+            android:background="#E6B36A" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
@@ -125,6 +131,12 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#557A6040"
+        android:layout_marginBottom="4dp" />
+
     <!-- 玩家执黑 -->
     <LinearLayout
         android:id="@+id/mode_card_2"
@@ -146,7 +158,7 @@
             android:layout_marginEnd="10dp"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
-            android:background="#CCCCCC" />
+            android:background="#E6B36A" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
@@ -177,6 +189,12 @@
             android:visibility="gone" />
     </LinearLayout>
 
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#557A6040"
+        android:layout_marginBottom="4dp" />
+
     <!-- 双机对战 -->
     <LinearLayout
         android:id="@+id/mode_card_3"
@@ -198,7 +216,7 @@
             android:layout_marginEnd="10dp"
             android:layout_marginTop="10dp"
             android:layout_marginBottom="10dp"
-            android:background="#CCCCCC" />
+            android:background="#E6B36A" />
 
         <CustomView.ModeComboView
             android:id="@+id/mode_card_glyph_left"
@@ -228,6 +246,13 @@
             android:src="@drawable/ic_check"
             android:visibility="gone" />
     </LinearLayout>
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="#557A6040"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="4dp" />
 
     <!-- 取消 -->
     <Button

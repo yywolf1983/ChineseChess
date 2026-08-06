@@ -482,21 +482,8 @@ public class PvMActivityInit {
                                 final int ICON_TINT = 0xFFE6B36A; // 暖金，深色背景上更醒目
 
                                 final float dens = activity.getResources().getDisplayMetrics().density;
-                                // 紧凑宽度：最长文字 + 图标 + 间距 + 内边距，避免菜单过宽
-                                android.graphics.Paint measurePaint = new android.graphics.Paint();
-                                measurePaint.setTextSize(android.util.TypedValue.applyDimension(
-                                        android.util.TypedValue.COMPLEX_UNIT_SP, 14,
-                                        activity.getResources().getDisplayMetrics()));
-                                float maxTextW = 0;
-                                for (String t : titles) {
-                                    maxTextW = Math.max(maxTextW, measurePaint.measureText(t));
-                                }
-                                final int compactW = (int) (maxTextW
-                                        + 20 * dens     // 图标宽
-                                        + 10 * dens     // 图标文字间距
-                                        + 10 * dens     // 左内边距
-                                        + 14 * dens     // 右内边距
-                                        + 4 * dens);    // 余量
+                                // 下拉菜单内容短（图标+2字），固定窄宽更紧凑；模式菜单因含双图标+4字名保持 168dp
+                                final int compactW = (int) (120 * dens);
 
                                 final android.widget.ArrayAdapter<String> adapter =
                                         new android.widget.ArrayAdapter<String>(activity, 0, titles) {
@@ -525,7 +512,8 @@ public class PvMActivityInit {
                                 lpw.setAdapter(adapter);
                                 lpw.setBackgroundDrawable(
                                         activity.getResources().getDrawable(R.drawable.popup_menu_bg));
-                                lpw.setVerticalOffset((int) (4 * dens));
+                                // 垂直紧贴触发按钮（负值上移），与模式菜单弹出位置基准一致，避免整体偏下
+                lpw.setVerticalOffset((int) (-4 * dens));
                 lpw.setOnItemClickListener((parent, view, position, id) -> {
                     android.view.View target = buttonGroup.findViewById(actionIds[position]);
                     if (target != null) target.performClick();

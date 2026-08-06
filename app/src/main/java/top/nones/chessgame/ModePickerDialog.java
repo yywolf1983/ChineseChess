@@ -61,8 +61,13 @@ public class ModePickerDialog {
         if (anchor == null) return;
         LayoutInflater inflater = LayoutInflater.from(context);
         View content = inflater.inflate(R.layout.dialog_mode_picker, null);
-        content.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
-        int popW = content.getMeasuredWidth();
+        // 关键修复：inflate(null) + measure(UNSPECIFIED) 会让根布局的固定 layout_width 失效，
+        // 弹窗被内容撑开导致宽度降不下来。改用 EXACTLY 模式测量并显式给 popup 设定宽度，
+        // 使 XML 中的 layout_width（此处 210dp）真正生效。
+        float dens = context.getResources().getDisplayMetrics().density;
+        int popW = (int) (210 * dens);
+        content.measure(View.MeasureSpec.makeMeasureSpec(popW, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.UNSPECIFIED);
 
         int[] cardIds = {R.id.mode_card_0, R.id.mode_card_1, R.id.mode_card_2, R.id.mode_card_3};
         View.OnClickListener cardClick = v -> {
@@ -117,7 +122,7 @@ public class ModePickerDialog {
         }
 
         popup = new PopupWindow(content,
-                ViewGroup.LayoutParams.WRAP_CONTENT,
+                popW,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 true);
         // 透明背景，保证点击外部可关闭

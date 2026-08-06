@@ -12,6 +12,10 @@ NC="\033[0m" # No Color
 PROJECT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ANDDEX_DIR="$(cd "$PROJECT_DIR/../anddex" && pwd)"
 
+# 统一 Android SDK 路径，避免 ANDROID_HOME 与 ANDROID_SDK_ROOT 指向不一致导致 gradle 报 SDK 冲突
+export ANDROID_HOME="/Users/yy/Downloads/sdk/android-sdk"
+export ANDROID_SDK_ROOT="/Users/yy/Downloads/sdk/android-sdk"
+
 # 显示帮助信息
 show_help() {
     echo "${GREEN}Android象棋项目构建脚本${NC}"
@@ -96,6 +100,18 @@ build_debug() {
     else
         echo "${RED}Debug版本构建失败！${NC}"
         exit 1
+    fi
+
+    # 构建成功后复制APK到指定位置（debug 加 _debug 后缀，与 release 的 chess.apk 区分）
+    local src_apk="$PROJECT_DIR/app/build/outputs/apk/debug/app-debug.apk"
+    local dst_dir="/Users/yy/Desktop/back/dapk"
+    local dst_apk="$dst_dir/chess_debug.apk"
+    if [ -f "$src_apk" ]; then
+        mkdir -p "$dst_dir"
+        cp "$src_apk" "$dst_apk"
+        echo "${GREEN}APK已复制到: $dst_apk${NC}"
+    else
+        echo "${RED}警告: 未找到APK文件: $src_apk${NC}"
     fi
 }
 

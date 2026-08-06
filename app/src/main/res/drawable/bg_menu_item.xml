@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 下拉菜单项按压反馈：金色 ripple，常态透明（依赖外层 popup 容器底色） -->
+<ripple xmlns:android="http://schemas.android.com/apk/res/android"
+    android:color="#40E6B36A">
+    <item android:drawable="@android:color/transparent" />
+</ripple>
