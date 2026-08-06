@@ -1402,34 +1402,7 @@ public class PvMActivityAI {
                 final float density = this.activity.getResources().getDisplayMetrics().density;
                 // 评分列宽度随密度缩放，但保持紧凑，避免窄屏挤压着法列
                 final int SCORE_COL_W = (int) (46 * density);
-                // 自适应着法列宽：4 列 + 间距恰好占满可用宽度，保证任意屏幕每行 4 个且不超出屏幕
-                // panelW 优先用真实测量宽度；若尚未测量（≤0）回退到父容器可用宽度的安全估值，
-                // 绝不使用全屏 widthPixels（过大，会导致窄屏算出行宽超出）。
-                int panelW = container.getWidth();
-                if (panelW <= 0) {
-                    int parentW = container.getRootView() != null
-                            ? container.getRootView().getWidth() : 0;
-                    panelW = (parentW > 0 ? parentW
-                            : this.activity.getResources().getDisplayMetrics().widthPixels) * 9 / 10;
-                }
-                int containerPad = container.getPaddingLeft() + container.getPaddingRight();
-                int outerMargins = (int) (2 * density); // 行左右 margin 之和(1+1)，丝微
-                int innerPad = (int) (4 * density);     // 行左右内边距之和(2+2)，丝微
-                int availW = panelW - containerPad - outerMargins - innerPad
-                        - SCORE_COL_W - (int) (2 * density);
-                if (availW < 0) availW = 0;
-                final int MOVE_GAP = (int) (6 * density);
-                // 先按理想 4 列均分；若算出的总宽仍会超出可用宽（极小屏），则收缩到能容纳的最大值，
-                // 绝不允许用固定下限把行撑超出屏幕（保证“不超出”）。
-                int colW = (availW > 0) ? Math.max(1, (availW - 3 * MOVE_GAP) / 4) : 1;
-                int movesFlowW = colW * 4 + 3 * MOVE_GAP;
-                if (panelW > 0 && movesFlowW + SCORE_COL_W + (int) (2 * density) > availW + SCORE_COL_W + (int) (2 * density)) {
-                    // 理论上 colW 已受 availW 约束，这里兜底再收缩以防浮点/取整误差
-                    int maxFlow = Math.max(4, availW);
-                    colW = Math.max(1, (maxFlow - 3 * MOVE_GAP) / 4);
-                }
-                final int MOVE_COL_W = colW;
-                final int MOVES_FLOW_W = colW * 4 + 3 * MOVE_GAP;
+                // 评分列宽度随密度缩放（着法列改为按剩余空间 4 等分自适应，见下方 movesCol）。
                 // 第一行（综合评分最高的变线）字号 +1，突出首选着法
                 final float TEXT_SP = (added == 0) ? 16 : 15;
 
@@ -1496,20 +1469,36 @@ public class PvMActivityAI {
                 scoreTv.setText(scoreStr);
                 lineOuter.addView(scoreTv);
 
-                // 着法流：从评分列右侧起，折行时自然对齐第一步（起点=第一步位置）
-                top.nones.chessgame.FlowLayout movesFlow = new top.nones.chessgame.FlowLayout(this.activity);
-                // 着法流固定 4 列宽（自适应不超出屏幕），保证任意屏幕每行正好 4 个棋着
-                movesFlow.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                        MOVES_FLOW_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
-                movesFlow.setSpacingDp(6, 0); // 棋着之间水平间距 6dp，折行行距减小到 0dp 更紧凑
-                movesFlow.setPadding(0, 0, 0, 0);
-                lineOuter.addView(movesFlow);
+                // 着法列容器：垂直排列，每行固定 PER_ROW 个着法（用等分权重，
+                // 不再依赖流式布局的换行判定，彻底避免“每行应 4 个却显示 3 个”的回归）。
+                // 占据评分列右侧的全部剩余宽度，4 列自动均分，天然不超出屏幕。
+                android.widget.LinearLayout movesCol = new android.widget.LinearLayout(this.activity);
+                movesCol.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                        0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                movesCol.setOrientation(android.widget.LinearLayout.VERTICAL);
+                movesCol.setPadding(0, 0, 0, 0);
+                lineOuter.addView(movesCol);
 
-                // 每一步一列（固定宽度、居中、按阵营着色；已走且一致的步用灰色）
+                // 每 PER_ROW 个着法分为一行（水平 PER_ROW 等分），不足 PER_ROW 的末行自然变短
+                final int PER_ROW = 4;
+                android.widget.LinearLayout mvRow = null;
                 for (int i = 0; i < notations.size(); i++) {
+                    if (i % PER_ROW == 0) {
+                        mvRow = new android.widget.LinearLayout(this.activity);
+                        mvRow.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
+                                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                        mvRow.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                        mvRow.setWeightSum(PER_ROW);
+                        mvRow.setPadding(0, (int) (1 * density), 0, 0); // 续行之间留微小行距
+                        movesCol.addView(mvRow);
+                    }
                     android.widget.TextView mvTv = new android.widget.TextView(this.activity);
-                    mvTv.setLayoutParams(new android.widget.LinearLayout.LayoutParams(
-                            MOVE_COL_W, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT));
+                    android.widget.LinearLayout.LayoutParams mvLp = new android.widget.LinearLayout.LayoutParams(
+                            0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                    mvLp.leftMargin = (int) (3 * density);
+                    mvLp.rightMargin = (int) (3 * density);
+                    mvTv.setLayoutParams(mvLp);
                     mvTv.setGravity(android.view.Gravity.CENTER);
                     mvTv.setSingleLine(true); // 单个着法强制单行，不在列内折行
                     mvTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, TEXT_SP);
@@ -1529,7 +1518,7 @@ public class PvMActivityAI {
                     if (added == 0) {
                         mvTv.setTypeface(android.graphics.Typeface.MONOSPACE, android.graphics.Typeface.BOLD);
                     }
-                    movesFlow.addView(mvTv);
+                    mvRow.addView(mvTv);
                 }
 
                 lineOuter.setTag(lineIndex);
