@@ -65,7 +65,8 @@ public class ModePickerDialog {
         // 弹窗被内容撑开导致宽度降不下来。改用 EXACTLY 模式测量并显式给 popup 设定宽度，
         // 使 XML 中的 layout_width（此处 210dp）真正生效。
         float dens = context.getResources().getDisplayMetrics().density;
-        int popW = (int) (210 * dens);
+        // 预留选中态勾选图标(约26dp)的空间，多加约2个字符余量，避免选中时4字模式名折行
+        int popW = (int) (240 * dens);
         content.measure(View.MeasureSpec.makeMeasureSpec(popW, View.MeasureSpec.EXACTLY),
                 View.MeasureSpec.UNSPECIFIED);
 
