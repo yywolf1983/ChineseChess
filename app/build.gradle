@@ -2,9 +2,10 @@ plugins {
     id 'com.android.application'
 }
 
-// 加载签名配置
+// 加载签名配置（正式测试密钥统一从外部目录加载）
 def signingProperties = new Properties()
-def signingPropertiesFile = rootProject.file('signing.properties')
+def externalSigningDir = new File('/Users/yy/aaa/yy/tools/chess')
+def signingPropertiesFile = new File(externalSigningDir, 'signing.properties')
 if (signingPropertiesFile.exists()) {
     signingProperties.load(new FileInputStream(signingPropertiesFile))
 }
@@ -27,7 +28,7 @@ android {
     signingConfigs {
         release {
             if (signingPropertiesFile.exists()) {
-                storeFile file("${rootProject.projectDir}/${signingProperties.getProperty('storeFile')}")
+                storeFile new File(externalSigningDir, signingProperties.getProperty('storeFile'))
                 storePassword signingProperties.getProperty('storePassword')
                 keyAlias signingProperties.getProperty('keyAlias')
                 keyPassword signingProperties.getProperty('keyPassword')
@@ -47,6 +48,8 @@ android {
         }
         debug {
             minifyEnabled false
+            // 测试版使用 Android SDK 自带的默认 debug 密钥（不显式配置 signingConfig，
+            // 由构建系统自动使用 ~/.android/debug.keystore）。正式测试密钥仅用于 release。
         }
     }
     compileOptions {
