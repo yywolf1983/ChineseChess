@@ -1547,6 +1547,10 @@ public class PvMActivityAI {
                     for (android.view.View row : rowViews) {
                         row.setMinimumWidth(fullW);
                     }
+                    // 每次支招后定位到第一行（顶部）
+                    if (this.activity.engineResultScroll != null) {
+                        this.activity.engineResultScroll.scrollTo(0, 0);
+                    }
                 } catch (Exception ignored) {}
             });
         } catch (Exception e) {
