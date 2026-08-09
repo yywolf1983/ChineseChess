@@ -35,6 +35,13 @@ android {
             }
             // 如果没有签名配置，使用默认值（未签名）
         }
+        debug {
+            // 测试版使用 Android SDK 默认 debug 密钥（~/.android/debug.keystore）
+            storeFile new File(System.getProperty('user.home'), '.android/debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
     }
 
     buildTypes {
@@ -48,8 +55,7 @@ android {
         }
         debug {
             minifyEnabled false
-            // 测试版使用 Android SDK 自带的默认 debug 密钥（不显式配置 signingConfig，
-            // 由构建系统自动使用 ~/.android/debug.keystore）。正式测试密钥仅用于 release。
+            signingConfig signingConfigs.debug
         }
     }
     compileOptions {
