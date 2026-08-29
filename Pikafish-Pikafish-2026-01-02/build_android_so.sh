@@ -24,7 +24,17 @@ OUT="$PROJECT/build/android"
 mkdir -p "$OUT"
 
 cd "$SRC"
-[ ! -f pikafish.nnue ] && bash ../scripts/net.sh
+
+# ====== 统一 NNUE ======
+# 始终以仓库标准网络文件 (Pikafish.2026-01-02/pikafish.nnue) 为准覆盖 src/pikafish.nnue，
+# 避免 src 下残留旧版本、或意外触发 net.sh 下载到不一致的网络权重。
+STANDARD_NNUE="$PROJECT/../Pikafish.2026-01-02/pikafish.nnue"
+if [ -f "$STANDARD_NNUE" ]; then
+    cp -f "$STANDARD_NNUE" "$SRC/pikafish.nnue"
+    echo "已统一 NNUE <- $(basename "$STANDARD_NNUE")"
+else
+    [ ! -f pikafish.nnue ] && bash ../scripts/net.sh
+fi
 
 JOBS=$(sysctl -n hw.ncpu 2>/dev/null || nproc)
 echo "NDK : $ANDROID_NDK_HOME"
@@ -136,4 +146,20 @@ for f in "$OUT"/*.so; do
     echo "  $(basename "$f"):"
     nm -D "$f" 2>/dev/null | grep Java_ | sed 's/^/    /' || echo "    (无符号)"
 done
+echo ""
+
+# ====== 复制到项目对应目录 (app/src/main/jniLibs) ======
+# 编译产物名为 libpikafish-<arch>.so，Android 按 jniLibs/<abi>/libpikafish.so 加载，
+# 这里重命名为 libpikafish.so 并放入对应 ABI 子目录。
+APP_JNILIBS="$PROJECT/../app/src/main/jniLibs"
+mkdir -p "$APP_JNILIBS/arm64-v8a" "$APP_JNILIBS/x86_64"
+
+if [ -f "$OUT/libpikafish-arm64-v8a.so" ]; then
+    cp -f "$OUT/libpikafish-arm64-v8a.so" "$APP_JNILIBS/arm64-v8a/libpikafish.so"
+    echo "  ✓ 已复制 arm64-v8a -> app/src/main/jniLibs/arm64-v8a/libpikafish.so"
+fi
+if [ -f "$OUT/libpikafish-x86_64.so" ]; then
+    cp -f "$OUT/libpikafish-x86_64.so" "$APP_JNILIBS/x86_64/libpikafish.so"
+    echo "  ✓ 已复制 x86_64   -> app/src/main/jniLibs/x86_64/libpikafish.so"
+fi
 echo ""
