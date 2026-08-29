@@ -141,10 +141,13 @@ Java_AICore_PikafishAI_nativeInit(JNIEnv* env, jobject thiz, jstring nnuePath, j
         LOGI("NNUE Verify: %.*s", (int)msg.size(), msg.data());
     });
 
-    // Verify NNUE loaded correctly
-    LOGI("Verifying NNUE network...");
-    engine->verify_networks();
-    LOGI("NNUE network verified OK");
+    // 校验 NNUE 网络 (默认跳过以加快加载; 仅当设置环境变量 PIKAFISH_VERIFY_NET 时才校验)
+    if (std::getenv("PIKAFISH_VERIFY_NET"))
+    {
+        LOGI("Verifying NNUE network...");
+        engine->verify_networks();
+        LOGI("NNUE network verified OK");
+    }
 
     engine->set_on_bestmove([](std::string_view bestmove, std::string_view ponder) {
         std::stringstream ss;

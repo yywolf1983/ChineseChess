@@ -169,6 +169,28 @@ public class PikafishAI {
         new Thread(() -> initialize()).start();
     }
 
+    // ========== 预热单例（优化启动加载速度）==========
+    // 在 Application.onCreate 调 preload(), 引擎即在后台提前加载, 与启动/首屏流程并行;
+    // 用户进入 AI 对战时往往已就绪, 感知更快。重复进入对局也只会加载一次。
+    private static volatile PikafishAI sInstance = null;
+
+    /** 提前预热: 仅首次创建并后台加载, 重复调用安全 */
+    public static void preload(Context appContext) {
+        if (sInstance == null) {
+            synchronized (PikafishAI.class) {
+                if (sInstance == null) {
+                    sInstance = new PikafishAI(appContext.getApplicationContext());
+                }
+            }
+        }
+    }
+
+    /** 获取预热实例; 未预热则立即创建(后台加载) */
+    public static PikafishAI getInstance(Context context) {
+        if (sInstance == null) preload(context);
+        return sInstance;
+    }
+
     // ========== 初始化（带重试）==========
     private void initialize() {
         // 全局锁：确保与 close() 互斥，防止 Activity 重建时新旧实例竞争 native 引擎

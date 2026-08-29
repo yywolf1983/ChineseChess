@@ -1136,7 +1136,7 @@ public class PvMActivityInit {
             Log.d("PvMActivity", "开始初始化PikafishAI");
             try {
                 if (activity != null) {
-                    activity.pikafishAI = new PikafishAI(activity);
+                    activity.pikafishAI = PikafishAI.getInstance(activity);
                     
                     // 设置初始化监听器 - 使用独立的监听器类
                     activity.pikafishAI.setInitializationListener(new AIInitListener(activity));
