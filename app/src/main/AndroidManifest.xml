@@ -33,13 +33,15 @@
         android:largeHeap="true"
         android:roundIcon="@mipmap/chess_icon_round"
         android:supportsRtl="true"
+        android:screenOrientation="portrait"
         android:theme="@style/AppTheme">
-        <activity android:name=".PvPActivity" android:exported="false" />
-        <activity android:name=".PvMActivity" android:exported="false" />
-        <activity android:name=".NotationActivity" android:exported="false" />
+        <activity android:name=".PvPActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".PvMActivity" android:exported="false" android:screenOrientation="portrait" />
+        <activity android:name=".NotationActivity" android:exported="false" android:screenOrientation="portrait" />
         <activity
             android:name="com.reggate.lib.RegistrationGateActivity"
             android:exported="true"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.RegGate.Transparent">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -49,14 +51,17 @@
         <activity
             android:name="com.reggate.lib.RegistrationActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.RegGate" />
         <activity
             android:name="com.reggate.lib.TrialDialogActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.RegGate.Dialog" />
         <activity
             android:name="com.reggate.lib.ExpiredNagActivity"
             android:exported="false"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.RegGate.Dialog" />
 
         <provider
