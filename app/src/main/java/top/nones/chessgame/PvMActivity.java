@@ -421,6 +421,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             {0xFF5C9CEC, 0xFF4A82D2, 0xFF386BB8, 0xFFA8CCF5}, // 3 双机：蓝（提亮活泼）
     };
 
+    // 顶部模式名文字色（木色信息条上需高亮才看得清，随模式变化；玩家执黑用浅灰避免与木色糊在一起）
+    public static final int[] MODE_TEXT_COLORS = {
+            0xFF7FF0DC, // 0 双人对战：青绿
+            0xFFFF9A9A, // 1 玩家执红：亮红
+            0xFFE2E2EA, // 2 玩家执黑：浅灰
+            0xFF9CCBFF  // 3 双机对战：亮蓝
+    };
+
     /** 根据背景色亮度返回对比图标色（背景亮用深色，背景暗用白色） */
     private static int contrastColor(int base) {
         int r = android.graphics.Color.red(base);
@@ -465,11 +473,20 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             if (iconLeft != null) iconLeft.setImageDrawable(leftD);
             if (iconRight != null) iconRight.setImageDrawable(rightD);
 
-            // 同步刷新右上角「切换模式」图标按钮（仅图标，显示双方对照）
+            // 同步刷新右上角按钮：文字显示当前模式名，图标显示双方对照
             android.view.View ms = findViewById(R.id.btn_mode_switch);
-            if (ms instanceof android.widget.ImageView) {
-                ((android.widget.ImageView) ms).setImageDrawable(
-                        new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_BOTH, 0xFFFFFFFF));
+            if (ms != null) {
+                if (ms instanceof android.widget.LinearLayout
+                        && m < ModePickerDialog.MODE_NAMES.length && m < MODE_TEXT_COLORS.length) {
+                    Utils.TopChipFactory.setModeName((android.widget.LinearLayout) ms,
+                            ModePickerDialog.MODE_NAMES[m], MODE_TEXT_COLORS[m]);
+                }
+                android.widget.ImageView msIcon =
+                        (android.widget.ImageView) ms.findViewById(R.id.mode_switch_icon);
+                if (msIcon != null) {
+                    msIcon.setImageDrawable(
+                            new ModeIconDrawable(this, gameMode, density, ModeIconDrawable.SIDE_BOTH, 0xFFFFFFFF));
+                }
             }
         } catch (Exception e) {
             LogUtils.e("PvMActivity", "updateModeButton failed", e);

@@ -21,7 +21,7 @@ import top.nones.chessgame.R;
  * 行为与原 AlertDialog 选择保持一致（切换不清盘），仅统一 UI。
  */
 public class ModePickerDialog {
-    private static final String[] MODE_NAMES = {
+    public static final String[] MODE_NAMES = {
             "双人对战",
             "玩家执红",
             "玩家执黑",

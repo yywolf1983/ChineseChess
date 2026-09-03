@@ -197,42 +197,51 @@ public class PvMActivityInit {
                 }
             }
 
-            // 顶部状态栏：左上角「菜单」图标按钮（下拉菜单：新局/保存/加载/设置/模式切换），
-            // 右上角「切换模式」图标按钮（仅图标）。两者尽量贴近屏幕左右边缘（round 信息条区域）。
+            // 顶部状态栏：左上角「菜单」按钮（下拉菜单：新局/保存/加载/设置），
+            // 右上角「当前模式名 + 双方对照图标」按钮，两者贴近屏幕左右边缘（round 信息条区域）。
             try {
                 float density = activity.getResources().getDisplayMetrics().density;
-                int btnSize = (int) (42 * density); // 按钮尺寸略放大，使图标更大
                 int edge = (int) (4 * density); // 贴近屏幕边缘的外边距
                 // 时间行基线位于 round 内 paddingTop(5dp)+39dp=44dp 处；按钮恢复至距屏幕顶 44dp
-                int top = (int) (44 * density);
+                // （按改造前的 42dp 图标按钮垂直居中换算，避免改矮后位置偏上）
+                int top = Utils.TopChipFactory.topFromIconTop(44, density);
+                // 模式按钮更矮，单独换算，使两者垂直中心仍与原 42dp 图标按钮一致
+                int modeTop = Utils.TopChipFactory.topFromIconTop(
+                        44, Utils.TopChipFactory.MODE_CHIP_HEIGHT_DP, density);
 
-                // 左上角：菜单按钮（背景透明、方形，置于 round 信息条顶部左缘）
-                android.widget.ImageButton btnMenu = new android.widget.ImageButton(activity);
+                // 左上角：菜单按钮（汉堡图标 + 「菜单」文字 + 下拉箭头，置于 round 信息条顶部左缘）
+                android.widget.LinearLayout btnMenu = Utils.TopChipFactory.createMenuChip(activity);
                 btnMenu.setId(R.id.btn_menu);
-                btnMenu.setImageResource(R.drawable.ic_menu);
-                btnMenu.setBackground(null); // 完全透明
-                btnMenu.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
                 btnMenu.setContentDescription("菜单");
-                android.widget.RelativeLayout.LayoutParams mp = new android.widget.RelativeLayout.LayoutParams(btnSize, btnSize);
+                android.widget.RelativeLayout.LayoutParams mp = new android.widget.RelativeLayout.LayoutParams(
+                        android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
+                        (int) (Utils.TopChipFactory.CHIP_HEIGHT_DP * density));
                 mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
                 mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
                 mp.setMargins(edge, top, 0, 0);
                 btnMenu.setLayoutParams(mp);
                 activity.relativeLayout.addView(btnMenu);
 
-                // 右上角：切换模式按钮（仅图标，背景透明、方形，置于 round 信息条顶部右缘）
-                android.widget.ImageButton btnModeSwitch = new android.widget.ImageButton(activity);
+                // 右上角：切换模式按钮（当前模式名在左，双方对照图标在右）
+                int modeIndex = Math.max(0, Math.min(ModePickerDialog.MODE_NAMES.length - 1, activity.gameMode));
+                String modeName = ModePickerDialog.MODE_NAMES[modeIndex];
+                int modeColor = PvMActivity.MODE_TEXT_COLORS[
+                        Math.min(modeIndex, PvMActivity.MODE_TEXT_COLORS.length - 1)];
+                android.widget.LinearLayout btnModeSwitch = Utils.TopChipFactory.createModeChip(
+                        activity, modeName, modeColor, R.id.mode_switch_text, R.id.mode_switch_icon);
                 btnModeSwitch.setId(R.id.btn_mode_switch);
-                btnModeSwitch.setBackground(null); // 完全透明
-                btnModeSwitch.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
-                btnModeSwitch.setContentDescription("切换模式");
-                btnModeSwitch.setPadding(0, 0, 0, 0);
-                btnModeSwitch.setImageDrawable(new ModeIconDrawable(activity, activity.gameMode, density,
-                        ModeIconDrawable.SIDE_BOTH, 0xFFFFFFFF));
-                android.widget.RelativeLayout.LayoutParams msp = new android.widget.RelativeLayout.LayoutParams(btnSize, btnSize);
+                btnModeSwitch.setContentDescription("切换模式：" + modeName);
+                ImageView modeIconView = (ImageView) btnModeSwitch.findViewById(R.id.mode_switch_icon);
+                if (modeIconView != null) {
+                    modeIconView.setImageDrawable(new ModeIconDrawable(activity, activity.gameMode, density,
+                            ModeIconDrawable.SIDE_BOTH, 0xFFFFFFFF));
+                }
+                android.widget.RelativeLayout.LayoutParams msp = new android.widget.RelativeLayout.LayoutParams(
+                        android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
+                        (int) (Utils.TopChipFactory.MODE_CHIP_HEIGHT_DP * density));
                 msp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
                 msp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_RIGHT);
-                msp.setMargins(0, top, edge, 0);
+                msp.setMargins(0, modeTop, (int) (2 * density), 0); // 图标紧贴屏幕右缘
                 btnModeSwitch.setLayoutParams(msp);
                 activity.relativeLayout.addView(btnModeSwitch);
                 // 点击复用隐藏的 R.id.btn_mode（已接入模式切换逻辑）

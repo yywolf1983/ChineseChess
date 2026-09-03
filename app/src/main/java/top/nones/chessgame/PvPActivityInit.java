@@ -116,21 +116,21 @@ public class PvPActivityInit {
         roundView.setLayoutParams(paramsRound);
         roundView.setId(R.id.roundView);
 
-        // 顶部 round 区域放置一个小的「菜单」图标按钮（下拉菜单：新局/保存/加载/设置/模式切换）
+        // 顶部 round 区域放置「菜单」胶囊按钮（汉堡图标 + 「菜单」文字 + 下拉箭头）
         try {
-            android.widget.ImageButton btnMenu = new android.widget.ImageButton(activity);
+            float density = activity.getResources().getDisplayMetrics().density;
+            android.widget.LinearLayout btnMenu = Utils.TopChipFactory.createMenuChip(activity);
             btnMenu.setId(R.id.btn_menu);
-            btnMenu.setImageResource(R.drawable.ic_menu);
-            btnMenu.setBackground(null); // 完全透明
-            btnMenu.setScaleType(android.widget.ImageView.ScaleType.CENTER_INSIDE);
             btnMenu.setContentDescription("菜单");
             // 左上角、贴近屏幕左缘；停留在 round 信息条顶部区域内（不进入棋盘）
-            float density = activity.getResources().getDisplayMetrics().density;
-            int menuSize = (int) (42 * density); // 按钮尺寸略放大，使图标更大
-            android.widget.RelativeLayout.LayoutParams mp = new android.widget.RelativeLayout.LayoutParams(menuSize, menuSize);
+            android.widget.RelativeLayout.LayoutParams mp =
+                    new android.widget.RelativeLayout.LayoutParams(
+                            android.widget.RelativeLayout.LayoutParams.WRAP_CONTENT,
+                            (int) (Utils.TopChipFactory.CHIP_HEIGHT_DP * density));
             mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_TOP);
             mp.addRule(android.widget.RelativeLayout.ALIGN_PARENT_LEFT);
-            mp.setMargins((int) (4 * density), (int) (2 * density), 0, 0); // 再上移一点
+            // 按改造前的 42dp 图标按钮垂直居中换算，避免改矮后位置偏上
+            mp.setMargins((int) (4 * density), Utils.TopChipFactory.topFromIconTop(2, density), 0, 0);
             btnMenu.setLayoutParams(mp);
             relativeLayout.addView(btnMenu);
             } catch (Exception e) {

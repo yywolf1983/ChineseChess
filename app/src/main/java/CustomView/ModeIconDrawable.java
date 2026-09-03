@@ -49,9 +49,9 @@ public class ModeIconDrawable extends Drawable {
         this.side = side;
         this.iconColor = iconColor;
         if (side == SIDE_BOTH) {
-            // 正方形，使双方对照图标在方形按钮里能填满、显得更大
-            this.intrinsicW = (int) (44f * density);
-            this.intrinsicH = (int) (44f * density);
+            // 宽幅画布（顶部模式按钮用）：两 glyph 左右并排，装满按钮高度且不过高
+            this.intrinsicW = (int) (52f * density);
+            this.intrinsicH = (int) (28f * density);
         } else {
             this.intrinsicW = (int) (18f * density);
             this.intrinsicH = (int) (18f * density);
@@ -75,10 +75,10 @@ public class ModeIconDrawable extends Drawable {
         float cy = b.top + H / 2f;
 
         if (side == SIDE_BOTH) {
-            // 正方形画布：字形按较短边放大，两 glyph 间距收紧，使双方对照图标填满按钮、更醒目
-            float g = Math.min(H, W) * 0.46f;
-            float leftCx = b.left + W * 0.29f;
-            float rightCx = b.left + W * 0.71f;
+            // 宽幅画布：字形尽量放大（按宽度取 0.44），两 glyph 分居左右，互不重叠
+            float g = Math.min(H * 0.96f, W * 0.44f);
+            float leftCx = b.left + W * 0.26f;
+            float rightCx = b.left + W * 0.74f;
             drawGlyph(canvas, leftCx, cy, g, leftAI());
             drawGlyph(canvas, rightCx, cy, g, rightAI());
             // 中间极细的连接点，强调「对战双方」对照

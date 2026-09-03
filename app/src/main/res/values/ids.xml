@@ -5,4 +5,6 @@
     <item name="setupModeView" type="id"/>
     <item name="btn_menu" type="id"/>
     <item name="btn_mode_switch" type="id"/>
+    <item name="mode_switch_icon" type="id"/>
+    <item name="mode_switch_text" type="id"/>
 </resources>
