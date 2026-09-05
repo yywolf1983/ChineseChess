@@ -1421,7 +1421,9 @@ public class PvMActivityAI {
                 lineOuter.setGravity(android.view.Gravity.CENTER_VERTICAL);
                 lineOuter.setPadding((int) (2 * density), (int) (2 * density), (int) (2 * density), (int) (2 * density));
                 // 支招栏每行背景：圆角 + 上亮下暗渐变（立体感）+ 亮色描边（明显分隔线条，区分不同支招）
-                lineOuter.setBackground(this.activity.makeEngineRowBg(density, added % 2 == 0, followMode));
+                // 跟随模式下不再给条目叠加金棕「蒙版」：统一保持木纹斑马底色，
+                // 选中与进度改由「已走步置灰」表达，避免整行被高亮盖住、也避免灰字压在亮底上看不清。
+                lineOuter.setBackground(this.activity.makeEngineRowBg(density, added % 2 == 0, false));
                 rowViews.add(lineOuter);
 
                 // 评分列（固定宽，独占左列）
@@ -1633,7 +1635,29 @@ public class PvMActivityAI {
                 chosen = line;
                 break;
             }
-            if (chosen == null) return;
+            if (chosen == null) {
+                // 已走到该变线末尾（无后续着法）：头部不再提示“下一步”，
+                // 支招区域保留原变线（此时已走步全部置灰），玩家可直观看到这条支招已走完。
+                if (this.activity.roundView != null) {
+                    this.activity.roundView.setBestMoveText("");
+                }
+                return;
+            }
+
+            // 定位该变线在「引擎原始结果列表」中的下标，供头部点击时演示同一条变线。
+            // 此处 lines 是上方的排序副本，而 startSimulation 直接取 getLastMultiPvLines()，
+            // 两者下标不一定相同，故按对象引用在原始列表中定位，避免演示错行。
+            int chosenRawIndex = 0;
+            java.util.List<PikafishAI.PvSequenceWithScore> rawLines =
+                    this.activity.pikafishAI.getLastMultiPvLines();
+            if (rawLines != null) {
+                for (int ri = 0; ri < rawLines.size(); ri++) {
+                    if (rawLines.get(ri) == chosen) {
+                        chosenRawIndex = ri;
+                        break;
+                    }
+                }
+            }
 
             int total = chosen.pvSequence.size();
             // 头部支招「只显示五步」：以当前进行位置为基准截取最多 5 步；
@@ -1674,10 +1698,18 @@ public class PvMActivityAI {
             }
             if (notations.isEmpty()) return;
 
-            // 显示到头部「支招」位置（彩色多步，红/黑按阵营着色，符合头部风格），并隐藏下方结果框
-            this.activity.roundView.setBestMoveText("");   // 先清「最优一步」，避免与彩色多步在同一行重叠
-            this.activity.roundView.setSuggestMoveTextWithColor(notations, isRedStep, isPlayedStep);
-            this.activity.clearEngineResultBox();
+            // 头部「只显示一条支招」：命中变线中当前该走的下一步（点击可从当前位置继续演示）。
+            // 窗口内第 j 项对应变线第 (windowStart + j) 步，故下一步取 consumed 对应项。
+            int nextIdx = consumed - windowStart;
+            if (nextIdx >= 0 && nextIdx < notations.size()) {
+                this.activity.roundView.setBestMoveText(notations.get(nextIdx));
+            }
+            // 记录命中变线下标，供头部点击时演示该条（而非固定演示第一条）
+            this.activity.suggestFollowLineIndex = chosenRawIndex;
+
+            // 支招区域保留命中的这条变线（已走步置灰、整行高亮、滑窗揭示后续），不随走子消失。
+            // 若已无任何仍匹配的变线（玩家走出支招之外），fillEngineResultBox 内部会自行清空。
+            fillEngineResultBox(consumed, true);
 
             // 棋盘同步：把命中路的「下一步要走的棋子」以虚线画在棋盘上（与头部置灰逻辑一致）。
             // 从当前局面（已走 consumed 步）取后续 2 步（下一步 + 对方应对），与初始支招的 2 步风格一致，
@@ -1757,6 +1789,7 @@ public class PvMActivityAI {
             this.activity.suggestFollowActive = false;
             this.activity.suggestFollowPrefix.clear();
             this.activity.suggestFollowStartInfo = null;
+            this.activity.suggestFollowLineIndex = 0;
             this.activity.clearEngineResultBox();
         }
     }

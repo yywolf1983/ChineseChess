@@ -103,6 +103,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public final java.util.List<ChessMove.Move> suggestFollowPrefix = new java.util.ArrayList<>();
     /** 支招时刻的局面快照，用于回放已走步并渲染完整变线记谱 */
     public ChessInfo suggestFollowStartInfo = null;
+    /** 跟随支招时命中的候选变线序号（引擎结果列表下标，供头部「下一步」点击从当前继续演示） */
+    public int suggestFollowLineIndex = 0;
 
     // ========== 支招模拟行棋状态 ==========
     private boolean isSimulating = false;            // 是否处于模拟行棋演示中
@@ -195,13 +197,14 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         return isSimulating;
     }
 
-    /** 点击回合信息条中的"最优一步"：以 600ms 一步模拟第 1 条候选变线（line 0），启动前停顿 800ms */
+    /** 点击回合信息条中的着法提示：以 600ms 一步模拟对应候选变线（跟随支招中从当前位置续演），启动前停顿 800ms */
     public void onRoundBestMoveClick() {
         if (isSimulating()) {
             return;
         }
         if (roundView != null && roundView.hasBestMove()) {
-            startSimulation(0);
+            // 跟随支招中：演示玩家正跟随的那条变线（从当前已走位置继续）；否则演示最优变线
+            startSimulation(suggestFollowActive ? suggestFollowLineIndex : 0);
         }
     }
 

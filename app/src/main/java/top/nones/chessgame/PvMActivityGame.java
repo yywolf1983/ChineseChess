@@ -42,6 +42,7 @@ public class PvMActivityGame {
         activity.suggestFollowActive = false;
         activity.suggestFollowPrefix.clear();
         activity.suggestFollowStartInfo = null;
+        activity.suggestFollowLineIndex = 0;
         // 清除ChessInfo中的支招数据
         if (activity.chessInfo != null) {
             activity.chessInfo.suggestMoves.clear();
