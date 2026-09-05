@@ -1083,7 +1083,10 @@ public class PvMActivityAI {
                     activity.roundView.setBestMoveText(activity.chessInfo.suggestMoveNotations.get(0));
                 }
 
-                // 初始化「跟随支招」状态：记录支招时刻局面快照、清空已走前缀
+                // 初始化「跟随支招」状态：记录支招时刻局面快照、清空已走前缀与上一轮锁定的变线
+                // （必须清空 suggestFollowLine：已走前缀为空时任何变线都算匹配，否则会错误沿用旧变线）
+                activity.suggestFollowLine = null;
+                activity.suggestFollowLineIndex = 0;
                 try {
                     activity.suggestFollowStartInfo = (ChessInfo) activity.chessInfo.clone();
                     activity.suggestFollowPrefix.clear();
@@ -1626,23 +1629,34 @@ public class PvMActivityAI {
             }
             if (baseInfo == null) return;
 
-            // 选出命中的那一路（最优的、仍与已走前缀一致且有后续的变线）
+            // 选出命中的那一路：优先沿用上一轮锁定的变线，保证玩家始终跟同一条。
+            // 该变线走完即结束支招，避免中途跳到一条「首步相同但更长」的变线继续显示，
+            // 导致玩家走完预期步数后支招框仍不消失。
             PikafishAI.PvSequenceWithScore chosen = null;
-            for (PikafishAI.PvSequenceWithScore line : lines) {
-                if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) continue;
-                if (!lineMatchesPrefix(line, prefix)) continue;
-                if (line.pvSequence.size() <= consumed) continue;
-                chosen = line;
-                break;
+            PikafishAI.PvSequenceWithScore prevLine = this.activity.suggestFollowLine;
+            boolean prevUsable = (prevLine != null && prevLine.pvSequence != null
+                    && lineMatchesPrefix(prevLine, prefix));
+            if (prevUsable) {
+                // 仍在同一条变线上：还有后续就继续跟随；已走到末尾则结束（chosen 保持 null）
+                chosen = (prevLine.pvSequence.size() > consumed) ? prevLine : null;
+            } else {
+                // 首次跟随（或原变线已不适用）：按综合评分挑一条仍匹配且有后续的变线
+                for (PikafishAI.PvSequenceWithScore line : lines) {
+                    if (line == null || line.pvSequence == null || line.pvSequence.isEmpty()) continue;
+                    if (!lineMatchesPrefix(line, prefix)) continue;
+                    if (line.pvSequence.size() <= consumed) continue;
+                    chosen = line;
+                    break;
+                }
             }
             if (chosen == null) {
-                // 已走到该变线末尾（无后续着法）：头部不再提示“下一步”，
-                // 支招区域保留原变线（此时已走步全部置灰），玩家可直观看到这条支招已走完。
-                if (this.activity.roundView != null) {
-                    this.activity.roundView.setBestMoveText("");
-                }
+                // 跟随的变线已走完（无后续着法）：支招使命结束 ——
+                // 清除头部「下一步」提示、棋盘提示线与支招区域结果框，回到无支招状态。
+                clearSuggestFollow();
                 return;
             }
+            // 锁定本轮跟随的变线，后续走子始终沿用同一条，直到走完为止
+            this.activity.suggestFollowLine = chosen;
 
             // 定位该变线在「引擎原始结果列表」中的下标，供头部点击时演示同一条变线。
             // 此处 lines 是上方的排序副本，而 startSimulation 直接取 getLastMultiPvLines()，
@@ -1790,6 +1804,10 @@ public class PvMActivityAI {
             this.activity.suggestFollowPrefix.clear();
             this.activity.suggestFollowStartInfo = null;
             this.activity.suggestFollowLineIndex = 0;
+            this.activity.suggestFollowLine = null;
+            if (this.activity.roundView != null) {
+                this.activity.roundView.setBestMoveText("");
+            }
             this.activity.clearEngineResultBox();
         }
     }

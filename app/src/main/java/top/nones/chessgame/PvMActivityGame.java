@@ -35,6 +35,9 @@ public class PvMActivityGame {
         if (activity.isSimulating()) return;
         if (activity.roundView != null) {
             activity.roundView.setSuggestMoveText("");
+            // 一并清掉头部「下一步」提示：只清 suggestMoveText 不会清 bestMoveText，
+            // 会导致支招结束后（走完或偏离）头部仍残留上一次的着法提示。
+            activity.roundView.setBestMoveText("");
         }
         activity.clearEngineResultBox();
         suggestForRed = null;
@@ -43,6 +46,7 @@ public class PvMActivityGame {
         activity.suggestFollowPrefix.clear();
         activity.suggestFollowStartInfo = null;
         activity.suggestFollowLineIndex = 0;
+        activity.suggestFollowLine = null;
         // 清除ChessInfo中的支招数据
         if (activity.chessInfo != null) {
             activity.chessInfo.suggestMoves.clear();

@@ -105,6 +105,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     public ChessInfo suggestFollowStartInfo = null;
     /** 跟随支招时命中的候选变线序号（引擎结果列表下标，供头部「下一步」点击从当前继续演示） */
     public int suggestFollowLineIndex = 0;
+    /** 跟随支招时锁定的候选变线：始终跟同一条，走完它即结束支招（避免中途跳到「首步相同但更长」的另一条） */
+    public PikafishAI.PvSequenceWithScore suggestFollowLine = null;
 
     // ========== 支招模拟行棋状态 ==========
     private boolean isSimulating = false;            // 是否处于模拟行棋演示中
