@@ -23,13 +23,10 @@ public class NotationUIUpdater {
             }
             if (currentNotation != null) {
                 java.util.List<ChessNotation.MoveRecord> moveRecords = currentNotation.getMoveRecords();
-                int totalMoves = moveRecords != null ? moveRecords.size() * 2 : 0;
-                
-                // 构建当前棋谱信息
+
+                // 加载棋谱时顶部只显示「当前走法」（如「红方: 炮二平五」），不显示步数信息
                 StringBuilder notationInfo = new StringBuilder();
-                notationInfo.append("第 ").append(currentMoveIndex).append(" 步 / 共 " ).append(totalMoves).append(" 步");
-                
-                // 如果有当前步的走法，也显示出来
+
                 if (currentMoveIndex > 0 && moveRecords != null && !moveRecords.isEmpty()) {
                     boolean redFirst = currentNotation.isRedFirst();
                     int recordIndex = (currentMoveIndex - 1) / 2;
@@ -38,20 +35,19 @@ public class NotationUIUpdater {
 
                     if (recordIndex < moveRecords.size()) {
                         ChessNotation.MoveRecord record = moveRecords.get(recordIndex);
-                        notationInfo.append(" | ");
                         if (isBlackMove && !record.blackMove.isEmpty()) {
-                            notationInfo.append("黑方: " ).append(record.blackMove);
+                            notationInfo.append("黑方: ").append(record.blackMove);
                         } else if (!isBlackMove && !record.redMove.isEmpty()) {
-                            notationInfo.append("红方: " ).append(record.redMove);
+                            notationInfo.append("红方: ").append(record.redMove);
                         }
                     }
                 }
-                
-                // 在RoundView中显示步数信息，保留支招信息
+
+                // 在RoundView中显示当前走法，保留支招信息
                 final String finalNotationInfo = notationInfo.toString();
                 activity.runOnUiThread(() -> {
                     if (activity.roundView != null) {
-                        // 只设置步数信息，不影响支招信息
+                        // 仅设置当前走法，不影响支招信息
                         activity.roundView.setMoveInfoText(finalNotationInfo);
                     }
                 });

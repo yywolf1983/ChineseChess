@@ -2,6 +2,7 @@ package top.nones.chessgame;
 
 import Info.ChessInfo;
 import Info.ChessNotation;
+import Info.Pos;
 import Utils.LogUtils;
 
 public class BoardStateGenerator {
@@ -58,6 +59,9 @@ public class BoardStateGenerator {
                 Utils.LogUtils.d("BoardStateGenerator", "走法记录数量: " + moveRecords.size());
                 ChessInfo currentInfo = initialInfo;
                 int moveCount = 0;
+                // 记录回放后「最后一步」的起止点，用于棋盘上以箭头/落点高亮标注当前手
+                Pos lastFrom = null;
+                Pos lastTo = null;
                 
                 // 遍历走法记录，生成到当前步数的棋盘状态
                 for (int i = 0; i < moveRecords.size(); i++) {
@@ -79,8 +83,11 @@ public class BoardStateGenerator {
                     if (firstMove != null && !firstMove.isEmpty() && moveCount < moveIndex) {
                         Utils.LogUtils.d("BoardStateGenerator", "执行先手走法: " + firstMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
+                        ChessInfo preInfo = currentInfo;
                         ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, firstMove, redFirst);
                         if (tempInfo != null) {
+                            Pos[] step = diffMoved(preInfo, tempInfo);
+                            if (step != null) { lastFrom = step[0]; lastTo = step[1]; }
                             currentInfo = tempInfo;
                             moveCount++;
                             // 记录每一步产生的新局面，供三次重复局面判定使用
@@ -91,8 +98,11 @@ public class BoardStateGenerator {
                     if (secondMove != null && !secondMove.isEmpty() && moveCount < moveIndex) {
                         Utils.LogUtils.d("BoardStateGenerator", "执行后手走法: " + secondMove);
                         MoveSimulator moveSimulator = new MoveSimulator(activity);
+                        ChessInfo preInfo = currentInfo;
                         ChessInfo tempInfo = moveSimulator.simulateMove(currentInfo, secondMove, !redFirst);
                         if (tempInfo != null) {
+                            Pos[] step = diffMoved(preInfo, tempInfo);
+                            if (step != null) { lastFrom = step[0]; lastTo = step[1]; }
                             currentInfo = tempInfo;
                             moveCount++;
                             // 记录每一步产生的新局面，供三次重复局面判定使用
@@ -108,6 +118,10 @@ public class BoardStateGenerator {
                     try {
                         // 清空现有棋盘并设置新状态
                         activity.chessInfo.setInfo(currentInfo);
+                        // 棋谱回放时标注「当前步」轨迹（棋子从 lastFrom 走到 lastTo），
+                        // 使棋盘以箭头/落点高亮显示这一手，与正常对局一致。仅加载棋谱路径生效，不影响正常对局。
+                        activity.chessInfo.prePos = lastFrom != null ? new Pos(lastFrom.x, lastFrom.y) : null;
+                        activity.chessInfo.curPos = lastTo != null ? new Pos(lastTo.x, lastTo.y) : null;
                         // 确保设置了setting属性，使用最新的设置
                         activity.chessInfo.setting = activity.setting;
                         // 更新 totalMoves，使其与当前的 moveCount 一致
@@ -128,6 +142,8 @@ public class BoardStateGenerator {
                         activity.chessInfo.lastMoveWasCheck = false;
                         
                         activity.infoSet.curInfo.setInfo(currentInfo);
+                        activity.infoSet.curInfo.prePos = activity.chessInfo.prePos;
+                        activity.infoSet.curInfo.curPos = activity.chessInfo.curPos;
                         // 更新 infoSet.curInfo 的 totalMoves
                         activity.infoSet.curInfo.totalMoves = moveCount;
                         // 确保 infoSet.curInfo 的游戏状态为进行中
@@ -249,5 +265,27 @@ public class BoardStateGenerator {
         } else {
             Utils.LogUtils.d("BoardStateGenerator", "没有加载棋谱");
         }
+    }
+
+    // 对比走子前后两局面，找出唯一移动的棋子（from→to）。
+    // 单步走子：仅一格子变空（来源 from），一格子棋子类型变化（落点 to，含吃子），各唯一。
+    private static Pos[] diffMoved(ChessInfo before, ChessInfo after) {
+        if (before == null || after == null || before.piece == null || after.piece == null) {
+            return null;
+        }
+        Pos from = null, to = null;
+        for (int y = 0; y < 10; y++) {
+            if (before.piece[y] == null || after.piece[y] == null) continue;
+            for (int x = 0; x < 9; x++) {
+                int b = before.piece[y][x];
+                int a = after.piece[y][x];
+                if (b != 0 && a == 0) {
+                    from = new Pos(x, y);
+                } else if (a != 0 && a != b) {
+                    to = new Pos(x, y);
+                }
+            }
+        }
+        return (from != null && to != null) ? new Pos[]{from, to} : null;
     }
 }
