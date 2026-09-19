@@ -65,7 +65,7 @@
             android:theme="@style/Theme.RegGate.Dialog" />
 
         <provider
-            android:name="androidx.core.content.FileProvider"
+            android:name=".AppFileProvider"
             android:authorities="${applicationId}.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
