@@ -35,6 +35,8 @@ public class NotationActivity extends AppCompatActivity implements View.OnClickL
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_notation);
+        // 运行时保持屏幕常亮，防止熄屏
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         // 初始化SaveInfo
         Info.SaveInfo.init(this);

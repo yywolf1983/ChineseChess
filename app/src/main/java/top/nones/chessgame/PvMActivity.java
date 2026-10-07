@@ -536,6 +536,8 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_pvm);
+        // 运行时保持屏幕常亮，防止熄屏
+        getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         // 初始化静态实例
         weakInstance = new WeakReference<>(this);
         relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);

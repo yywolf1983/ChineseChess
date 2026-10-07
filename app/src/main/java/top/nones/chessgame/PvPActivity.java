@@ -29,6 +29,8 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
         try {
             LogUtils.d("PvPActivity", "onCreate called");
             setContentView(R.layout.activity_pvp);
+            // 运行时保持屏幕常亮，防止熄屏
+            getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
             relativeLayout = (RelativeLayout) findViewById(R.id.relativeLayout);
 
             // 初始化模块
