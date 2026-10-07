@@ -36,33 +36,20 @@
         android:screenOrientation="portrait"
         android:theme="@style/AppTheme">
         <activity android:name=".PvPActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".PvMActivity" android:exported="false" android:screenOrientation="portrait" />
-        <activity android:name=".NotationActivity" android:exported="false" android:screenOrientation="portrait" />
+        <!-- 主界面作为启动入口,注册/试用窗口由注册库自动安装的“生命周期守卫”统一处理(只弹一次)。
+             不再把 RegistrationGateActivity 设为 LAUNCHER,避免与守卫重复弹出“注册窗口”。
+             库自带的 RegistrationGateActivity / RegistrationActivity / TrialDialogActivity /
+             ExpiredNagActivity 已由 registration-lib 的 manifest 提供,宿主无需重复声明。 -->
         <activity
-            android:name="com.reggate.lib.RegistrationGateActivity"
+            android:name=".PvMActivity"
             android:exported="true"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.RegGate.Transparent">
+            android:screenOrientation="portrait">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name="com.reggate.lib.RegistrationActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.RegGate" />
-        <activity
-            android:name="com.reggate.lib.TrialDialogActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.RegGate.Dialog" />
-        <activity
-            android:name="com.reggate.lib.ExpiredNagActivity"
-            android:exported="false"
-            android:screenOrientation="portrait"
-            android:theme="@style/Theme.RegGate.Dialog" />
+        <activity android:name=".NotationActivity" android:exported="false" android:screenOrientation="portrait" />
 
         <provider
             android:name=".AppFileProvider"
