@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>中国象棋 · 使用教程</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --ink: #1f2329;
+      --muted: #6b7280;
+      --accent: #c0392b;
+      --accent-soft: #fdecea;
+      --line: #e5e7eb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+        "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+    }
+    .wrap {
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 32px 20px 64px;
+    }
+    header.hero {
+      text-align: center;
+      padding: 28px 16px 20px;
+      background: linear-gradient(135deg, #c0392b, #e07a5f);
+      color: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(192, 57, 43, 0.25);
+    }
+    header.hero h1 { margin: 0 0 8px; font-size: 28px; letter-spacing: 1px; }
+    header.hero p { margin: 0; opacity: 0.92; font-size: 15px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px 24px;
+      margin: 20px 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    h2 {
+      color: var(--accent);
+      font-size: 20px;
+      margin-top: 4px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--accent-soft);
+    }
+    h3 { font-size: 16px; color: var(--ink); margin: 18px 0 6px; }
+    ol, ul { padding-left: 22px; }
+    li { margin: 6px 0; }
+    img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 16px auto;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+    /* 同一小节多张图并排（窄屏自动换行） */
+    .gallery {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      justify-content: center;
+      margin: 16px 0;
+    }
+    .gallery img {
+      margin: 0;
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+    .note {
+      background: var(--accent-soft);
+      border-left: 4px solid var(--accent);
+      padding: 10px 14px;
+      border-radius: 8px;
+      color: #7a261f;
+      font-size: 14px;
+      margin: 14px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 15px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px 12px;
+      text-align: left;
+    }
+    th { background: #fafafa; color: var(--muted); font-weight: 600; }
+    tr:nth-child(even) td { background: #fcfcfd; }
+    b { color: var(--accent); }
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 28px;
+    }
+    @media (max-width: 600px) {
+      .wrap { padding: 18px 12px 48px; }
+      .card { padding: 18px 16px; }
+      header.hero h1 { font-size: 23px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <h1>中国象棋 · 使用教程</h1>
+      <p>一份简单明了的上手说明，照着做就能玩。</p>
+    </header>
+
+    <div class="card" id="s1">
+      <h2>一、第一次打开</h2>
+      <ul>
+        <li>首次启动会弹出<strong>注册/激活</strong>窗口。按提示完成激活（扫码或输入激活码）即可进入主界面。</li>
+        <li>软件运行时屏幕会保持常亮，不会自动熄屏。</li>
+      </ul>
+      <div class="gallery">
+        <img src="images/zhuce1.jpg" alt="注册界面1" />
+        <img src="images/zhuce2.jpg" alt="注册界面2" />
+        <img src="images/zhuce3.jpg" alt="注册界面3" />
+      </div>
+    </div>
+
+    <div class="card" id="s2">
+      <h2>二、选择对战模式</h2>
+      <p>右上角的<strong>模式按钮</strong>（图标形式）点一下，会弹出四种模式：</p>
+      <table>
+        <thead>
+          <tr><th>模式</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>双人对战</td><td>同一部手机上两个人轮流下</td></tr>
+          <tr><td>玩家执红</td><td>你执红方，电脑执黑</td></tr>
+          <tr><td>玩家执黑</td><td>你执黑方，电脑执红</td></tr>
+          <tr><td>双机对战</td><td>红黑都由电脑下，你坐旁边看</td></tr>
+        </tbody>
+      </table>
+      <img src="images/moshi.jpg" alt="对战模式选择" />
+      <p>切换模式<strong>不会清空棋盘</strong>，会从当前局面继续。</p>
+    </div>
+
+    <div class="card" id="s3">
+      <h2>三、怎么下棋</h2>
+      <ol>
+        <li><strong>点一下</strong>要走的棋子，会高亮显示它能走的位置。</li>
+        <li>再<strong>点一下</strong>目标位置，棋子就走过去了。</li>
+        <li>走法不合法（比如送将、对面将脸对脸）会提示，不会生效。</li>
+        <li>轮到谁走，底部状态栏会标明。被将军时会弹出"将军"提示。</li>
+      </ol>
+      <img src="images/xingqi.jpg" alt="行棋界面" />
+    </div>
+
+    <div class="card" id="s4">
+      <h2>四、常用按钮</h2>
+      <ul>
+        <li><strong>新局</strong>：开一局全新的棋（会确认是否清除当前进度）。</li>
+        <li><strong>悔棋</strong>：退回到上一步。</li>
+        <li><strong>翻转</strong>：把棋盘上下翻转，方便对面的人看。</li>
+        <li><strong>上一步 / 下一步</strong>：一步步回看刚才的走法。</li>
+        <li><strong>支招</strong>：让电脑给你出主意，给出几步好棋和评分。
+          <ul>
+            <li>电脑正在思考时，这个按钮会变成<strong>"中断"</strong>，点它可以让电脑停手。</li>
+          </ul>
+        </li>
+        <li><strong>设置</strong>：调整电脑强弱、思考时间、强制变着、音效等（详见第五项）。</li>
+      </ul>
+      <img src="images/caidan.jpg" alt="功能菜单" />
+    </div>
+
+    <div class="card" id="s5">
+      <h2>五、软件设置的解释</h2>
+      <p>点<strong>设置</strong>按钮打开设置面板，各项含义如下：</p>
+      <img src="images/shezhi.jpg" alt="设置界面" />
+      <ul>
+        <li><strong>电脑棋力（技能级别 1–20 级）</strong>：数值越大电脑越强。新手先调低，想认真研究就往高拉；最高 20 级基本是满血状态。</li>
+        <li><strong>思考时间（1–60 秒）</strong>：电脑每走一步允许花费的时间。时间越长、算得越深，但也越慢；设得过高（超过 15 秒）软件会提醒注意手机性能，避免卡死。</li>
+        <li><strong>搜索深度（5–120 层）</strong>：引擎向前推算的层数，越大越强越慢。一般配合思考时间一起调即可。</li>
+        <li><strong>支招变化数（MultiPV 1–5）</strong>：点"支招"时，除了给出最佳着法，还会同时列出几个候选变化方便对比。设为 1 只给一手；≥2 时每多一条变线要额外花搜索时间（软件会提示建议的思考时间）。</li>
+        <li><strong>强制变着（开 / 关）</strong>：遇到长将、长捉、三次重复局面时，自动要求必须变着，符合正式比赛规则；关闭后则只提示、不强制。建议保持开启。</li>
+        <li><strong>背景音乐（开 / 关）</strong>。</li>
+        <li><strong>音效（开 / 关）</strong>：走子、吃子、将军等操作的提示音。</li>
+      </ul>
+      <div class="note">所有设置会<strong>自动保存</strong>，下次打开软件仍然生效；改完点"确定"即可，对当前和之后的对局都有效。</div>
+    </div>
+
+    <div class="card" id="s6">
+      <h2>六、拍照 / 相册识谱（最省事的功能）</h2>
+      <p>看到书上的残局、网上的棋图，不用手动摆：</p>
+      <ol>
+        <li>先点<strong>摆棋</strong>进入摆棋模式。</li>
+        <li>摆棋面板下方有三个按钮：<strong>清空棋盘 / 拍照 / 图片</strong>。
+          <ul>
+            <li><strong>拍照</strong>：直接拍一张棋盘照片。</li>
+            <li><strong>图片</strong>：从相册里选一张棋图。</li>
+          </ul>
+        </li>
+        <li>软件会自动识别棋盘和棋子，并摆好，连子都不用你动手。</li>
+        <li>摆好后退出摆棋模式即可从当前局面开始下。</li>
+      </ol>
+      <div class="note">提示：照片尽量拍正、光线好，识别更准。</div>
+      <h3>相关设置说明（识谱相关）</h3>
+      <ul>
+        <li><strong>相机权限</strong>：首次点"拍照"会请求相机权限，请允许；若不想授权，可改用"图片"从相册选图。</li>
+        <li><strong>识别引擎</strong>：棋盘识别（ONNX 模型）在软件启动后自动在后台加载，无需手动开启。若提示"识别服务未就绪"，稍等几秒再试即可。</li>
+        <li><strong>识别不是必须</strong>：即便识别失败或不准，也可点"清空棋盘"手动摆放，不影响正常对局。</li>
+        <li>电脑棋力、思考时间、强制变着等<strong>对局设置</strong>见第五项《软件设置的解释》。</li>
+      </ul>
+      <img src="images/baiqi.jpg" alt="摆棋界面" />
+    </div>
+
+    <div class="card" id="s7">
+      <h2>七、自由摆棋</h2>
+      <ul>
+        <li>进入<strong>摆棋</strong>模式后，可以自己自由摆放棋子，摆出想研究的残局。</li>
+        <li>摆错了点<strong>清空棋盘</strong>重来。</li>
+        <li>摆好后选好开局方，退出摆棋模式就能开始对弈。</li>
+      </ul>
+    </div>
+
+    <div class="card" id="s8">
+      <h2>八、棋谱的保存与回看</h2>
+      <ul>
+        <li><strong>保存</strong>：把当前这盘棋存成棋谱文件，随时能找回。</li>
+        <li><strong>加载</strong>：打开棋谱列表，选一局加载进来继续下或复盘。</li>
+        <li>加载后可以用"上一步 / 下一步"慢慢回放，研究哪步妙、哪步臭。</li>
+        <li>加载的棋谱里，你也可以手动接管继续往下走。</li>
+      </ul>
+      <img src="images/baocun.jpg" alt="保存棋谱" />
+    </div>
+
+    <div class="card" id="s9">
+      <h2>九、评分曲线</h2>
+      <p>对局过程中底部会有一条<strong>评分曲线</strong>，把整盘棋谁占优势画得清清楚楚，红高黑低一眼可见，方便复盘。</p>
+      <img src="images/quxian.jpg" alt="评分曲线" />
+    </div>
+
+    <div class="card" id="s10">
+      <h2>十、结束一局</h2>
+      <ul>
+        <li>将死 / 困毙会直接判负。</li>
+        <li>出现三次重复、长将、长捉等，会提示<strong>和棋</strong>或<strong>变着</strong>；需要认输时也有相应确认。</li>
+        <li>想重新开始，点<strong>新局</strong>即可。</li>
+      </ul>
+      <img src="images/heqi.jpg" alt="和棋/结束" />
+    </div>
+
+    <footer>
+      就这么简单：选模式 → 点子走子 → 卡壳点支招 → 想研究用拍照识谱或摆棋 → 下完保存复盘。祝你玩得开心！
+    </footer>
+  </div>
+</body>
+</html>
