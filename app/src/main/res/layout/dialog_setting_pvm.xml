@@ -137,6 +137,91 @@
         </RadioGroup>
     </LinearLayout>
 
+    <!-- ==================== 难度预设 ==================== -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_setting_card"
+        android:layout_marginLeft="12dp"
+        android:layout_marginRight="12dp"
+        android:layout_marginTop="8dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="难度预设"
+            android:textSize="10sp"
+            android:textColor="#999999"
+            android:layout_marginBottom="6dp"
+            android:letterSpacing="0.15" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/presetLevel1Btn"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/bg_preset_btn"
+                android:textSize="13sp"
+                android:textColor="#4CAF50"
+                android:textStyle="bold"
+                android:text="初级" />
+
+            <Button
+                android:id="@+id/presetLevel2Btn"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/bg_preset_btn"
+                android:textSize="13sp"
+                android:textColor="#4CAF50"
+                android:textStyle="bold"
+                android:text="高手" />
+
+            <Button
+                android:id="@+id/presetLevel3Btn"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="6dp"
+                android:background="@drawable/bg_preset_btn"
+                android:textSize="13sp"
+                android:textColor="#4CAF50"
+                android:textStyle="bold"
+                android:text="解题" />
+
+            <Button
+                android:id="@+id/presetLevel4Btn"
+                android:layout_width="0dp"
+                android:layout_height="38dp"
+                android:layout_weight="1"
+                android:layout_marginLeft="6dp"
+                android:background="@drawable/bg_preset_btn_red"
+                android:textSize="13sp"
+                android:textColor="#E53935"
+                android:textStyle="bold"
+                android:text="飘逸" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/presetHint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textSize="11sp"
+            android:textColor="#E53935"
+            android:layout_marginTop="6dp"
+            android:visibility="gone" />
+    </LinearLayout>
+
     <!-- ==================== 思考时间 ==================== -->
     <LinearLayout
         android:id="@+id/levelGroup"

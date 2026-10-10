@@ -29,6 +29,8 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     public Button depthMinusBtn, depthPlusBtn;
     public Button skillLevelMinusBtn, skillLevelPlusBtn;
     public Button multiPVMinusBtn, multiPVPlusBtn;
+    public Button presetLevel1Btn, presetLevel2Btn, presetLevel3Btn, presetLevel4Btn;
+    public TextView presetHint;
     public RadioGroup musicGroup;
     public RadioGroup effectGroup;
     public RadioGroup forceVariationGroup;
@@ -178,6 +180,12 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         multiPVMinusBtn = (Button) findViewById(R.id.multiPVMinusBtn);
         multiPVPlusBtn = (Button) findViewById(R.id.multiPVPlusBtn);
         multiPVWarning = (TextView) findViewById(R.id.multiPVWarning);
+        // 初始化难度预设按钮
+        presetLevel1Btn = (Button) findViewById(R.id.presetLevel1Btn);
+        presetLevel2Btn = (Button) findViewById(R.id.presetLevel2Btn);
+        presetLevel3Btn = (Button) findViewById(R.id.presetLevel3Btn);
+        presetLevel4Btn = (Button) findViewById(R.id.presetLevel4Btn);
+        presetHint = (TextView) findViewById(R.id.presetHint);
         // 初始化强制变着选项
         forceVariationGroup = (RadioGroup) findViewById(R.id.forceVariationGroup);
         forceVariationTrue = (RadioButton) findViewById(R.id.forceVariationTrue);
@@ -203,6 +211,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
         // 为MultiPV按钮添加点击事件
         multiPVMinusBtn.setOnClickListener(this);
         multiPVPlusBtn.setOnClickListener(this);
+        // 为难度预设按钮添加点击事件
+        presetLevel1Btn.setOnClickListener(this);
+        presetLevel2Btn.setOnClickListener(this);
+        presetLevel3Btn.setOnClickListener(this);
+        presetLevel4Btn.setOnClickListener(this);
     }
 
     @Override
@@ -311,6 +324,52 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                     multiPVValue.setText(multiPV + "变");
                     showMultiPVChangeHint();
                 }
+            } else if (id == R.id.presetLevel1Btn) {
+                // 初级：时间1秒 深度5 技能级别1，强制变着开，MultiPV=1
+                applyPreset(1, 5, 1, true, true, 1, false);
+            } else if (id == R.id.presetLevel2Btn) {
+                // 高手：时间3秒 深度20 技能10，强制变着开，MultiPV=1
+                applyPreset(3, 20, 10, true, true, 1, false);
+            } else if (id == R.id.presetLevel3Btn) {
+                // 解题：时间5秒 深度60 技能20，强制变着关，MultiPV=1
+                applyPreset(5, 60, 20, false, true, 1, false);
+            } else if (id == R.id.presetLevel4Btn) {
+                // 飘逸：时间10秒 深度120 技能20 MultiPV3，强制变着关（红色提示）
+                applyPreset(10, 120, 20, false, true, 3, true);
+            }
+        }
+
+        // 应用难度预设：统一设置时间/深度/技能级别/强制变着 并刷新界面显示
+        // changeMpv 为 true 时才修改 MultiPV（仅飘逸）；其余预设保留用户原有 MultiPV
+        private void applyPreset(int time, int depth, int skill, boolean forceVar, boolean changeMpv, int mpv, boolean redHint) {
+            playSelectSound();
+            thinkingTime = Math.max(1, Math.min(60, time));
+            searchDepth = Math.max(5, Math.min(120, depth));
+            skillLevel = Math.max(1, Math.min(20, skill));
+            forceVariation = forceVar;
+
+            timeSeekBar.setProgress(thinkingTime);
+            timeValue.setText(thinkingTime + "秒");
+            depthSeekBar.setProgress(searchDepth);
+            depthValue.setText(searchDepth + "层");
+            skillLevelSeekBar.setProgress(skillLevel);
+            skillLevelValue.setText(skillLevel + "级");
+            if (changeMpv) {
+                multiPV = Math.max(1, Math.min(5, mpv));
+                multiPVSeekBar.setProgress(multiPV);
+                multiPVValue.setText(multiPV + "变");
+            }
+            if (forceVariation) {
+                forceVariationTrue.setChecked(true);
+            } else {
+                forceVariationFalse.setChecked(true);
+            }
+
+            if (redHint) {
+                presetHint.setVisibility(android.view.View.VISIBLE);
+                presetHint.setText("⚠ 飘逸：10秒 / 深度120 / MultiPV3，计算量极大，可能卡顿，请斟酌手机性能");
+            } else {
+                presetHint.setVisibility(android.view.View.GONE);
             }
         }
         
