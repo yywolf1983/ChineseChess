@@ -331,11 +331,11 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 // 高手：时间3秒 深度20 技能10，强制变着开，MultiPV=1
                 applyPreset(3, 20, 10, true, true, 1, false);
             } else if (id == R.id.presetLevel3Btn) {
-                // 解题：时间5秒 深度60 技能20，强制变着关，MultiPV=1
-                applyPreset(5, 60, 20, false, true, 1, false);
+                // 解题：时间5秒 深度60 技能20，强制变着开，MultiPV=1
+                applyPreset(5, 60, 20, true, true, 1, false);
             } else if (id == R.id.presetLevel4Btn) {
-                // 飘逸：时间10秒 深度120 技能20 MultiPV3，强制变着关（红色提示）
-                applyPreset(10, 120, 20, false, true, 3, true);
+                // 飘逸：时间10秒 深度120 技能20 MultiPV3，强制变着开（红色提示）
+                applyPreset(10, 120, 20, true, true, 3, true);
             }
         }
 
