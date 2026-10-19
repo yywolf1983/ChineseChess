@@ -77,31 +77,43 @@ public class PvPActivityInit {
     }
 
     private void initMusic() {
-        backMusic = MediaPlayer.create(activity, R.raw.background);
+        // 使用 ApplicationContext，避免静态 MediaPlayer 持有 Activity 导致内存泄漏
+        android.content.Context appContext = activity.getApplicationContext();
+        backMusic = MediaPlayer.create(appContext, R.raw.background);
         if (backMusic != null) {
             backMusic.setLooping(true);
             backMusic.setVolume(0.2f, 0.2f);
         }
-        selectMusic = MediaPlayer.create(activity, R.raw.select);
+        selectMusic = MediaPlayer.create(appContext, R.raw.select);
         if (selectMusic != null) {
-            selectMusic.setVolume(5f, 5f);
+            selectMusic.setVolume(1.0f, 1.0f);
         }
-        clickMusic = MediaPlayer.create(activity, R.raw.click);
+        clickMusic = MediaPlayer.create(appContext, R.raw.click);
         if (clickMusic != null) {
-            clickMusic.setVolume(5f, 5f);
+            clickMusic.setVolume(1.0f, 1.0f);
         }
-        captureMusic = MediaPlayer.create(activity, R.raw.capture);
+        captureMusic = MediaPlayer.create(appContext, R.raw.capture);
         if (captureMusic != null) {
-            captureMusic.setVolume(5f, 5f);
+            captureMusic.setVolume(1.0f, 1.0f);
         }
-        checkMusic = MediaPlayer.create(activity, R.raw.checkmate);
+        checkMusic = MediaPlayer.create(appContext, R.raw.checkmate);
         if (checkMusic != null) {
-            checkMusic.setVolume(5f, 5f);
+            checkMusic.setVolume(1.0f, 1.0f);
         }
-        winMusic = MediaPlayer.create(activity, R.raw.win);
+        winMusic = MediaPlayer.create(appContext, R.raw.win);
         if (winMusic != null) {
-            winMusic.setVolume(5f, 5f);
+            winMusic.setVolume(1.0f, 1.0f);
         }
+    }
+
+    /** 释放所有静态 MediaPlayer 资源，在 Activity onDestroy 时调用 */
+    public static void releaseMusic() {
+        try { if (backMusic != null) { backMusic.release(); backMusic = null; } } catch (Exception ignored) {}
+        try { if (selectMusic != null) { selectMusic.release(); selectMusic = null; } } catch (Exception ignored) {}
+        try { if (clickMusic != null) { clickMusic.release(); clickMusic = null; } } catch (Exception ignored) {}
+        try { if (captureMusic != null) { captureMusic.release(); captureMusic = null; } } catch (Exception ignored) {}
+        try { if (checkMusic != null) { checkMusic.release(); checkMusic = null; } } catch (Exception ignored) {}
+        try { if (winMusic != null) { winMusic.release(); winMusic = null; } } catch (Exception ignored) {}
     }
 
     private void initRoundView() {
@@ -357,6 +369,10 @@ public class PvPActivityInit {
         } catch (Exception e) {
             LogUtils.e("PvPActivityInit", "操作失败", e);
         }
+    }
+
+    public void onDestroy() {
+        releaseMusic();
     }
 
     private void playMusic(MediaPlayer mediaPlayer) {

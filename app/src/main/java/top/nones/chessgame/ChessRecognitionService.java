@@ -185,7 +185,13 @@ public class ChessRecognitionService {
 
             ChessInfo chessInfo;
             if (warpedBoard != null) {
-                chessInfo = runClassification(warpedBoard);
+                try {
+                    chessInfo = runClassification(warpedBoard);
+                } finally {
+                    if (!warpedBoard.isRecycled()) {
+                        warpedBoard.recycle();
+                    }
+                }
             } else {
                 Log.w(TAG, "Pose/warp failed, falling back to direct classification");
                 chessInfo = runClassification(bitmap);
@@ -208,19 +214,22 @@ public class ChessRecognitionService {
     private float[][] detectKeypoints(Bitmap bitmap) {
         if (poseSession == null) return null;
 
+        Bitmap resized = null;
+        OnnxTensor inputTensor = null;
+        Result result = null;
         try {
             int origW = bitmap.getWidth();
             int origH = bitmap.getHeight();
 
             // 1. 缩放到 256x256
-            Bitmap resized = Bitmap.createScaledBitmap(bitmap, POSE_INPUT_SIZE, POSE_INPUT_SIZE, true);
+            resized = Bitmap.createScaledBitmap(bitmap, POSE_INPUT_SIZE, POSE_INPUT_SIZE, true);
 
             // 2. 准备输入 [1, 3, 256, 256]
             float[][][][] input = prepareNCHWInput(resized, POSE_INPUT_SIZE, POSE_INPUT_SIZE);
-            OnnxTensor inputTensor = OnnxTensor.createTensor(ortEnv, input);
+            inputTensor = OnnxTensor.createTensor(ortEnv, input);
 
             // 3. 运行 pose 模型
-            Result result = poseSession.run(Collections.singletonMap("input", inputTensor));
+            result = poseSession.run(Collections.singletonMap("input", inputTensor));
 
             // 4. 解析 SimCC 输出
             // 输出: simcc_x [1, 4, 512], simcc_y [1, 4, 512]
@@ -265,13 +274,22 @@ public class ChessRecognitionService {
                     k, keypoints[k][0], keypoints[k][1], maxValX, maxValY));
             }
 
-            inputTensor.close();
-            result.close();
             return keypoints;
 
         } catch (Exception e) {
             Log.e(TAG, "Pose detection failed: " + e.getMessage(), e);
             return null;
+        } finally {
+            // 释放 ONNX 资源（所有路径均需关闭，避免 native 内存泄漏）
+            if (result != null) {
+                try { result.close(); } catch (Exception ignored) {}
+            }
+            if (inputTensor != null) {
+                try { inputTensor.close(); } catch (Exception ignored) {}
+            }
+            if (resized != null && !resized.isRecycled()) {
+                resized.recycle();
+            }
         }
     }
 
@@ -328,12 +346,13 @@ public class ChessRecognitionService {
     private ChessInfo runClassification(Bitmap bitmap) throws OrtException {
         ChessInfo chessInfo = new ChessInfo();
         long t0 = System.currentTimeMillis();
+        Bitmap resized = null;
         OnnxTensor inputTensor = null;
         Result result = null;
 
         try {
             // 1. 缩放到模型输入尺寸 (280x315)
-            Bitmap resized = Bitmap.createScaledBitmap(bitmap, CLS_INPUT_WIDTH, CLS_INPUT_HEIGHT, true);
+            resized = Bitmap.createScaledBitmap(bitmap, CLS_INPUT_WIDTH, CLS_INPUT_HEIGHT, true);
             long t1 = System.currentTimeMillis();
 
             // 2. 准备输入
@@ -455,6 +474,9 @@ public class ChessRecognitionService {
                 } catch (Exception e) {
                     Log.e(TAG, "Error closing result", e);
                 }
+            }
+            if (resized != null && !resized.isRecycled()) {
+                resized.recycle();
             }
         }
     }

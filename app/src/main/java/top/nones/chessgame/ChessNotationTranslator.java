@@ -195,17 +195,18 @@ public class ChessNotationTranslator {
         }
 
         // 提取走法中的列号
+        // 仅当走法以棋子名开头（如"车二平五"）时，列号位于索引 1；
+        // 若以"前/后/中"或序号（如"一兵进一"）开头，则字符串中不包含绝对列号，
+        // 此时 moveCol 保持 -1，排序退化为按位置排序。
         int moveCol = -1;
-        if (moveString != null && moveString.length() > 1) {
-            int colIndex = 1;
-            if (moveString.length() > 2) {
-                char secondChar = moveString.charAt(1);
-                if (secondChar == '前' || secondChar == '后' || secondChar == '中') {
-                    colIndex = 2;
-                }
-            }
-            if (colIndex < moveString.length()) {
-                char colChar = moveString.charAt(colIndex);
+        if (moveString != null && moveString.length() >= 2) {
+            char firstChar = moveString.charAt(0);
+            boolean startsWithPiece = (firstChar == '车' || firstChar == '马' || firstChar == '炮'
+                    || firstChar == '相' || firstChar == '仕' || firstChar == '帅'
+                    || firstChar == '象' || firstChar == '士' || firstChar == '将'
+                    || firstChar == '兵' || firstChar == '卒');
+            if (startsWithPiece) {
+                char colChar = moveString.charAt(1);
                 moveCol = getColNumber(colChar);
             }
         }

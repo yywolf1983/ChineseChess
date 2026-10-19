@@ -4,6 +4,7 @@ import android.content.SharedPreferences;
 import java.io.Serializable;
 
 public class Setting implements Serializable {
+    private static final long serialVersionUID = 1L;
     // ---- 用户可见设置 ----
     public boolean isMusicPlay;
     public boolean isEffectPlay;

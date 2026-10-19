@@ -55,7 +55,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
     public boolean drawBoardReference = true;
 
     /** 是否处于模拟行棋演示中（开启后绘制琥珀色边框 + 棋盘正中"模拟中"角标以区分真实对局） */
-    public boolean isSimulating = false;
+    public volatile boolean isSimulating = false;
 
     /** "模拟中"角标的呼吸/点循环动画：仅在 isSimulating 期间自调度重绘 */
     private long simStartTime = 0;
@@ -171,6 +171,11 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
         final int width = options.outWidth;
         int inSampleSize = 1;
 
+        // 防御：需求尺寸为 0（如 surfaceCreated 早于 onMeasure）时直接返回，避免 while 死循环
+        if (reqWidth <= 0 || reqHeight <= 0 || height <= 0 || width <= 0) {
+            return inSampleSize;
+        }
+
         if (height > reqHeight || width > reqWidth) {
             final int halfHeight = height / 2;
             final int halfWidth = width / 2;
@@ -211,6 +216,7 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
 
         // 添加空指针检查，确保 chessInfo 不为 null
         if (chessInfo == null) {
+            canvas.restore(); // 与开头的 canvas.save() 配对，避免保存状态泄漏
             return;
         }
         
@@ -401,7 +407,13 @@ public class ChessView extends SurfaceView implements SurfaceHolder.Callback {
             for (int i = 0; i < chessInfo.suggestMoves.size() && i < chessInfo.suggestMoveLabels.size(); i++) {
                 ChessMove.Move move = chessInfo.suggestMoves.get(i);
                 if (move == null || move.fromPos == null || move.toPos == null) continue;
-                
+
+                // 坐标边界校验，避免异常走法导致数组越界或绘制到棋盘外
+                if (move.fromPos.x < 0 || move.fromPos.x > 8 || move.fromPos.y < 0 || move.fromPos.y > 9
+                        || move.toPos.x < 0 || move.toPos.x > 8 || move.toPos.y < 0 || move.toPos.y > 9) {
+                    continue;
+                }
+
                 boolean isRedMove = false;
                 if (chessInfo.suggestMovesIsRed != null && i < chessInfo.suggestMovesIsRed.size()) {
                     isRedMove = chessInfo.suggestMovesIsRed.get(i);

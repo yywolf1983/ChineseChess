@@ -38,6 +38,15 @@ public class PvPActivityGame {
     public void setRoundView(PvPActivityRound roundView) {
         this.roundView = roundView;
     }
+
+    // 同步新的棋局状态（finishSetup/handleRetryButton 重建状态后调用）
+    public void setChessInfo(ChessInfo chessInfo) {
+        this.chessInfo = chessInfo;
+    }
+
+    public void setInfoSet(InfoSet infoSet) {
+        this.infoSet = infoSet;
+    }
     
     // 设置支招信息，并记录是给哪一方的
     public void setSuggestMove(String moveText, boolean forRed) {
@@ -278,91 +287,75 @@ public class PvPActivityGame {
             return;
         }
 
-        // 其他逻辑在后台线程执行
-        new Thread(() -> {
-            // 执行其他操作
-            chessInfo.IsChecked = false;
-            chessInfo.IsRedGo = !isRed;
-            chessInfo.curPos = new Pos(i, j);
+        // 其他逻辑在当前线程同步执行（避免主线程与后台线程并发读写 chessInfo 造成数据竞争）
+        chessInfo.IsChecked = false;
+        chessInfo.IsRedGo = !isRed;
+        chessInfo.curPos = new Pos(i, j);
 
-            // 生成并记录标准象棋记谱走法
-            String moveString = generateMoveString(piece, chessInfo.prePos, chessInfo.curPos, isRed);
-            if (moveString != null) {
-                LogUtils.i("Move", (isRed ? "红方" : "黑方") + "走棋: " + moveString);
+        // 生成并记录标准象棋记谱走法
+        String moveString = generateMoveString(piece, chessInfo.prePos, chessInfo.curPos, isRed);
+        if (moveString != null) {
+            LogUtils.i("Move", (isRed ? "红方" : "黑方") + "走棋: " + moveString);
+        }
+
+        // 检查是否将军
+        boolean isCheck = Rule.isKingDanger(chessInfo.piece, !isRed);
+        chessInfo.updateAllInfo(chessInfo.prePos, chessInfo.curPos, piece, tmp, isCheck);
+
+        try {
+            if (infoSet != null) {
+                infoSet.pushInfo(chessInfo);
             }
+        } catch (CloneNotSupportedException e) {
+            LogUtils.e("PvPActivityGame", "操作失败", e);
+        }
 
-            // 检查是否将军
-            boolean isCheck = Rule.isKingDanger(chessInfo.piece, !isRed);
-            chessInfo.updateAllInfo(chessInfo.prePos, chessInfo.curPos, piece, tmp, isCheck);
+        checkGameStatus(!isRed, isCapture);
 
-            try {
-                if (infoSet != null) {
-                    infoSet.pushInfo(chessInfo);
-                }
-            } catch (CloneNotSupportedException e) {
-                LogUtils.e("PvPActivityGame", "操作失败", e);
+        if (!chessInfo.IsChecked && !isCapture) {
+            if (PvPActivityInit.getClickMusic() != null) {
+                PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
             }
+        }
 
-            // 在主线程中执行UI操作
-            activity.runOnUiThread(() -> {
-                checkGameStatus(!isRed, isCapture);
-                
-                if (!chessInfo.IsChecked && !isCapture) {
-                    if (PvPActivityInit.getClickMusic() != null) {
-                        PvPActivityInit.playEffect(PvPActivityInit.getClickMusic());
-                    }
-                }
+        if (chessView != null) {
+            chessView.requestDraw();
+        }
+        if (roundView != null) {
+            roundView.requestDraw();
+        }
 
-                if (chessView != null) {
-                    chessView.requestDraw();
-                }
-                if (roundView != null) {
-                    roundView.requestDraw();
-                }
-                
-                // 清除支招信息
-                if (roundView != null && suggestForRed != null && isRed == suggestForRed) {
-                    roundView.setSuggestMoveText("");
-                    suggestForRed = null;
-                }
-            });
-        }).start();
+        // 清除支招信息
+        if (roundView != null && suggestForRed != null && isRed == suggestForRed) {
+            roundView.setSuggestMoveText("");
+            suggestForRed = null;
+        }
     }
 
     private void checkGameStatus(final boolean isRed, final boolean isCapture) {
-        // 快速检查：只在主线程中检查将军和胜负
-        new Thread(() -> {
-            int key = 0;
-            if (Rule.isKingDanger(chessInfo.piece, !isRed)) {
-                key = 1;
-            }
-
-            
-            final int finalKey = key;
-            activity.runOnUiThread(() -> {
-                if (finalKey == 1) {
-                    long currentTime = System.currentTimeMillis();
-                    // 确保一次将军只提示一次，通过时间戳控制
-                    if (currentTime - lastCheckHintTime > 1000) { // 1秒内只提示一次
-                        if (PvPActivityInit.getCheckMusic() != null) {
-                            PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
-                        }
-                        android.widget.Toast toast = android.widget.Toast.makeText(activity, "正在被将军", android.widget.Toast.LENGTH_SHORT);
-                        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
-                        toast.show();
-                        lastCheckHintTime = currentTime;
-                    }
-                } else if (isCapture) {
-                    // 如果不是将军但吃了子，播放吃子音效
-                    if (PvPActivityInit.getCaptureMusic() != null) {
-                        PvPActivityInit.playEffect(PvPActivityInit.getCaptureMusic());
-                    }
+        // 同步检查将军（棋盘已落子完成，isKingDanger 开销可控）
+        boolean inCheck = Rule.isKingDanger(chessInfo.piece, !isRed);
+        if (inCheck) {
+            long currentTime = System.currentTimeMillis();
+            // 确保一次将军只提示一次，通过时间戳控制
+            if (currentTime - lastCheckHintTime > 1000) { // 1秒内只提示一次
+                if (PvPActivityInit.getCheckMusic() != null) {
+                    PvPActivityInit.playEffect(PvPActivityInit.getCheckMusic());
                 }
-            });
+                android.widget.Toast toast = android.widget.Toast.makeText(activity, "正在被将军", android.widget.Toast.LENGTH_SHORT);
+                toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+                toast.show();
+                lastCheckHintTime = currentTime;
+            }
+        } else if (isCapture) {
+            // 如果不是将军但吃了子，播放吃子音效
+            if (PvPActivityInit.getCaptureMusic() != null) {
+                PvPActivityInit.playEffect(PvPActivityInit.getCaptureMusic());
+            }
+        }
 
-            // 将耗时的和棋判断移到后台线程执行
-            checkDrawConditions();
-        }).start();
+        // 和棋判断
+        checkDrawConditions();
     }
     
     // 检查和棋条件并提示用户

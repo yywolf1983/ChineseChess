@@ -27,7 +27,7 @@ public class PvMActivityControls {
     private static final long SUGGEST_BUTTON_INTERVAL = 1200;
     private boolean isForceVariationDialogShowing = false; // 防止强制变着对话框重复弹出
     private boolean justExecutedForceVariation = false; // 标记刚刚执行了强制变着
-    private int forceVariationCooldown = 0; // 强制变着后冷却回合数，三回合内不再提示
+    private int forceVariationCooldown = 0; // 强制变着后冷却（单位：半步，6=三回合）
     private int forceVariationHintRound = 0; // 记录上次浮窗提示的回合数
     private long lastCheckHintTime = 0; // 记录上次将军提示的时间戳
     
@@ -977,8 +977,8 @@ public class PvMActivityControls {
         activity.chessInfo.lastAttackedPieceType = 0;
         // 重置继续对局后的回合计数器
         activity.continueGameRoundCount = 0;
-        // 设置强制变着冷却回合数为3，三回合内不再检查
-        forceVariationCooldown = 3;
+        // 设置强制变着冷却为6个半步（=3回合），三回合内不再检查
+        forceVariationCooldown = 6;
         LogUtils.i("PvMActivityControls", "设置强制变着冷却，3回合内不再检查");
         
         // 检查是否需要显示浮窗提示（十回合内只提示一次）
@@ -1113,8 +1113,8 @@ public class PvMActivityControls {
             activity.chessInfo.consecutiveCheckBlack = 0;
             // 重置继续对局后的回合计数器
             activity.continueGameRoundCount = 0;
-            // 设置强制变着冷却回合数为3，三回合内不再提示
-            forceVariationCooldown = 3;
+            // 设置强制变着冷却为6个半步（=3回合），三回合内不再提示
+            forceVariationCooldown = 6;
             LogUtils.i("PvMActivityControls", "设置强制变着冷却，3回合内不再提示");
             // 无需提示，对话框已明确说明
             // 重新绘制界面

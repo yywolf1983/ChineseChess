@@ -53,7 +53,7 @@ public class ChessInfo implements Cloneable, Serializable {
     
     // 整局评分曲线：每步落子后追加一个评分点（centipawns，+红优 / -黑优），引擎定分时修正末点
     public int currentEvaluation = 0;
-    public final java.util.List<Integer> evalHistory = new java.util.ArrayList<>();
+    public java.util.List<Integer> evalHistory = new java.util.ArrayList<>();
     
     public Map<String, Integer> positionHistory;
     public int consecutiveCheckRed;
@@ -240,6 +240,13 @@ public class ChessInfo implements Cloneable, Serializable {
             // 复制规则判定统计
             this.forbiddenMoveRed = info.forbiddenMoveRed;
             this.forbiddenMoveBlack = info.forbiddenMoveBlack;
+            
+            // 复制强制变着相关字段
+            this.forceVariation = info.forceVariation;
+            this.variationRandomness = info.variationRandomness;
+
+            // 深拷贝评分曲线，避免与原对象共享同一列表
+            this.evalHistory = new java.util.ArrayList<>(info.evalHistory);
         }
     }
 
@@ -253,8 +260,8 @@ public class ChessInfo implements Cloneable, Serializable {
 
     /** 引擎给出当前局面最终评分时调用：若已落子点数与总步数一致则修正末点，否则仅记录最新值（不新增点数） */
     public void pushOrUpdateEval(int eval) {
-        currentEvaluation = eval;
         synchronized (lock) {
+            currentEvaluation = eval;
             if (!evalHistory.isEmpty() && evalHistory.size() == totalMoves) {
                 evalHistory.set(evalHistory.size() - 1, eval);
             }
@@ -747,6 +754,9 @@ public class ChessInfo implements Cloneable, Serializable {
             // 复制强制变着相关字段
             info.forceVariation = this.forceVariation;
             info.variationRandomness = this.variationRandomness;
+
+            // 深拷贝评分曲线，避免与原对象共享同一列表
+            info.evalHistory = new java.util.ArrayList<>(this.evalHistory);
         }
         
         return info;
@@ -833,6 +843,11 @@ public class ChessInfo implements Cloneable, Serializable {
                 suggestMoveNotations = new CopyOnWriteArrayList<>();
             } else if (!(suggestMoveNotations instanceof java.util.concurrent.CopyOnWriteArrayList)) {
                 suggestMoveNotations = new CopyOnWriteArrayList<>(suggestMoveNotations);
+            }
+
+            // 确保评分曲线列表非空
+            if (evalHistory == null) {
+                evalHistory = new java.util.ArrayList<>();
             }
         }
     }

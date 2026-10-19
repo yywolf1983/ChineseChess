@@ -100,7 +100,13 @@ public class FENHandler {
                                 fen.append(emptyCount);
                                 emptyCount = 0;
                             }
-                            fen.append(getFENFromPiece(piece));
+                            char fenChar = getFENFromPiece(piece);
+                            if (fenChar != 0) {
+                                fen.append(fenChar);
+                            } else {
+                                // 非法棋子 ID：不写入 FEN（避免空格破坏格式），并视为空位补齐
+                                emptyCount++;
+                            }
                         }
                     } else {
                         emptyCount++;
@@ -144,7 +150,7 @@ public class FENHandler {
             case 12: return 'R'; // 红车
             case 13: return 'C'; // 红炮
             case 14: return 'P'; // 红兵
-            default: return ' ';
+            default: return 0; // 非法棋子 ID，调用方按空位处理，不写入 FEN
         }
     }
     

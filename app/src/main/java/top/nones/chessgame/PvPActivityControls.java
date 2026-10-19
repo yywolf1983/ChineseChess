@@ -197,6 +197,10 @@ public class PvPActivityControls {
                         } catch (CloneNotSupportedException e) {
                             LogUtils.e("PvPActivityControls", "Error pushing info in finishSetup", e);
                         }
+                        // 同步新的 infoSet 到游戏模块，避免悔棋/保存使用旧栈
+                        if (gameModule != null) {
+                            gameModule.setInfoSet(infoSet);
+                        }
                         // 重新绘制界面
                         if (activity.getChessView() != null) {
                             activity.getChessView().requestDraw();
@@ -223,6 +227,10 @@ public class PvPActivityControls {
                             infoSet.pushInfo(chessInfo);
                         } catch (CloneNotSupportedException e) {
                             LogUtils.e("PvPActivityControls", "Error pushing info in finishSetup (black)", e);
+                        }
+                        // 同步新的 infoSet 到游戏模块
+                        if (gameModule != null) {
+                            gameModule.setInfoSet(infoSet);
                         }
                         // 重新绘制界面
                         if (activity.getChessView() != null) {
@@ -254,6 +262,11 @@ public class PvPActivityControls {
             infoSet = new InfoSet();
             // 重新推入初始状态
             infoSet.pushInfo(chessInfo);
+            // 同步新的 chessInfo/infoSet 到游戏模块，避免新局后界面与逻辑脱节
+            if (gameModule != null) {
+                gameModule.setChessInfo(chessInfo);
+                gameModule.setInfoSet(infoSet);
+            }
             // 重新绘制界面
             if (activity.getChessView() != null) {
                 activity.getChessView().setChessInfo(chessInfo);

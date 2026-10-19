@@ -504,7 +504,7 @@ public class MoveSimulator {
                                         // 生成走法字符串并与输入进行比较
                                         String generatedMove = generateMoveString(newInfo, piece, targetPiecePos, targetPos, isRed);
                                         // 标准化生成的走法字符串以进行比较
-                                        String normalizedGeneratedMove = generatedMove != null ? ChessNotationTranslator.normalizeMoveString(generatedMove, true) : null;
+                                        String normalizedGeneratedMove = generatedMove != null ? ChessNotationTranslator.normalizeMoveString(generatedMove, isRed) : null;
                                         
                                         Utils.LogUtils.d("MoveSimulator", "比较 - 生成的走法: " + normalizedGeneratedMove + ", 目标走法: " + baseMoveString + ", 目标位置: " + targetPos.x + "," + targetPos.y);
                                         

@@ -56,10 +56,12 @@ public class CommonDialog extends Dialog implements View.OnClickListener {
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.posBtn) {
+            dismiss();
             if (onClickBottomListener != null) {
                 onClickBottomListener.onPositiveClick();
             }
         } else if (id == R.id.negBtn) {
+            dismiss();
             if (onClickBottomListener != null) {
                 onClickBottomListener.onNegtiveClick();
             }

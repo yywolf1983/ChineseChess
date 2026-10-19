@@ -64,7 +64,7 @@ public class PikafishAI {
     private volatile boolean nativeInited = false;
     private final AtomicReference<CountDownLatch> initLatchRef = new AtomicReference<>(new CountDownLatch(1));
     private volatile boolean initInProgress = false;
-    private Context context;
+    private volatile Context context;
     private final java.util.concurrent.atomic.AtomicBoolean isSearching = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final java.util.concurrent.atomic.AtomicBoolean shouldStop = new java.util.concurrent.atomic.AtomicBoolean(false);
     private final AtomicInteger currentDepth = new AtomicInteger(0);
@@ -102,12 +102,12 @@ public class PikafishAI {
     private volatile int cachedHashMB = 0;        // 哈希表 MB (0=自动)
     private volatile int cachedContempt = 20;     // 蔑视值 (centipawns)
     // 记录上次实际下发的值，避免重复发送不变的参数
-    private int lastAppliedThreadCount = -1;
-    private int lastAppliedHashSize = -1;
+    private volatile int lastAppliedThreadCount = -1;
+    private volatile int lastAppliedHashSize = -1;
     private volatile String cachedNumaPolicy = "auto"; // NUMA 策略
 
     // 输出读取线程
-    private Thread outputReaderThread;
+    private volatile Thread outputReaderThread;
     private final BlockingQueue<String> outputQueue = new LinkedBlockingQueue<>();
     private volatile boolean readerRunning = false;
     private volatile boolean readerExited = false;
@@ -121,7 +121,7 @@ public class PikafishAI {
         void onInitializationFailed();
     }
 
-    private InitializationListener initListener = null;
+    private volatile InitializationListener initListener = null;
 
     public void setInitializationListener(InitializationListener listener) {
         this.initListener = listener;

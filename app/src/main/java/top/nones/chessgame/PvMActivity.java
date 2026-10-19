@@ -529,7 +529,7 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     private java.io.File cameraImageFile;
     
     // 识别服务
-    private ChessRecognitionService recognitionService;
+    private volatile ChessRecognitionService recognitionService;
     private PhotoCaptureManager photoCaptureManager;
     
     @Override
@@ -1478,6 +1478,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (timeUpdateExecutor != null) {
             timeUpdateExecutor.shutdownNow();
         }
+        // 暂停评估线程（否则 onResume 重新创建时旧线程池泄漏）
+        if (evaluationExecutor != null) {
+            evaluationExecutor.shutdownNow();
+        }
     }
 
     @Override
@@ -1538,6 +1542,9 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         final PikafishAI aiToClose = pikafishAI;
         final PvMActivityAI aiManagerToShutdown = aiManager;
 
+        // 清理模拟行棋的延迟回调，避免 Activity 销毁后仍访问 View
+        simHandler.removeCallbacksAndMessages(null);
+
         // 关闭时间更新线程（主线程避免等待）
         if (timeUpdateExecutor != null) {
             timeUpdateExecutor.shutdownNow();
@@ -1569,7 +1576,12 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     }
 
     private void releaseMediaPlayers() {
-        GameResourceManager.getInstance().resetBackMusic();
+        GameResourceManager.getInstance().release();
         backMusic = null;
+        selectMusic = null;
+        clickMusic = null;
+        captureMusic = null;
+        checkMusic = null;
+        winMusic = null;
     }
 }

@@ -40,38 +40,43 @@ public class GameResourceManager {
     }
 
     public void initSoundEffects(Context context) {
+        // 使用 ApplicationContext，避免单例持有 Activity 导致内存泄漏
+        Context appContext = context.getApplicationContext();
         if (selectMusic == null) {
-            selectMusic = MediaPlayer.create(context, R.raw.select);
+            selectMusic = MediaPlayer.create(appContext, R.raw.select);
             if (selectMusic != null) {
-                selectMusic.setVolume(5f, 5f);
+                selectMusic.setVolume(1.0f, 1.0f);
             }
         }
         if (clickMusic == null) {
-            clickMusic = MediaPlayer.create(context, R.raw.click);
+            clickMusic = MediaPlayer.create(appContext, R.raw.click);
             if (clickMusic != null) {
-                clickMusic.setVolume(5f, 5f);
+                clickMusic.setVolume(1.0f, 1.0f);
             }
         }
         if (captureMusic == null) {
-            captureMusic = MediaPlayer.create(context, R.raw.capture);
+            captureMusic = MediaPlayer.create(appContext, R.raw.capture);
             if (captureMusic != null) {
-                captureMusic.setVolume(5f, 5f);
+                captureMusic.setVolume(1.0f, 1.0f);
             }
         }
         if (checkMusic == null) {
-            checkMusic = MediaPlayer.create(context, R.raw.checkmate);
+            checkMusic = MediaPlayer.create(appContext, R.raw.checkmate);
             if (checkMusic != null) {
-                checkMusic.setVolume(5f, 5f);
+                checkMusic.setVolume(1.0f, 1.0f);
             }
         }
         if (winMusic == null) {
-            winMusic = MediaPlayer.create(context, R.raw.win);
+            winMusic = MediaPlayer.create(appContext, R.raw.win);
+            if (winMusic != null) {
+                winMusic.setVolume(1.0f, 1.0f);
+            }
         }
     }
 
     public void initBackgroundMusic(Context context) {
         if (backMusic == null) {
-            backMusic = MediaPlayer.create(context, R.raw.background);
+            backMusic = MediaPlayer.create(context.getApplicationContext(), R.raw.background);
             if (backMusic != null) {
                 backMusic.setLooping(true);
             }
@@ -124,30 +129,12 @@ public class GameResourceManager {
     }
 
     public void release() {
-        if (backMusic != null) {
-            backMusic.release();
-            backMusic = null;
-        }
-        if (selectMusic != null) {
-            selectMusic.release();
-            selectMusic = null;
-        }
-        if (clickMusic != null) {
-            clickMusic.release();
-            clickMusic = null;
-        }
-        if (captureMusic != null) {
-            captureMusic.release();
-            captureMusic = null;
-        }
-        if (checkMusic != null) {
-            checkMusic.release();
-            checkMusic = null;
-        }
-        if (winMusic != null) {
-            winMusic.release();
-            winMusic = null;
-        }
+        try { if (backMusic != null) { backMusic.release(); backMusic = null; } } catch (Exception ignored) {}
+        try { if (selectMusic != null) { selectMusic.release(); selectMusic = null; } } catch (Exception ignored) {}
+        try { if (clickMusic != null) { clickMusic.release(); clickMusic = null; } } catch (Exception ignored) {}
+        try { if (captureMusic != null) { captureMusic.release(); captureMusic = null; } } catch (Exception ignored) {}
+        try { if (checkMusic != null) { checkMusic.release(); checkMusic = null; } } catch (Exception ignored) {}
+        try { if (winMusic != null) { winMusic.release(); winMusic = null; } } catch (Exception ignored) {}
         setting = null;
         sharedPreferences = null;
     }

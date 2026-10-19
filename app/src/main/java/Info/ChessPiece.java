@@ -44,11 +44,6 @@ public final class ChessPiece {
         return piece >= BLACK_KING && piece <= BLACK_PAWN;
     }
 
-    /** 是否有效棋子 */
-    public static boolean isValid(int piece) {
-        return piece >= BLACK_KING && piece <= RED_PAWN;
-    }
-
     /**
      * 根据棋子编码返回中文名称
      */

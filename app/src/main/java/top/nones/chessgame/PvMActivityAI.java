@@ -223,6 +223,8 @@ public class PvMActivityAI {
         int retryCount = 0;
         java.util.Set<String> triedMoves = new java.util.HashSet<>(); // 记录已尝试的着法
         java.util.List<Move> allPossibleMoves = new java.util.ArrayList<>(); // 存储所有可能的着法
+        // 收集当前回合方所有合法着法，供强制变着时选择不同着法使用
+        collectAllPossibleMoves(allPossibleMoves);
         
         // 始终使用 AI 计算，不随机选择着法
         while (retryCount < maxRetryCount) {
@@ -491,6 +493,15 @@ public class PvMActivityAI {
             // 检查是否吃掉了对方的老将
             boolean isCaptureKing = tmp == 1 || tmp == 8;
             
+            // 保存走子前的完整状态快照，用于重复局面时完整回滚（避免仅回滚棋盘导致状态不一致）
+            ChessInfo stateBeforeMove = null;
+            try {
+                stateBeforeMove = (ChessInfo) this.activity.chessInfo.clone();
+            } catch (CloneNotSupportedException e) {
+                LogUtils.e("PvMActivityAI", "克隆状态快照失败", e);
+            }
+            int aiMoveHistorySizeBefore = aiMoveHistory.size();
+
             this.activity.chessInfo.piece[toPos.y][toPos.x] = piece;
             this.activity.chessInfo.piece[fromPos.y][fromPos.x] = 0;
             
@@ -563,10 +574,19 @@ public class PvMActivityAI {
             
             // 检查AI走棋后是否导致重复局面
             if (checkIfMoveLeadsToRepetition(move)) {
-                // 撤销这个着法，因为它会导致重复局面
-                this.activity.chessInfo.piece[fromPos.y][fromPos.x] = piece;
-                this.activity.chessInfo.piece[toPos.y][toPos.x] = tmp;
-                
+                // 完整回滚：恢复走子前的所有状态（棋盘、回合数、局面历史、评分曲线、强制变着标志等）
+                if (stateBeforeMove != null) {
+                    try {
+                        this.activity.chessInfo.setInfo(stateBeforeMove);
+                    } catch (CloneNotSupportedException e) {
+                        LogUtils.e("PvMActivityAI", "回滚状态失败", e);
+                    }
+                }
+                // 回滚 aiMoveHistory（移除本次添加的记录）
+                while (aiMoveHistory.size() > aiMoveHistorySizeBefore) {
+                    aiMoveHistory.remove(aiMoveHistory.size() - 1);
+                }
+
                 // 重新触发AI计算
                 new Thread(() -> {
                     try {
@@ -574,7 +594,7 @@ public class PvMActivityAI {
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
                     }
-                    
+
                     // 在UI线程中重新触发AI计算
                     if (this.activity != null) {
                         this.activity.runOnUiThread(() -> {
@@ -582,7 +602,7 @@ public class PvMActivityAI {
                         });
                     }
                 }).start();
-                
+
                 return false;
             }
             

@@ -1,8 +1,11 @@
 package ChessMove;
 
+import java.io.Serializable;
+
 import Info.Pos;
 
-public class Move {
+public class Move implements Serializable {
+    private static final long serialVersionUID = 1L;
     public Pos fromPos;
     public Pos toPos;
     

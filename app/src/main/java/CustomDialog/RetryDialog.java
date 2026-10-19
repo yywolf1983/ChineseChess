@@ -11,7 +11,6 @@ import android.widget.RadioGroup;
 
 import top.nones.chessgame.R;
 import top.nones.chessgame.PvMActivity;
-import Utils.LogUtils;
 import Utils.SoundManager;
 
 /**
@@ -63,10 +62,12 @@ public class RetryDialog extends Dialog implements RadioGroup.OnCheckedChangeLis
     public void onClick(View v) {
         int id = v.getId();
         if (id == R.id.posBtn) {
+            dismiss();
             if (onClickBottomListener != null) {
                 onClickBottomListener.onPositiveClick();
             }
         } else if (id == R.id.negBtn) {
+            dismiss();
             if (onClickBottomListener != null) {
                 onClickBottomListener.onNegtiveClick();
             }
@@ -86,14 +87,18 @@ public class RetryDialog extends Dialog implements RadioGroup.OnCheckedChangeLis
         if (activity != null) {
             SoundManager.playEffect(activity.selectMusic);
         }
-        RadioButton checked = (RadioButton) findViewById(radioGroup.getCheckedRadioButtonId());
-        int id = radioGroup.getId();
-        if (id == R.id.holdGroup) {
-            if (checked.getId() == R.id.holdRed) {
-                isPlayerRed = true;
-            } else {
-                isPlayerRed = false;
-            }
+        int checkedId = radioGroup.getCheckedRadioButtonId();
+        if (checkedId == -1) {
+            return;
+        }
+        RadioButton checked = (RadioButton) findViewById(checkedId);
+        if (checked == null) {
+            return;
+        }
+        if (checked.getId() == R.id.holdRed) {
+            isPlayerRed = true;
+        } else {
+            isPlayerRed = false;
         }
     }
 

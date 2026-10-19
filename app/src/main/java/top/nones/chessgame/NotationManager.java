@@ -169,7 +169,14 @@ public class NotationManager {
     private void appendMoveToCurrentNotation(String move, boolean isRed) {
         java.util.List<ChessNotation.MoveRecord> records = currentNotation.getMoveRecords();
         if (isRed) {
-            // 红方走法：新建一条走法记录
+            // 红方走法：若上一条记录的红方位为空则填入（黑先场景），否则新建一条
+            if (!records.isEmpty()) {
+                ChessNotation.MoveRecord last = records.get(records.size() - 1);
+                if (last.redMove == null || last.redMove.isEmpty()) {
+                    last.redMove = move;
+                    return;
+                }
+            }
             currentNotation.addMoveRecord(move, "");
         } else {
             // 黑方走法：优先填入上一条记录的黑方位，否则单独新建
@@ -915,7 +922,18 @@ public class NotationManager {
             }
         }
         java.util.List<ChessNotation.MoveRecord> orecs = (originalNotation != null) ? originalNotation.getMoveRecords() : null;
-        originalTotalMoves = (orecs != null) ? orecs.size() * 2 : 0;
+        if (orecs != null) {
+            // 精确统计实际走法数：每条记录可能有红+黑两步，也可能仅红一步（棋谱以红方结尾）
+            int total = 0;
+            for (ChessNotation.MoveRecord r : orecs) {
+                if (r == null) continue;
+                if (r.redMove != null && !r.redMove.isEmpty()) total++;
+                if (r.blackMove != null && !r.blackMove.isEmpty()) total++;
+            }
+            originalTotalMoves = total;
+        } else {
+            originalTotalMoves = 0;
+        }
     }
 
     // 仅比较两个局面的棋子分布是否一致（不比较行棋方标志）。

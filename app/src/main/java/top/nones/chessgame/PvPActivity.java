@@ -77,6 +77,8 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
             LogUtils.d("PvPActivity", "onCreate completed");
         } catch (Exception e) {
             LogUtils.e("PvPActivity", "Error in onCreate", e);
+            // 初始化失败时关闭 Activity，避免进入半初始化状态
+            finish();
         }
     }
 
@@ -149,6 +151,18 @@ public class PvPActivity extends AppCompatActivity implements View.OnTouchListen
         } catch (Exception e) {
             LogUtils.e("PvPActivity", "Error in onStart", e);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        try {
+            if (initModule != null) {
+                initModule.onDestroy();
+            }
+        } catch (Exception e) {
+            LogUtils.e("PvPActivity", "Error in onDestroy", e);
+        }
+        super.onDestroy();
     }
 
     @Override

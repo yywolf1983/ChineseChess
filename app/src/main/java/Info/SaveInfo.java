@@ -42,11 +42,10 @@ public class SaveInfo {
             throw new Exception("Context is not initialized");
         }
         File file = new File(context.getFilesDir(), fileName);
-        FileOutputStream fos = new FileOutputStream(file);
-        ObjectOutputStream oos = new ObjectOutputStream(fos);
-        oos.writeObject(info);
-        oos.close();
-        fos.close();
+        try (FileOutputStream fos = new FileOutputStream(file);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(info);
+        }
     }
 
     public static ChessInfo DeserializeChessInfo(String fileName) throws Exception {
@@ -54,12 +53,10 @@ public class SaveInfo {
             throw new Exception("Context is not initialized");
         }
         File file = new File(context.getFilesDir(), fileName);
-        FileInputStream fis = new FileInputStream(file);
-        ObjectInputStream ois = new ObjectInputStream(fis);
-        ChessInfo info = (ChessInfo) ois.readObject();
-        ois.close();
-        fis.close();
-        return info;
+        try (FileInputStream fis = new FileInputStream(file);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            return (ChessInfo) ois.readObject();
+        }
     }
 
     public static void SerializeInfoSet(InfoSet infoSet, String fileName) throws Exception {
@@ -67,11 +64,10 @@ public class SaveInfo {
             throw new Exception("Context is not initialized");
         }
         File file = new File(context.getFilesDir(), fileName);
-        FileOutputStream fos = new FileOutputStream(file);
-        ObjectOutputStream oos = new ObjectOutputStream(fos);
-        oos.writeObject(infoSet);
-        oos.close();
-        fos.close();
+        try (FileOutputStream fos = new FileOutputStream(file);
+             ObjectOutputStream oos = new ObjectOutputStream(fos)) {
+            oos.writeObject(infoSet);
+        }
     }
 
     public static InfoSet DeserializeInfoSet(String fileName) throws Exception {
@@ -79,12 +75,10 @@ public class SaveInfo {
             throw new Exception("Context is not initialized");
         }
         File file = new File(context.getFilesDir(), fileName);
-        FileInputStream fis = new FileInputStream(file);
-        ObjectInputStream ois = new ObjectInputStream(fis);
-        InfoSet infoSet = (InfoSet) ois.readObject();
-        ois.close();
-        fis.close();
-        return infoSet;
+        try (FileInputStream fis = new FileInputStream(file);
+             ObjectInputStream ois = new ObjectInputStream(fis)) {
+            return (InfoSet) ois.readObject();
+        }
     }
 
     public static void SerializeChessNotation(Context context, ChessNotation notation, String fileName) throws Exception {
@@ -172,9 +166,11 @@ public class SaveInfo {
                     if (record != null) {
                         String redMove = record.redMove != null ? record.redMove : "";
                         String blackMove = record.blackMove != null ? record.blackMove : "";
-                        writer.write("   " + (i + 1) + ". " + redMove + " {#0,0#}\n");
+                        int redScore = record.redScore != null ? record.redScore : 0;
+                        int blackScore = record.blackScore != null ? record.blackScore : 0;
+                        writer.write("   " + (i + 1) + ". " + redMove + " {#" + redScore + ",0#}\n");
                         if (!blackMove.isEmpty()) {
-                            writer.write("      " + blackMove + " {#50,0#}\n");
+                            writer.write("      " + blackMove + " {#" + blackScore + ",0#}\n");
                         }
                     }
                 }

@@ -3,7 +3,6 @@ package ChessMove;
 import android.util.Log;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 
 import Info.ChessPiece;
@@ -34,32 +33,6 @@ public class Rule {
             {1, 1, 1, 2, 2, 2, 1, 1, 1},
             {1, 1, 1, 2, 2, 2, 1, 1, 1},
             {1, 1, 1, 2, 2, 2, 1, 1, 1}
-    };
-    public static int[][] offsetX = {
-            {0, 0, 1, -1},             //帅 将
-            {1, 1, -1, -1},            //仕 士
-            {2, 2, -2, -2},            //相 象
-            {1, 1, -1, -1},            //象眼
-            {1, 1, -1, -1, 2, 2, -2, -2},  //马
-            {0, 0, 0, 0, 1, 1, -1, -1},    //蹩马腿
-            {0},                    //卒（未过河）
-            {-1, 0, 1},               //过河卒
-            {0},                    //兵（未过河）
-            {-1, 0, 1},               //过河兵
-            {1, 1, -1, -1, 1, 1, -1, -1}  //反向蹩马腿
-    };
-    public static int[][] offsetY = {
-            {1, -1, 0, 0},             //帅 将
-            {1, -1, 1, -1},            //仕 士
-            {2, -2, 2, -2},            //相 象
-            {1, -1, 1, -1},            //象眼
-            {2, -2, 2, -2, 1, -1, 1, -1},  //马
-            {1, -1, 1, -1, 0, 0, 0, 0},    //蹩马腿
-            {-1},                    //卒（向前，向红方方向，向上移动）
-            {0, -1, 0},               //过河卒（向上和横向移动）
-            {1},                   //兵（向前，向黑方方向，整体反转后向下移动）
-            {0, 1, 0},               //过河兵（整体反转后向下和横向移动）
-            {1, -1, 1, -1, 1, -1, 1, -1}  //反向蹩马腿
     };
 
     public static List<Pos> PossibleMoves(int[][] piece, int fromX, int fromY, int PieceID) {
@@ -449,7 +422,6 @@ public class Rule {
             return new Pos(-1, -1);
         }
         
-        int cnt = 0;
         boolean flag = false;
         int targetY = -1;
         
@@ -498,91 +470,6 @@ public class Rule {
         }
     }
 
-    public static boolean CanMove(int id, int fromX, int fromY, int toX, int toY, int[][] piece) {
-        // 参数验证
-        if (piece == null || piece.length != 10) {
-            return false;
-        }
-        for (int i = 0; i < 10; i++) {
-            if (piece[i] == null || piece[i].length != 9) {
-                return false;
-            }
-        }
-        
-        // 位置验证
-        if (fromX < 0 || fromX >= 9 || fromY < 0 || fromY >= 10 || toX < 0 || toX >= 9 || toY < 0 || toY >= 10) {
-            return false;
-        }
-        
-        // 检查是否是直线移动
-        if (fromX != toX && fromY != toY) {
-            return false;
-        }
-        
-        // 检查目标位置是否有己方棋子
-        if (IsSameSide(piece[fromY][fromX], piece[toY][toX])) {
-            return false;
-        }
-        
-        if (id == 1) {  //车
-            // 检查路径上是否有其他棋子
-            if (fromX == toX) {
-                // 垂直移动
-                int start = Math.min(fromY, toY) + 1;
-                int end = Math.max(fromY, toY);
-                for (int i = start; i < end; i++) {
-                    if (piece[i][fromX] != 0) {
-                        return false;
-                    }
-                }
-            } else {
-                // 水平移动
-                int start = Math.min(fromX, toX) + 1;
-                int end = Math.max(fromX, toX);
-                for (int i = start; i < end; i++) {
-                    if (piece[fromY][i] != 0) {
-                        return false;
-                    }
-                }
-            }
-        } else {   //炮
-            int count = 0;
-            if (fromX == toX) {
-                // 垂直移动
-                int start = Math.min(fromY, toY) + 1;
-                int end = Math.max(fromY, toY);
-                for (int i = start; i < end; i++) {
-                    if (piece[i][fromX] != 0) {
-                        count++;
-                    }
-                }
-            } else {
-                // 水平移动
-                int start = Math.min(fromX, toX) + 1;
-                int end = Math.max(fromX, toX);
-                for (int i = start; i < end; i++) {
-                    if (piece[fromY][i] != 0) {
-                        count++;
-                    }
-                }
-            }
-            
-            // 炮的规则：无子移动时需要路径上没有棋子，吃子时有且只有一个炮架
-            if (piece[toY][toX] == 0) {
-                // 无子移动
-                if (count != 0) {
-                    return false;
-                }
-            } else {
-                // 吃子
-                if (count != 1) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    
     // 检查一个棋子是否能够解将
     public static boolean CanDefendCheck(int[][] piece, int fromX, int fromY, int pieceID) {
         boolean isRed = ChessPiece.isRed(pieceID);

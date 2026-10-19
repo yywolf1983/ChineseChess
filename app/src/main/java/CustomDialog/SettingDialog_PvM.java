@@ -251,11 +251,13 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                 } else {
                     // 直接保存设置
                     saveSettings();
+                    dismiss();
                     if (onClickBottomListener != null) {
                         onClickBottomListener.onPositiveClick();
                     }
                 }
             } else if (id == R.id.negBtn) {
+                dismiss();
                 if (onClickBottomListener != null) {
                     onClickBottomListener.onNegtiveClick();
                 }
@@ -391,7 +393,7 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
                     activity.backMusic.pause();
                 }
                 
-                activity.setting.saveSetting(((android.content.ContextWrapper)getContext()).getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
+                activity.setting.saveSetting(getContext().getSharedPreferences("setting", android.content.Context.MODE_PRIVATE));
                 
                 try {
                     if (activity.chessInfo != null) {
@@ -415,7 +417,14 @@ public class SettingDialog_PvM extends Dialog implements RadioGroup.OnCheckedCha
     @Override
     public void onCheckedChanged(RadioGroup radioGroup, @IdRes int i) {
         playSelectSound();
-        RadioButton checked = (RadioButton) findViewById(radioGroup.getCheckedRadioButtonId());
+        int checkedId = radioGroup.getCheckedRadioButtonId();
+        if (checkedId == -1) {
+            return;
+        }
+        RadioButton checked = (RadioButton) findViewById(checkedId);
+        if (checked == null) {
+            return;
+        }
         int id = radioGroup.getId();
         if (id == R.id.musicGroup) {
             if (checked.getId() == R.id.musicTrue) {

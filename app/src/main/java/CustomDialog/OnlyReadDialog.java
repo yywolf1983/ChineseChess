@@ -37,9 +37,9 @@ public class OnlyReadDialog extends Dialog implements View.OnClickListener {
         posBtn = (Button) findViewById(R.id.posBtn);
 
         tv_title = (TextView) findViewById(R.id.tv_title);
-        tv_title.setText(title);
+        tv_title.setText(title != null ? title : "");
         tv_content = (TextView) findViewById(R.id.tv_content);
-        tv_content.setText(content);
+        tv_content.setText(content != null ? content : "");
 
     }
 
@@ -52,6 +52,7 @@ public class OnlyReadDialog extends Dialog implements View.OnClickListener {
     @Override
     public void onClick(View v) {
         if (v.getId() == R.id.posBtn) {
+            dismiss();
             if (onClickBottomListener != null) {
                 onClickBottomListener.onPositiveClick();
             }
