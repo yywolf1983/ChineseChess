@@ -1,6 +1,8 @@
 package top.nones.chessgame;
 
+import android.content.DialogInterface;
 import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 import androidx.appcompat.app.AlertDialog;
 
@@ -244,7 +246,31 @@ public class PvPActivityControls {
                     }
                 });
                 builder.setCancelable(false); // 必须选择一个选项
-                builder.show();
+                AlertDialog dialog = builder.show();
+                // 用颜色标注黑红按钮：保留原生按钮背景，文字左侧加同色小圆点 + 文字染色，避免大色块突兀
+                Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE); // 红方开始
+                Button negativeButton = dialog.getButton(DialogInterface.BUTTON_NEGATIVE); // 黑方开始
+                float density = activity.getResources().getDisplayMetrics().density;
+                int dotSize = (int) (14 * density);
+                int dotPad = (int) (6 * density);
+                if (positiveButton != null) {
+                    positiveButton.setTextColor(0xFFD32F2F);
+                    android.graphics.drawable.GradientDrawable redDot = new android.graphics.drawable.GradientDrawable();
+                    redDot.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                    redDot.setColor(0xFFD32F2F);
+                    redDot.setSize(dotSize, dotSize);
+                    positiveButton.setCompoundDrawablesWithIntrinsicBounds(redDot, null, null, null);
+                    positiveButton.setCompoundDrawablePadding(dotPad);
+                }
+                if (negativeButton != null) {
+                    negativeButton.setTextColor(0xFF212121);
+                    android.graphics.drawable.GradientDrawable blackDot = new android.graphics.drawable.GradientDrawable();
+                    blackDot.setShape(android.graphics.drawable.GradientDrawable.OVAL);
+                    blackDot.setColor(0xFF212121);
+                    blackDot.setSize(dotSize, dotSize);
+                    negativeButton.setCompoundDrawablesWithIntrinsicBounds(blackDot, null, null, null);
+                    negativeButton.setCompoundDrawablePadding(dotPad);
+                }
             }
             LogUtils.d("PvPActivityControls", "finishSetup completed");
         } catch (Exception e) {
