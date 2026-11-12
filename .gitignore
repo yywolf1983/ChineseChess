@@ -49,6 +49,7 @@ out/
 
 # Testing
 coverage/
+.workbuddy/
 .coverage
 .coveralls.yml
 

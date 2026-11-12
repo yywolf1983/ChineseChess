@@ -172,19 +172,44 @@ public class PvMActivityControls {
             if (activity.aiManager != null) {
                 activity.aiManager.stopAIAnalysis();
             }
-            if (activity.infoSet != null && activity.infoSet.preInfo != null
-                    && activity.chessInfo != null && activity.infoSet.curInfo != null) {
-                int size = activity.infoSet.preInfo.size();
-                if (size > 1) {
-                    activity.infoSet.preInfo.pop();
-                    restoreBoardState(activity.infoSet.preInfo.peek());
-                } else if (size == 1) {
-                    restoreBoardState(activity.infoSet.preInfo.peek());
+            if (activity.infoSet == null || activity.infoSet.preInfo == null
+                    || activity.chessInfo == null) {
+                return;
+            }
+            java.util.Stack<ChessInfo> history = activity.infoSet.preInfo;
+            // 栈底是棋局初始局面，只有栈深 > 1 时才有可撤销的走法
+            if (history.size() <= 1) {
+                return;
+            }
+
+            // 一次悔棋要退到"玩家尚未走子"的局面：
+            // 1) 先撤掉栈顶一手（可能是 AI 的应着，也可能是玩家刚走、AI 尚未落子的一手）；
+            // 2) 人机模式下继续回退，直到重新轮到玩家走棋，避免停在"玩家已走、轮到 AI"
+            //    的局面——那种局面下 AI 会立刻重走，等于没悔棋；
+            // 3) 双机对战没有"玩家"概念，按一个完整回合回退两步；双人模式只回退一步。
+            history.pop();
+            if (activity.gameMode == 1 || activity.gameMode == 2) {
+                boolean humanIsRed = activity.gameMode == 1;
+                while (history.size() > 1 && history.peek().IsRedGo != humanIsRed) {
+                    history.pop();
                 }
+            } else if (activity.gameMode == 3 && history.size() > 1) {
+                history.pop();
             }
-            if (activity.gameManager != null) {
-                activity.gameManager.checkAIMove();
+
+            restoreBoardState(history.peek());
+
+            // 双机对战：悔棋后置为暂停态，由「支招/继续」按钮恢复，
+            // 否则已入队的对弈回环会立刻把刚撤销的走法重走一遍。
+            if (activity.gameMode == 3 && activity.aiManager != null) {
+                activity.aiManager.setDoubleAIPaused(true);
             }
+            // 悔棋后不调用 checkAIMove()：人机模式下此时必定轮到玩家，
+            // 双机对战已置暂停，由用户点「继续」恢复。
+            if (activity.roundView != null) {
+                activity.roundView.requestDraw();
+            }
+            updateSuggestButton(false);
             LogUtils.d("PvMActivityControls", "handleRecallButton completed");
         } catch (Exception e) {
             LogUtils.e("PvMActivityControls", "Error in handleRecallButton", e);
@@ -202,6 +227,9 @@ public class PvMActivityControls {
             activity.blackTime = 0;
             activity.currentTurnStartTime = 0;
             activity.updateTimeDisplay();
+            // 回退后重新开始当前回合的计时，否则 currentTurnStartTime 为 0 会导致
+            // 计时显示停在 00:00、不再走动（半新半旧的界面状态）。
+            activity.startTurnTimer();
             if (activity.chessView != null) {
                 activity.chessView.requestDraw();
             }

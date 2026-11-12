@@ -34,6 +34,8 @@ public class ChessInfo implements Cloneable, Serializable {
     public int[] Select;
     public boolean isMachine;
     public int status;
+    // 胜方：0=未结束或和棋，1=红方胜，2=黑方胜（终局时由对局流程写入）
+    public int winner;
     public int peaceRound;
     public int totalMoves;
     public int attackNum_B;
@@ -198,6 +200,7 @@ public class ChessInfo implements Cloneable, Serializable {
             this.suggestDashedStepIdx = info.suggestDashedStepIdx;
             this.isMachine = info.isMachine;
             this.status = info.status;
+            this.winner = info.winner;
             this.peaceRound = info.peaceRound;
             this.totalMoves = info.totalMoves;
             this.attackNum_B = info.attackNum_B;

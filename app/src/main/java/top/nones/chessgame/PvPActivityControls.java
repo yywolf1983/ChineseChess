@@ -191,6 +191,8 @@ public class PvPActivityControls {
                         chessInfo.IsSetupMode = false;
                         // 确保游戏状态为进行中
                         chessInfo.status = 1;
+                        // 摆棋开新局：清空上一局的胜方，否则回合面板会残留上次的胜负
+                        chessInfo.winner = 0;
                         // 重置infoSet，清空摆棋过程中的记录
                         infoSet = new InfoSet();
                         // 将当前摆棋局面保存到infoSet中作为初始状态
@@ -222,6 +224,8 @@ public class PvPActivityControls {
                         chessInfo.IsSetupMode = false;
                         // 确保游戏状态为进行中
                         chessInfo.status = 1;
+                        // 摆棋开新局：清空上一局的胜方，否则回合面板会残留上次的胜负
+                        chessInfo.winner = 0;
                         // 重置infoSet，清空摆棋过程中的记录
                         infoSet = new InfoSet();
                         // 将当前摆棋局面保存到infoSet中作为初始状态

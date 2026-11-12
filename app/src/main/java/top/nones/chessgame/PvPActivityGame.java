@@ -310,7 +310,11 @@ public class PvPActivityGame {
             LogUtils.e("PvPActivityGame", "操作失败", e);
         }
 
-        checkGameStatus(!isRed, isCapture);
+        // 先判定终局（王被吃/将死/困毙），终局后不再提示"正在被将军"
+        boolean isGameOver = checkGameOver();
+        if (!isGameOver) {
+            checkGameStatus(!isRed, isCapture);
+        }
 
         if (!chessInfo.IsChecked && !isCapture) {
             if (PvPActivityInit.getClickMusic() != null) {
@@ -356,6 +360,68 @@ public class PvPActivityGame {
 
         // 和棋判断
         checkDrawConditions();
+    }
+
+    /**
+     * 终局判定：王被吃 / 被将死 / 困毙。
+     * 必须在落子并 updateAllInfo 之后调用（此时 IsRedGo 已切换到对手）。
+     * 判定依据：
+     *  - 王被吃：棋盘上不存在红帅或黑将，判另一方胜；
+     *  - 将死：轮到走棋的一方被将军且没有任何合法应着，判走子方胜；
+     *  - 困毙：轮到走棋的一方无子可动（象棋规则判负），判走子方胜。
+     *
+     * @return true 表示对局已结束（status 已置 2，winner 已写入）
+     */
+    private boolean checkGameOver() {
+        if (chessInfo.status != 1) {
+            return false;
+        }
+
+        boolean redKingAlive = false;
+        boolean blackKingAlive = false;
+        for (int y = 0; y < 10; y++) {
+            for (int x = 0; x < 9; x++) {
+                if (chessInfo.piece[y][x] == 8) {
+                    redKingAlive = true;
+                } else if (chessInfo.piece[y][x] == 1) {
+                    blackKingAlive = true;
+                }
+            }
+        }
+        if (!redKingAlive) {
+            endGame(2);
+            return true;
+        }
+        if (!blackKingAlive) {
+            endGame(1);
+            return true;
+        }
+
+        boolean redToMove = chessInfo.IsRedGo;
+        if (Rule.isCheckmate(chessInfo.piece, redToMove)
+                || Rule.isStalemate(chessInfo.piece, redToMove)) {
+            endGame(redToMove ? 2 : 1);
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 统一收尾：置终局状态并记录胜方，清掉选子/可走位置，避免终局后仍有残留高亮。
+     * winner: 1=红方胜，2=黑方胜。
+     */
+    private void endGame(int winner) {
+        chessInfo.status = 2;
+        chessInfo.winner = winner;
+        chessInfo.IsChecked = false;
+        chessInfo.ret.clear();
+        chessInfo.Select = new int[]{-1, -1};
+
+        String text = winner == 1 ? "红方获得胜利" : "黑方获得胜利";
+        android.widget.Toast toast = android.widget.Toast.makeText(
+                activity, text, android.widget.Toast.LENGTH_LONG);
+        toast.setGravity(android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL, 0, 150);
+        toast.show();
     }
     
     // 检查和棋条件并提示用户
@@ -580,6 +646,8 @@ public class PvPActivityGame {
         builder.setMessage(message);
         builder.setPositiveButton("认输", (dialog, which) -> {
             chessInfo.status = 2;
+            // 认输方是当前走棋方，胜方即另一方；回合面板按 winner 显示胜负，必须同步写入
+            chessInfo.winner = chessInfo.IsRedGo ? 2 : 1;
             Toast.makeText(activity, chessInfo.IsRedGo ? "黑方获得胜利" : "红方获得胜利", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("继续变着", (dialog, which) -> {
@@ -603,6 +671,8 @@ public class PvPActivityGame {
         builder.setMessage(message);
         builder.setPositiveButton("同意和棋", (dialog, which) -> {
             chessInfo.status = 2;
+            // 和棋：清空胜方，避免沿用上一局的 winner
+            chessInfo.winner = 0;
             String toastMessage = "";
             if (ruleType.equals("BOTH_SIDES_PERPETUAL_CHECK")) {
                 toastMessage = "双方长将，此乃和棋";
@@ -695,6 +765,8 @@ public class PvPActivityGame {
         // 如果双方都禁止（双方长将或双方长捉），直接判和
         if (isBothForbidden) {
             chessInfo.status = 2;
+            // 双方长将/长捉判和：清空胜方，避免沿用上一局的 winner
+            chessInfo.winner = 0;
             Toast.makeText(activity, "双方长将/长捉，此乃和棋", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -741,6 +813,8 @@ public class PvPActivityGame {
         });
         builder.setNegativeButton("和棋", (dialog, which) -> {
             chessInfo.status = 2;
+            // 和棋：清空胜方，避免沿用上一局的 winner
+            chessInfo.winner = 0;
             String toastMessage = "";
             if (forbiddenSide != null) {
                 if (chessInfo.isPerpetualCheck()) {
@@ -767,6 +841,8 @@ public class PvPActivityGame {
         builder.setMessage(message);
         builder.setPositiveButton("同意和棋", (dialog, which) -> {
             chessInfo.status = 2;
+            // 和棋：清空胜方，避免沿用上一局的 winner
+            chessInfo.winner = 0;
             Toast.makeText(activity, "此乃和棋", Toast.LENGTH_SHORT).show();
         });
         builder.setNegativeButton("继续对局", (dialog, which) -> {

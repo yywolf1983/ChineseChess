@@ -39,7 +39,9 @@ public class PvPActivityRound extends View {
 
     private void drawRoundInfo(Canvas canvas) {
         String roundInfo = "回合: " + chessInfo.totalMoves + " 步";
-        String turnInfo = chessInfo.IsRedGo ? "红方走棋" : "黑方走棋";
+        String turnInfo = chessInfo.status == 2
+                ? "对局结束"
+                : (chessInfo.IsRedGo ? "红方走棋" : "黑方走棋");
         String statusInfo = getStatusInfo();
 
         canvas.drawText(roundInfo, 30, 40, paint);
@@ -80,28 +82,22 @@ public class PvPActivityRound extends View {
                 case 1:
                     return "游戏进行中";
                 case 2:
-                    // 检查是否是和棋
-                    boolean isDraw = true;
-                    // 检查是否有一方被将死或被困毙
-                    boolean redCheckmated = Rule.isCheckmate(chessInfo.piece, true);
-                    boolean blackCheckmated = Rule.isCheckmate(chessInfo.piece, false);
-                    boolean redStalemated = Rule.isStalemate(chessInfo.piece, true);
-                    boolean blackStalemated = Rule.isStalemate(chessInfo.piece, false);
-                    
-                    if (redCheckmated || blackCheckmated || redStalemated || blackStalemated) {
-                        isDraw = false;
+                    // 终局：优先使用对局流程落子时写入的 winner（1=红胜, 2=黑胜, 0=和棋）
+                    if (chessInfo.winner == 1) {
+                        return "红方胜利";
                     }
-                    
-                    if (isDraw) {
-                        return "和棋";
-                    } else {
-                        // 游戏结束，根据行棋方判断胜利者
-                        if (chessInfo.IsRedGo) {
-                            return "黑方胜利";
-                        } else {
-                            return "红方胜利";
-                        }
+                    if (chessInfo.winner == 2) {
+                        return "黑方胜利";
                     }
+                    // 兼容未写入 winner 的终局（如求和/旧存档）：按"谁被将死/困毙"判定，
+                    // 被将死/困毙的一方判负，不能再按"轮到谁走"反推（会得出相反的胜负）。
+                    if (Rule.isCheckmate(chessInfo.piece, true) || Rule.isStalemate(chessInfo.piece, true)) {
+                        return "黑方胜利";
+                    }
+                    if (Rule.isCheckmate(chessInfo.piece, false) || Rule.isStalemate(chessInfo.piece, false)) {
+                        return "红方胜利";
+                    }
+                    return "和棋";
                 default:
                     return "游戏状态未知";
             }

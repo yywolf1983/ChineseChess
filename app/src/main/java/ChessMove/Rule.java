@@ -250,7 +250,10 @@ public class Rule {
         }
         
         if (!foundKing) {
-            return true;
+            // 该方将/帅不存在，无法判定"被将军"。
+            // 是否因"王被吃"而终局由对局流程显式判断（见 PvPActivityGame.checkGameOver），
+            // 规则函数本身不再把缺失的王当作被将军返回 true。
+            return false;
         }
         
         int[][] attackDirections = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};

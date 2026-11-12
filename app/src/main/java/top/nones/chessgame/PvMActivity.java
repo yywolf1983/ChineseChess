@@ -579,6 +579,17 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
     
     // 初始化时间更新线程
     private void initTimeUpdateExecutor() {
+        // 本方法在 onCreate 与 onResume 中都会调用，而 onPause 已关闭了旧实例。
+        // 必须在重建前关闭可能仍存活的旧实例，否则每次 onResume 都会多留一组线程：
+        // 旧线程池仍在按 100ms 轮询并回调 runOnUiThread，既泄漏线程，也让计时被重复刷新。
+        // 之所以不改成"只在 onCreate 创建一次"：onPause 会 shutdownNow，
+        // 若不再重建，从后台回到前台后计时线程就永久失效。
+        if (timeUpdateExecutor != null) {
+            timeUpdateExecutor.shutdownNow();
+        }
+        if (evaluationExecutor != null) {
+            evaluationExecutor.shutdownNow();
+        }
         timeUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
         evaluationExecutor = Executors.newSingleThreadScheduledExecutor();
         // 每100毫秒更新一次时间显示
@@ -1184,9 +1195,16 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         if (recognitionService == null) {
             new Thread(() -> {
                 try {
-                    recognitionService = new ChessRecognitionService(this);
-                    recognitionService.initialize();
+                    ChessRecognitionService service = new ChessRecognitionService(this);
+                    recognitionService = service;
+                    service.initialize();
                     recognitionInitDone = true;
+                    // 本方法是懒加载、在后台线程里建服务；若初始化期间 Activity 已销毁，
+                    // onDestroy 读到的是 null、不会释放这个实例，这里补一次释放，避免 ONNX 会话泄漏
+                    if (isDestroyed()) {
+                        service.close();
+                        recognitionService = null;
+                    }
                     LogUtils.d("PvMActivity", "Recognition service initialized");
                 } catch (Exception e) {
                     LogUtils.e("PvMActivity", "Failed to init recognition: " + e.getMessage());
@@ -1541,6 +1559,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
         super.onDestroy();
         final PikafishAI aiToClose = pikafishAI;
         final PvMActivityAI aiManagerToShutdown = aiManager;
+        // 识别服务是懒加载的：可能从未拍照识别过，因此必须判空；
+        // 取出后立即置空，避免与仍在初始化的懒加载线程重复持有一份实例。
+        final ChessRecognitionService recognitionToClose = recognitionService;
+        recognitionService = null;
 
         // 清理模拟行棋的延迟回调，避免 Activity 销毁后仍访问 View
         simHandler.removeCallbacksAndMessages(null);
@@ -1564,6 +1586,10 @@ public class PvMActivity extends AppCompatActivity implements View.OnTouchListen
             }
             if (aiManagerToShutdown != null) {
                 aiManagerToShutdown.shutdown();
+            }
+            // 释放 ONNX Runtime 会话与环境（识别服务未创建时 recognitionToClose 为 null）
+            if (recognitionToClose != null) {
+                recognitionToClose.close();
             }
             LogUtils.i("Perf", "onDestroy background cleanup cost=" + (System.currentTimeMillis() - cleanupStartMs) + "ms");
         }, "pvm-destroy-cleanup").start();
